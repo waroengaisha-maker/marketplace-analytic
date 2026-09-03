@@ -1,9 +1,9 @@
 :8080 {
     @vite path /@vite/* /@id/* /@fs/* /resources/* /node_modules/* /__vite_ping
-    reverse_proxy @vite host.docker.internal:5173
+    reverse_proxy @vite 127.0.0.1:5173
 
     @websocket header Connection *Upgrade*
-    reverse_proxy @websocket host.docker.internal:5173
+    reverse_proxy @websocket 127.0.0.1:5173
 
-    reverse_proxy 172.18.0.4:80
+    reverse_proxy 127.0.0.1:80
 }
