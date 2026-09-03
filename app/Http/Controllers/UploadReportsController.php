@@ -18,6 +18,6 @@ class UploadReportsController extends Controller
             return back()->withInput()->with('error', 'Laporan gagal diunggah. Silakan coba lagi.');
         }
 
-        return to_route('imports.upload')->with('success', sprintf('Import berhasil. Order: %d baris, Income: %d baris.', $result['orders'], $result['income']));
+        return to_route('imports.upload')->with('success', $result['orders'] > 0 && $result['income'] > 0 ? sprintf('Import berhasil. Order: %d baris, Income: %d baris.', $result['orders'], $result['income']) : ($result['orders'] > 0 ? sprintf('Import Order berhasil: %d baris.', $result['orders']) : sprintf('Import Income berhasil: %d baris.', $result['income'])));
     }
 }

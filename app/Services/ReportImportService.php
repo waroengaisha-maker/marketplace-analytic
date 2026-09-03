@@ -43,7 +43,7 @@ class ReportImportService
         foreach ($rows as $row) {
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
-            if ($orderNumber === null || strcasecmp((string) ($data['Lihat berdasarkan'] ?? ''), 'Order') === 0) continue;
+            if ($orderNumber === null) continue;
 
             $payload[] = [
                 'order_number' => $orderNumber,
@@ -101,7 +101,7 @@ class ReportImportService
         foreach ($rows as $row) {
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
-            if ($orderNumber === null || strcasecmp((string) ($data['Lihat berdasarkan'] ?? ''), 'Order') === 0) continue;
+            if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) continue;
             $payload[] = [
                 'order_number' => $orderNumber,
                 'row_type' => $this->text($data['Lihat berdasarkan'] ?? null),
@@ -134,7 +134,7 @@ class ReportImportService
                 'created_at' => now(), 'updated_at' => now(),
             ];
         }
-        DB::table('marketplace_income')->where('row_type', 'Order')->delete();
+        DB::table('marketplace_income')->where('row_type', '!=', 'Sku')->delete();
 
         foreach (array_chunk($payload, 500) as $chunk) {
             DB::table('marketplace_income')->upsert($chunk, ['order_number', 'row_type', 'product_id'], array_keys($chunk[0] ?? []));

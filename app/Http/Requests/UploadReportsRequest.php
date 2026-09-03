@@ -16,8 +16,8 @@ class UploadReportsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'order_report' => ['required', 'file', 'mimes:xlsx,xls', 'max:51200'],
-            'income_report' => ['required', 'file', 'mimes:xlsx,xls', 'max:51200'],
+            'order_report' => ['required_without:income_report', 'file', 'mimes:xlsx,xls', 'max:51200'],
+            'income_report' => ['required_without:order_report', 'file', 'mimes:xlsx,xls', 'max:51200'],
         ];
     }
 
@@ -27,6 +27,10 @@ class UploadReportsRequest extends FormRequest
             'order_report' => ['sheet' => 'orders', 'headerRow' => 1, 'columns' => ['No. Pesanan', 'Nama Produk', 'Jumlah']],
             'income_report' => ['sheet' => 'Penghasilan', 'headerRow' => 3, 'columns' => ['No. Pesanan', 'Nama Produk', 'Total Penghasilan']],
         ] as $field => $definition) {
+            if (!$this->hasFile($field)) {
+                continue;
+            }
+
             try {
                 $spreadsheet = IOFactory::load($this->file($field)->getRealPath());
                 $sheet = $spreadsheet->getSheetByName($definition['sheet']);

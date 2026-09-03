@@ -16,21 +16,18 @@ class UploadReportsService
     /** @return array{orders: int, income: int} */
     public function storeAndImport(Request $request): array
     {
-        $paths = [
-            $request->file('order_report')->store('reports/orders'),
-            $request->file('income_report')->store('reports/income'),
-        ];
+        $paths = [];
+        if ($request->hasFile('order_report')) $paths['orders'] = $request->file('order_report')->store('reports/orders');
+        if ($request->hasFile('income_report')) $paths['income'] = $request->file('income_report')->store('reports/income');
 
-        try {
-            $result = DB::transaction(fn (): array => [
-                'orders' => $this->orders->import($request->file('order_report')->getRealPath()),
-                'income' => $this->income->import($request->file('income_report')->getRealPath()),
-            ]);
+        $result = DB::transaction(function () use ($request): array {
+            return [
+                'orders' => $request->hasFile('order_report') ? $this->orders->import($request->file('order_report')->getRealPath()) : 0,
+                'income' => $request->hasFile('income_report') ? $this->income->import($request->file('income_report')->getRealPath()) : 0,
+            ];
+        });
 
-            Storage::delete($paths);
-            return $result;
-        } catch (\Throwable $exception) {
-            throw $exception;
-        }
+        Storage::delete(array_values($paths));
+        return $result;
     }
 }
