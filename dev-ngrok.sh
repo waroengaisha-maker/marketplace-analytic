@@ -33,4 +33,4 @@ echo ""
 
 export VITE_PUBLIC_URL="$NGROK_URL"
 
-sail exec -e VITE_PUBLIC_URL="$NGROK_URL" laravel.test npm run dev
+sail exec -e APP_URL="$NGROK_URL" -e VITE_PUBLIC_URL="$NGROK_URL" laravel.test npm run dev
