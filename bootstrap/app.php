@@ -20,6 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         }
 
         $middleware->trustProxies(at: $trustedProxies);
+        $middleware->web(append: [
+            HandleInertiaRequests::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
