@@ -1,9 +1,9 @@
 :8080 {
     @vite path /@vite/* /@id/* /@fs/* /resources/* /node_modules/* /__vite_ping
-    reverse_proxy @vite 127.0.0.1:5173
+    reverse_proxy @vite laravel.test:5173
 
     @websocket header Connection *Upgrade*
-    reverse_proxy @websocket 127.0.0.1:5173
+    reverse_proxy @websocket laravel.test:5173
 
-    reverse_proxy 127.0.0.1:80
+    reverse_proxy laravel.test:80
 }

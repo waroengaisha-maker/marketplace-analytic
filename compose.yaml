@@ -1,4 +1,14 @@
 services:
+    caddy:
+        image: 'caddy:2-alpine'
+        ports:
+            - '8080:8080'
+        volumes:
+            - './Caddyfile:/etc/caddy/Caddyfile:ro'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
     laravel.test:
         build:
             context: './vendor/laravel/sail/runtimes/8.5'
