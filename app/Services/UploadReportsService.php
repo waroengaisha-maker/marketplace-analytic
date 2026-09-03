@@ -3,23 +3,33 @@
 namespace App\Services;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Throwable;
 
 class UploadReportsService
 {
-    /** @throws Throwable */
-    public function store(Request $request): void
+    public function __construct(
+        private readonly OrderReportImporter $orders,
+        private readonly IncomeReportImporter $income,
+    ) {}
+
+    /** @return array{orders: int, income: int} */
+    public function storeAndImport(Request $request): array
     {
-        $storedPaths = [];
+        $paths = [
+            $request->file('order_report')->store('reports/orders'),
+            $request->file('income_report')->store('reports/income'),
+        ];
 
         try {
-            $storedPaths[] = $request->file('order_report')->store('reports/orders');
-            $storedPaths[] = $request->file('income_report')->store('reports/income');
-        } catch (Throwable $exception) {
-            foreach ($storedPaths as $path) {
-                Storage::delete($path);
-            }
+            $result = DB::transaction(fn (): array => [
+                'orders' => $this->orders->import($request->file('order_report')->getRealPath()),
+                'income' => $this->income->import($request->file('income_report')->getRealPath()),
+            ]);
+
+            Storage::delete($paths);
+            return $result;
+        } catch (\Throwable $exception) {
             throw $exception;
         }
     }

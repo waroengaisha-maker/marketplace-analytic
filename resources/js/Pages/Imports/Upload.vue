@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm, usePage } from '@inertiajs/vue3'
 
-const page = usePage<{ flash?: { success?: string } }>()
+const page = usePage<{ flash?: { success?: string; error?: string } }>()
 const form = useForm<{ order_report: File | null; income_report: File | null }>({
     order_report: null,
     income_report: null,
@@ -22,8 +22,8 @@ function submit() {
             <p class="mt-2 text-sm text-slate-500">Unggah laporan Order dan Penghasilan untuk diproses ke database.</p>
         </div>
 
-        <div v-if="form.errors.upload" class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">
-            {{ form.errors.upload }}
+        <div v-if="page.props.flash?.error" class="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-700">
+            {{ page.props.flash.error }}
         </div>
 
         <div v-if="page.props.flash?.success" class="mb-4 rounded-lg bg-emerald-50 p-4 text-sm text-emerald-700">

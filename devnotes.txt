@@ -1,2 +1,3 @@
 - best practice MVC
 - best practice error handling
+- best practice flash message
