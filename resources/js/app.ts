@@ -1,24 +1,29 @@
-import { createApp, h } from 'vue';
-import { createInertiaApp } from '@inertiajs/vue3';
+import { createApp, h } from 'vue'
+import { createInertiaApp } from '@inertiajs/vue3'
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
+import AppLayout from './Layouts/AppLayout.vue'
 
 createInertiaApp({
-    resolve: (name) => {
-        const pages = import.meta.glob('./Pages/**/*.vue', {
-            eager: true,
-        });
+    title: (title) => `${title} - Marketplace Analytics`,
 
-        const page = pages[`./Pages/${name}.vue`] as { default: any } | undefined;
+    resolve: async (name) => {
+        const page = await resolvePageComponent(
+            `./Pages/${name}.vue`,
+            import.meta.glob('./Pages/**/*.vue'),
+        )
 
-        if (!page) {
-            throw new Error(`Inertia page not found: ./Pages/${name}.vue`);
+        if (name !== 'Auth/Login' && name !== 'Auth/Register') {
+            page.default.layout = page.default.layout || AppLayout
         }
 
-        return page.default;
+        return page
     },
 
     setup({ el, App, props, plugin }) {
-        createApp({ render: () => h(App, props) })
+        createApp({
+            render: () => h(App, props),
+        })
             .use(plugin)
-            .mount(el);
+            .mount(el)
     },
-});
+})
