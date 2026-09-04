@@ -39,19 +39,19 @@ class ReportImportService
         $rows = IOFactory::load($path)->getSheetByName('orders')->toArray(null, true, true, false);
         $headers = array_map(fn (mixed $value): string => trim((string) $value), array_shift($rows));
         $payload = [];
-        $itemIndexes = [];
-
         foreach ($rows as $row) {
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
             if ($orderNumber === null) continue;
 
-            $itemKey = $orderNumber;
-            $itemIndexes[$itemKey] = ($itemIndexes[$itemKey] ?? 0) + 1;
+            $variationName = $this->text($data['Nama Variasi'] ?? null);
+            $quantity = $this->integer($data['Jumlah'] ?? null);
+            $unitPrice = $this->number($data['Harga Satuan'] ?? $data['Harga Setelah Diskon'] ?? null);
+            $itemKey = $this->lineKey($orderNumber, $data['Nama Produk'] ?? null, $unitPrice);
             $payload[] = [
                 'user_id' => $userId,
                 'order_number' => $orderNumber,
-                'item_index' => $itemIndexes[$itemKey],
+                'item_index' => $this->itemIndex($itemKey),
                 'order_status' => $this->text($data['Status Pesanan'] ?? null),
                 'cancellation_reason' => $this->text($data['Alasan Pembatalan'] ?? null),
                 'return_status' => $this->text($data['Status Pembatalan/ Pengembalian'] ?? null),
@@ -61,11 +61,14 @@ class ReportImportService
                 'payment_method' => $this->text($data['Metode Pembayaran'] ?? null),
                 'parent_sku' => $this->text($data['SKU Induk'] ?? null),
                 'product_name' => $this->text($data['Nama Produk'] ?? null),
+                'product_key' => hash('sha256', mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')))),
                 'sku_reference' => $this->text($data['Nomor Referensi SKU'] ?? null),
-                'variation_name' => $this->text($data['Nama Variasi'] ?? null),
+                'variation_name' => $variationName,
+                'variation_key' => $this->key($variationName),
                 'original_price' => $this->number($data['Harga Awal'] ?? null),
                 'discounted_price' => $this->number($data['Harga Setelah Diskon'] ?? null),
-                'quantity' => $this->integer($data['Jumlah'] ?? null),
+                'unit_price' => $unitPrice,
+                'quantity' => $quantity,
                 'returned_quantity' => $this->integer($data['Returned quantity'] ?? null),
                 'order_subtotal' => $this->number($data['Subtotal Pesanan'] ?? null),
                 'total_payment' => $this->number($data['Total Pembayaran'] ?? null),
@@ -89,8 +92,11 @@ class ReportImportService
             ];
         }
 
+        $orderNumbers = array_values(array_unique(array_column($payload, 'order_number')));
+        DB::table('marketplace_orders')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
+
         foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_orders')->upsert($chunk, ['user_id', 'order_number', 'item_index'], array_keys($chunk[0] ?? []));
+            DB::table('marketplace_orders')->upsert($chunk, ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'], array_keys($chunk[0] ?? []));
         }
         return count($payload);
     }
@@ -102,23 +108,27 @@ class ReportImportService
         array_shift($rows); array_shift($rows);
         $headers = array_map(fn (mixed $value): string => trim((string) $value), array_shift($rows));
         $payload = [];
-        $itemIndexes = [];
-
         foreach ($rows as $row) {
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
             if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) continue;
-            $itemKey = $orderNumber;
-            $itemIndexes[$itemKey] = ($itemIndexes[$itemKey] ?? 0) + 1;
+            $variationName = $this->text($data['Nama Variasi'] ?? null);
+            $quantity = $this->integer($data['Jumlah'] ?? $data['Quantity'] ?? null) ?? 1;
+            $unitPrice = $this->number($data['Harga Satuan'] ?? $data['Harga Produk'] ?? null);
+            $itemKey = $this->lineKey($orderNumber, $data['Nama Produk'] ?? null, $unitPrice);
             $payload[] = [
                 'user_id' => $userId,
                 'order_number' => $orderNumber,
-                'item_index' => $itemIndexes[$itemKey],
+                'item_index' => $this->itemIndex($itemKey),
                 'row_type' => $this->text($data['Lihat berdasarkan'] ?? null),
                 'source_row' => $this->integer($data['No.'] ?? null),
                 'application_number' => $this->text($data['No. Pengajuan'] ?? null),
                 'product_id' => $this->text($data['ID Produk'] ?? null),
                 'product_name' => $this->text($data['Nama Produk'] ?? null),
+                'product_key' => hash('sha256', mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')))),
+                'variation_key' => $this->key($variationName),
+                'unit_price' => $unitPrice,
+                'quantity' => $quantity,
                 'order_created_at' => $this->date($data['Waktu Pesanan Dibuat'] ?? null),
                 'fund_released_at' => $this->date($data['Tanggal Dana Dilepaskan'] ?? null),
                 'release_method' => $this->text($data['Metode Pelepasan Dana'] ?? null),
@@ -145,16 +155,26 @@ class ReportImportService
                 'created_at' => now(), 'updated_at' => now(),
             ];
         }
-        DB::table('marketplace_income')->where('row_type', '!=', 'Sku')->delete();
+        $orderNumbers = array_values(array_unique(array_column($payload, 'order_number')));
+        DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
 
         foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_income')->upsert($chunk, ['user_id', 'order_number', 'item_index'], array_keys($chunk[0] ?? []));
+            DB::table('marketplace_income')->upsert($chunk, ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'], array_keys($chunk[0] ?? []));
         }
         return count($payload);
     }
 
     private function row(array $headers, array $values): array { return array_combine($headers, array_pad($values, count($headers), null)) ?: []; }
     private function text(mixed $value): ?string { $value = trim((string) $value); return $value === '' || $value === '-' ? null : $value; }
+    private function key(?string $value): ?string { return $value === null ? null : hash('sha256', mb_strtolower(trim($value))); }
+    private function lineKey(string $orderNumber, mixed $productName, ?float $unitPrice): string
+    {
+        return $orderNumber.'|'.mb_strtolower(trim((string) $productName)).'|'.($unitPrice === null ? '' : number_format($unitPrice, 2, '.', ''));
+    }
+    private function itemIndex(string $lineKey): int
+    {
+        return (int) sprintf('%u', crc32($lineKey));
+    }
     private function number(mixed $value): ?float { $value = $this->text($value); if ($value === null) return null; return (float) str_replace(['.', ',', ' '], '', $value); }
     private function sumNumbers(array $data, array $keys): ?float { $values = array_map(fn (string $key): ?float => $this->number($data[$key] ?? null), $keys); $values = array_filter($values, fn (?float $value): bool => $value !== null); return $values === [] ? null : array_sum($values); }
 

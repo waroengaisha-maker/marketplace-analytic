@@ -13,11 +13,22 @@ class MarketplaceReconciliationService
             ->leftJoin('marketplace_income as income', function ($join): void {
                 $join->on('income.user_id', '=', 'orders.user_id')
                     ->on('income.order_number', '=', 'orders.order_number')
-                    ->on('income.item_index', '=', 'orders.item_index')
-                    ->whereRaw('LOWER(TRIM(income.product_name)) = LOWER(TRIM(orders.product_name))');
+                    ->where(function ($query): void {
+                        $query->where(function ($primary): void {
+                            $primary->whereRaw('LOWER(TRIM(income.product_name)) = LOWER(TRIM(orders.product_name))')
+                                ->whereRaw('(income.variation_key = orders.variation_key OR (income.variation_key IS NULL AND orders.variation_key IS NULL))')
+                                ->whereRaw('(income.unit_price = orders.unit_price OR (income.unit_price IS NULL AND orders.unit_price IS NULL))')
+                                ->whereRaw('(income.quantity = orders.quantity OR (income.quantity IS NULL AND orders.quantity IS NULL))');
+                        })->orWhere(function ($fallback): void {
+                            $fallback->whereColumn('income.item_index', 'orders.item_index')
+                                ->whereColumn('income.product_key', 'orders.product_key')
+                                ->whereColumn('income.unit_price', 'orders.unit_price')
+                                ->whereColumn('income.quantity', 'orders.quantity');
+                        });
+                    });
             })
             ->where('orders.user_id', $userId)
-            ->select(['orders.*', 'income.total_income', 'income.order_processing_fee', 'income.platform_fee', 'income.refund_to_buyer', 'income.free_shipping_xtra_fee', 'income.promo_xtra_service_fee', 'income.pph22']);
+            ->select(['orders.*', 'orders.product_name as order_product_name', 'orders.variation_name as order_variation_name', 'income.total_income', 'income.order_processing_fee', 'income.platform_fee', 'income.refund_to_buyer', 'income.free_shipping_xtra_fee', 'income.promo_xtra_service_fee', 'income.pph22']);
     }
 
 
