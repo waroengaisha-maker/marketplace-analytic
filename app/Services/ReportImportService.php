@@ -39,15 +39,19 @@ class ReportImportService
         $rows = IOFactory::load($path)->getSheetByName('orders')->toArray(null, true, true, false);
         $headers = array_map(fn (mixed $value): string => trim((string) $value), array_shift($rows));
         $payload = [];
+        $itemIndexes = [];
 
         foreach ($rows as $row) {
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
             if ($orderNumber === null) continue;
 
+            $itemKey = $orderNumber.'|'.mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')));
+            $itemIndexes[$itemKey] = ($itemIndexes[$itemKey] ?? 0) + 1;
             $payload[] = [
                 'user_id' => $userId,
                 'order_number' => $orderNumber,
+                'item_index' => $itemIndexes[$itemKey],
                 'order_status' => $this->text($data['Status Pesanan'] ?? null),
                 'cancellation_reason' => $this->text($data['Alasan Pembatalan'] ?? null),
                 'return_status' => $this->text($data['Status Pembatalan/ Pengembalian'] ?? null),
@@ -86,7 +90,7 @@ class ReportImportService
         }
 
         foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_orders')->upsert($chunk, ['user_id', 'order_number', 'parent_sku', 'variation_name'], array_keys($chunk[0] ?? []));
+            DB::table('marketplace_orders')->upsert($chunk, ['user_id', 'order_number', 'item_index'], array_keys($chunk[0] ?? []));
         }
         return count($payload);
     }
@@ -98,14 +102,18 @@ class ReportImportService
         array_shift($rows); array_shift($rows);
         $headers = array_map(fn (mixed $value): string => trim((string) $value), array_shift($rows));
         $payload = [];
+        $itemIndexes = [];
 
         foreach ($rows as $row) {
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
             if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) continue;
+            $itemKey = $orderNumber.'|'.mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')));
+            $itemIndexes[$itemKey] = ($itemIndexes[$itemKey] ?? 0) + 1;
             $payload[] = [
                 'user_id' => $userId,
                 'order_number' => $orderNumber,
+                'item_index' => $itemIndexes[$itemKey],
                 'row_type' => $this->text($data['Lihat berdasarkan'] ?? null),
                 'source_row' => $this->integer($data['No.'] ?? null),
                 'application_number' => $this->text($data['No. Pengajuan'] ?? null),
@@ -140,7 +148,7 @@ class ReportImportService
         DB::table('marketplace_income')->where('row_type', '!=', 'Sku')->delete();
 
         foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_income')->upsert($chunk, ['user_id', 'order_number', 'row_type', 'source_row'], array_keys($chunk[0] ?? []));
+            DB::table('marketplace_income')->upsert($chunk, ['user_id', 'order_number', 'item_index'], array_keys($chunk[0] ?? []));
         }
         return count($payload);
     }
