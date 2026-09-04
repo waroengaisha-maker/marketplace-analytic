@@ -47,7 +47,12 @@ class ReportImportService
             $variationName = $this->text($data['Nama Variasi'] ?? null);
             $quantity = $this->integer($data['Jumlah'] ?? null);
             $unitPrice = $this->number($data['Harga Satuan'] ?? $data['Harga Setelah Diskon'] ?? null);
-            $itemKey = $this->lineKey($orderNumber, $data['Nama Produk'] ?? null, $unitPrice);
+            $originalPrice = $this->number($data['Harga Awal'] ?? null);
+            $itemKey = $this->lineKey(
+                $orderNumber,
+                $data['Nama Produk'] ?? null,
+                $originalPrice === null || $quantity === null ? null : $originalPrice * $quantity
+            );
             $payload[] = [
                 'user_id' => $userId,
                 'order_number' => $orderNumber,
@@ -65,7 +70,7 @@ class ReportImportService
                 'sku_reference' => $this->text($data['Nomor Referensi SKU'] ?? null),
                 'variation_name' => $variationName,
                 'variation_key' => $this->key($variationName),
-                'original_price' => $this->number($data['Harga Awal'] ?? null),
+                'original_price' => $originalPrice,
                 'discounted_price' => $this->number($data['Harga Setelah Diskon'] ?? null),
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
@@ -114,8 +119,9 @@ class ReportImportService
             if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) continue;
             $variationName = $this->text($data['Nama Variasi'] ?? null);
             $quantity = $this->integer($data['Jumlah'] ?? $data['Quantity'] ?? null) ?? 1;
-            $unitPrice = $this->number($data['Harga Satuan'] ?? $data['Harga Produk'] ?? null);
-            $itemKey = $this->lineKey($orderNumber, $data['Nama Produk'] ?? null, $unitPrice);
+            $productPrice = $this->number($data['Harga Produk'] ?? null);
+            $unitPrice = $this->number($data['Harga Satuan'] ?? $productPrice);
+            $itemKey = $this->lineKey($orderNumber, $data['Nama Produk'] ?? null, $productPrice);
             $payload[] = [
                 'user_id' => $userId,
                 'order_number' => $orderNumber,
@@ -134,7 +140,7 @@ class ReportImportService
                 'release_method' => $this->text($data['Metode Pelepasan Dana'] ?? null),
                 'order_type' => $this->text($data['Tipe Pesanan'] ?? null),
                 'total_income' => $this->number($data['Total Penghasilan'] ?? null),
-                'product_price' => $this->number($data['Harga Produk'] ?? null),
+                'product_price' => $productPrice,
                 'buyer_shipping_paid' => $this->number($data['Ongkir Dibayar Pembeli'] ?? null),
                 'platform_fee' => $this->number($data['Biaya Administrasi'] ?? null),
                 'order_processing_fee' => $this->number($data['Biaya Proses Pesanan'] ?? null),
@@ -167,9 +173,9 @@ class ReportImportService
     private function row(array $headers, array $values): array { return array_combine($headers, array_pad($values, count($headers), null)) ?: []; }
     private function text(mixed $value): ?string { $value = trim((string) $value); return $value === '' || $value === '-' ? null : $value; }
     private function key(?string $value): ?string { return $value === null ? null : hash('sha256', mb_strtolower(trim($value))); }
-    private function lineKey(string $orderNumber, mixed $productName, ?float $unitPrice): string
+    private function lineKey(string $orderNumber, mixed $productName, ?float $lineAmount): string
     {
-        return $orderNumber.'|'.mb_strtolower(trim((string) $productName)).'|'.($unitPrice === null ? '' : number_format($unitPrice, 2, '.', ''));
+        return $orderNumber.'|'.mb_strtolower(trim((string) $productName)).'|'.($lineAmount === null ? '' : number_format($lineAmount, 2, '.', ''));
     }
     private function itemIndex(string $lineKey): int
     {
