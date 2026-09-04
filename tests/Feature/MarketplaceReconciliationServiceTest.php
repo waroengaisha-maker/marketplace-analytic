@@ -150,6 +150,50 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertEquals(181.0, (float) $rows->sum('total_income'));
     }
 
+    public function test_order_260819_rtg8y8ns_excludes_untracked_rawon_from_tracked_query(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('h', 64);
+
+        foreach ([
+            ['variation' => 'Rawon', 'tracking' => null],
+            ['variation' => 'Rendang', 'tracking' => 'TRACKING'],
+            ['variation' => 'Gulai', 'tracking' => 'TRACKING'],
+        ] as $line) {
+            DB::table('marketplace_orders')->insert($this->order($user->id, [
+                'order_number' => '260819RTG8Y8NS',
+                'product_key' => $productKey,
+                'item_index' => 106,
+                'discounted_price' => 7750,
+                'unit_price' => 7750,
+                'quantity' => 1,
+                'variation_name' => $line['variation'],
+                'variation_key' => hash('sha256', $line['variation']),
+                'tracking_number' => $line['tracking'],
+            ]));
+        }
+
+        foreach ([6304, 6305] as $totalIncome) {
+            DB::table('marketplace_income')->insert($this->income($user->id, [
+                'order_number' => '260819RTG8Y8NS',
+                'product_key' => $productKey,
+                'item_index' => 106,
+                'product_price' => 7750,
+                'quantity' => 1,
+                'total_income' => $totalIncome,
+            ]));
+        }
+
+        $rows = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id)
+            ->where('orders.order_number', '260819RTG8Y8NS')
+            ->get();
+
+        $this->assertCount(2, $rows);
+        $this->assertEqualsCanonicalizing(['Rendang', 'Gulai'], $rows->pluck('variation_name')->all());
+        $this->assertSame(['Grouped Match'], $rows->pluck('settlement_status')->unique()->values()->all());
+    }
+
     public function test_dashboard_excludes_orders_without_tracking_from_valid_totals(): void
     {
         $user = User::factory()->create();

@@ -135,6 +135,8 @@ class MarketplaceReconciliationService
 
         $orderGroups = DB::table('marketplace_orders')
             ->where('user_id', $userId)
+            ->whereNotNull('tracking_number')
+            ->whereRaw("TRIM(tracking_number) <> ''")
             ->selectRaw('
                 user_id,
                 order_number,
