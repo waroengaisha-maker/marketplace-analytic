@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router, useForm, usePage } from '@inertiajs/vue3'
+import { Head, router, usePage } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { formatNominal } from '@/utils/formatters'
 
@@ -21,7 +21,9 @@ type PageProps = {
         pending_profit: number
         total_profit: number
         valid_without_tracking: number
+        valid_without_tracking_sales: number
         cancelled_sales: number
+        cancelled_order_count: number
         gross_order_count: number
         net_order_count: number
         settled_order_count: number
@@ -38,7 +40,6 @@ type PageProps = {
 }
 
 const page = usePage<PageProps>()
-const logout = useForm({})
 const from = ref(page.props.filters.from || '')
 const to = ref(page.props.filters.to || '')
 
@@ -49,9 +50,6 @@ function applyDateFilter() {
     })
 }
 
-function submitLogout() {
-    logout.post('/logout')
-}
 </script>
 
 <template>
@@ -131,25 +129,16 @@ function submitLogout() {
 
             <div class="rounded-xl border border-slate-200 bg-white p-5">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Valid Tanpa No. Resi</p>
-                <p class="mt-2 text-2xl font-bold text-orange-500">{{ page.props.stats.valid_without_tracking }}</p>
-                <p class="mt-1 text-xs text-slate-500">order</p>
+                <p class="mt-2 text-2xl font-bold text-orange-500">{{ formatNominal(page.props.stats.valid_without_tracking_sales) }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.valid_without_tracking }} order</p>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5">
                 <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Nilai Pembatalan</p>
                 <p class="mt-2 text-2xl font-bold text-orange-500">{{ formatNominal(page.props.stats.cancelled_sales) }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.cancelled_order_count }} order</p>
             </div>
         </div>
 
-        <div class="mt-6">
-            <button
-                type="button"
-                :disabled="logout.processing"
-                class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:opacity-50"
-                @click="submitLogout"
-            >
-                Logout
-            </button>
-        </div>
     </div>
 </template>
