@@ -13,6 +13,7 @@ class MarketplaceReconciliationService
             ->leftJoin('marketplace_income as income', function ($join): void {
                 $join->on('income.user_id', '=', 'orders.user_id')
                     ->on('income.order_number', '=', 'orders.order_number')
+                    ->whereNotNull('income.total_income')
                     ->where(function ($query): void {
                         $query->where(function ($primary): void {
                             $primary->whereRaw('LOWER(TRIM(income.product_name)) = LOWER(TRIM(orders.product_name))')
@@ -28,6 +29,11 @@ class MarketplaceReconciliationService
                     });
             })
             ->where('orders.user_id', $userId)
+            ->whereNotNull('orders.tracking_number')
+            ->where(function ($query): void {
+                $query->whereNull('orders.order_status')
+                    ->orWhereRaw("LOWER(TRIM(orders.order_status)) <> 'batal'");
+            })
             ->select(['orders.*', 'orders.product_name as order_product_name', 'orders.variation_name as order_variation_name', 'income.total_income', 'income.order_processing_fee', 'income.platform_fee', 'income.refund_to_buyer', 'income.free_shipping_xtra_fee', 'income.promo_xtra_service_fee', 'income.pph22']);
     }
 
