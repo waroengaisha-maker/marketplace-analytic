@@ -8,8 +8,19 @@ use App\Services\MarketplaceReconciliationService;
 use Inertia\Inertia;
 
 Route::get('/', function (Request $request, MarketplaceReconciliationService $service) {
+    $validated = $request->validate([
+        'from' => ['nullable', 'date'],
+        'to' => ['nullable', 'date', 'after_or_equal:from'],
+    ]);
+    $range = $service->orderDateRange($request->user()->id);
+
     return Inertia::render('Dashboard', [
-        'stats' => $service->dashboardStats($request->user()->id),
+        'stats' => $service->dashboardStats($request->user()->id, $validated['from'] ?? null, $validated['to'] ?? null),
+        'dateRange' => $range,
+        'filters' => [
+            'from' => $validated['from'] ?? $range['min'],
+            'to' => $validated['to'] ?? $range['max'],
+        ],
     ]);
 })->middleware('auth');
 

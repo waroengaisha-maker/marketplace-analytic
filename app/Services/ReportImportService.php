@@ -48,10 +48,11 @@ class ReportImportService
             $quantity = $this->integer($data['Jumlah'] ?? null);
             $unitPrice = $this->number($data['Harga Satuan'] ?? $data['Harga Setelah Diskon'] ?? null);
             $originalPrice = $this->number($data['Harga Awal'] ?? null);
+            $returnedQuantity = $this->integer($data['Returned quantity'] ?? null) ?? 0;
             $itemKey = $this->lineKey(
                 $orderNumber,
                 $data['Nama Produk'] ?? null,
-                $originalPrice === null || $quantity === null ? null : $originalPrice * $quantity
+                $unitPrice === null || $quantity === null ? null : $unitPrice * max(0, $quantity - $returnedQuantity)
             );
             $payload[] = [
                 'user_id' => $userId,
@@ -74,7 +75,7 @@ class ReportImportService
                 'discounted_price' => $this->number($data['Harga Setelah Diskon'] ?? null),
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
-                'returned_quantity' => $this->integer($data['Returned quantity'] ?? null),
+                'returned_quantity' => $returnedQuantity,
                 'order_subtotal' => $this->number($data['Subtotal Pesanan'] ?? null),
                 'total_payment' => $this->number($data['Total Pembayaran'] ?? null),
                 'buyer_shipping_paid' => $this->number($data['Ongkos Kirim Dibayar oleh Pembeli'] ?? null),
