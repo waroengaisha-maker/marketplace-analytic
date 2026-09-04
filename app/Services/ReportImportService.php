@@ -46,13 +46,14 @@ class ReportImportService
 
             $variationName = $this->text($data['Nama Variasi'] ?? null);
             $quantity = $this->integer($data['Jumlah'] ?? null);
-            $unitPrice = $this->number($data['Harga Satuan'] ?? $data['Harga Setelah Diskon'] ?? null);
+            $discountedPrice = $this->number($data['Harga Setelah Diskon'] ?? null);
+            $unitPrice = $this->number($data['Harga Satuan'] ?? $discountedPrice);
             $originalPrice = $this->number($data['Harga Awal'] ?? null);
             $returnedQuantity = $this->integer($data['Returned quantity'] ?? null) ?? 0;
             $itemKey = $this->lineKey(
                 $orderNumber,
                 $data['Nama Produk'] ?? null,
-                $unitPrice === null || $quantity === null ? null : $unitPrice * max(0, $quantity - $returnedQuantity)
+                $discountedPrice === null || $quantity === null ? null : $discountedPrice * max(0, $quantity - $returnedQuantity)
             );
             $payload[] = [
                 'user_id' => $userId,
@@ -72,7 +73,7 @@ class ReportImportService
                 'variation_name' => $variationName,
                 'variation_key' => $this->key($variationName),
                 'original_price' => $originalPrice,
-                'discounted_price' => $this->number($data['Harga Setelah Diskon'] ?? null),
+                'discounted_price' => $discountedPrice,
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
                 'returned_quantity' => $returnedQuantity,

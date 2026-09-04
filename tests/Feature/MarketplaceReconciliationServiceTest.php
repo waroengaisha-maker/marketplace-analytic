@@ -24,6 +24,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'variation_key' => $variationKey,
             'item_index' => 101,
             'unit_price' => 100,
+            'discounted_price' => 80,
             'quantity' => 2,
             'returned_quantity' => 0,
         ]));
@@ -33,7 +34,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'product_key' => $productKey,
             'variation_key' => $variationKey,
             'item_index' => 999,
-            'product_price' => 200,
+            'product_price' => 160,
             'quantity' => 2,
             'total_income' => 180,
         ]));
@@ -108,6 +109,45 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $this->assertNull($row->total_income);
         $this->assertSame('Ambiguous', $row->settlement_status);
+    }
+
+    public function test_identical_item_index_lines_can_settle_as_a_group(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('g', 64);
+
+        foreach (['A', 'B'] as $variation) {
+            DB::table('marketplace_orders')->insert($this->order($user->id, [
+                'order_number' => 'ORDER-GROUP',
+                'product_key' => $productKey,
+                'item_index' => 105,
+                'discounted_price' => 100,
+                'unit_price' => 100,
+                'quantity' => 1,
+                'variation_name' => $variation,
+                'variation_key' => hash('sha256', $variation),
+            ]));
+        }
+
+        foreach ([90, 91] as $totalIncome) {
+            DB::table('marketplace_income')->insert($this->income($user->id, [
+                'order_number' => 'ORDER-GROUP',
+                'product_key' => $productKey,
+                'item_index' => 105,
+                'product_price' => 100,
+                'quantity' => 1,
+                'total_income' => $totalIncome,
+            ]));
+        }
+
+        $rows = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-GROUP')
+            ->get();
+
+        $this->assertCount(2, $rows);
+        $this->assertSame(['Grouped Match'], $rows->pluck('settlement_status')->unique()->values()->all());
+        $this->assertEquals(181.0, (float) $rows->sum('total_income'));
     }
 
     public function test_dashboard_excludes_orders_without_tracking_from_valid_totals(): void
