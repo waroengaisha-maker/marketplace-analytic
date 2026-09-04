@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UploadReportsController;
+use App\Http\Controllers\ReconciliationController;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -19,4 +20,5 @@ Route::get('/register', function () {
 Route::middleware('auth')->group(function (): void {
     Route::get('/imports/upload', fn () => Inertia::render('Imports/Upload'))->name('imports.upload');
     Route::post('/imports/upload', [UploadReportsController::class, 'store'])->name('imports.upload.store');
+    Route::get('/finance/reconciliation', [ReconciliationController::class, 'index'])->name('finance.reconciliation');
 });

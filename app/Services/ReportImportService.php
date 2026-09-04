@@ -46,7 +46,7 @@ class ReportImportService
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
             if ($orderNumber === null) continue;
 
-            $itemKey = $orderNumber.'|'.mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')));
+            $itemKey = $orderNumber;
             $itemIndexes[$itemKey] = ($itemIndexes[$itemKey] ?? 0) + 1;
             $payload[] = [
                 'user_id' => $userId,
@@ -108,7 +108,7 @@ class ReportImportService
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
             if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) continue;
-            $itemKey = $orderNumber.'|'.mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')));
+            $itemKey = $orderNumber;
             $itemIndexes[$itemKey] = ($itemIndexes[$itemKey] ?? 0) + 1;
             $payload[] = [
                 'user_id' => $userId,

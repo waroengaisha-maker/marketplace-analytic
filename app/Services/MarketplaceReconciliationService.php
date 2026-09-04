@@ -17,9 +17,39 @@ class MarketplaceReconciliationService
                     ->whereRaw('LOWER(TRIM(income.product_name)) = LOWER(TRIM(orders.product_name))');
             })
             ->where('orders.user_id', $userId)
-            ->select(['orders.*', 'income.total_income', 'income.platform_fee', 'income.refund_to_buyer', 'income.free_shipping_xtra_fee', 'income.promo_xtra_service_fee', 'income.pph22']);
+            ->select(['orders.*', 'income.total_income', 'income.order_processing_fee', 'income.platform_fee', 'income.refund_to_buyer', 'income.free_shipping_xtra_fee', 'income.promo_xtra_service_fee', 'income.pph22']);
     }
 
+
+    public function calculateFinancials(object $row): object
+    {
+        $quantity = (float) ($row->quantity ?? 0);
+        $returned = (float) ($row->returned_quantity ?? 0);
+        $subtotal = (float) ($row->order_subtotal ?? 0);
+        $admin = (float) ($row->platform_fee ?? 0);
+        $shipping = (float) ($row->free_shipping_xtra_fee ?? 0);
+        $promo = (float) ($row->promo_xtra_service_fee ?? 0);
+        $processing = (float) ($row->order_processing_fee ?? 0);
+        $tax = (float) ($row->pph22 ?? 0);
+        $net = $quantity - $returned;
+        $feeSubtotal = $admin + $shipping + $promo + $processing;
+
+        $row->net_quantity = $net;
+        $row->admin_fee_percent = $this->percent($admin, $subtotal);
+        $row->free_shipping_xtra_fee_percent = $this->percent($shipping, $subtotal);
+        $row->promo_xtra_fee_percent = $this->percent($promo, $subtotal);
+        $row->fee_subtotal = $feeSubtotal;
+        $row->fee_per_unit = $net > 0 ? $feeSubtotal / $net : 0;
+        $row->total_fee = $feeSubtotal + $tax;
+        $row->tax = $tax;
+
+        return $row;
+    }
+
+    private function percent(float $value, float $base): float
+    {
+        return $base == 0.0 ? 0.0 : abs($value) / abs($base) * 100;
+    }
     public function forOrder(int $userId, string $orderNumber): Builder
     {
         return $this->joinedQuery($userId)->where('orders.order_number', $orderNumber)->orderBy('orders.item_index');
