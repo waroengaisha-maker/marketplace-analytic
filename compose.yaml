@@ -74,6 +74,17 @@ services:
                 - ping
             retries: 3
             timeout: 5s
+    adminer:
+        image: 'adminer:6.0.1'
+        ports:
+            - '${ADMINER_PORT:-8081}:8080'
+        environment:
+            ADMINER_DEFAULT_SERVER: mysql
+        networks:
+            - sail
+        depends_on:
+            mysql:
+                condition: service_healthy
 networks:
     sail:
         driver: bridge

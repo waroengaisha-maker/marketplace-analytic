@@ -34,7 +34,7 @@ class ReportImportService
         }
     }
 
-    public function importOrders(string $path): int
+    public function importOrders(string $path, int $userId): int
     {
         $rows = IOFactory::load($path)->getSheetByName('orders')->toArray(null, true, true, false);
         $headers = array_map(fn (mixed $value): string => trim((string) $value), array_shift($rows));
@@ -46,6 +46,7 @@ class ReportImportService
             if ($orderNumber === null) continue;
 
             $payload[] = [
+                'user_id' => $userId,
                 'order_number' => $orderNumber,
                 'order_status' => $this->text($data['Status Pesanan'] ?? null),
                 'cancellation_reason' => $this->text($data['Alasan Pembatalan'] ?? null),
@@ -85,12 +86,12 @@ class ReportImportService
         }
 
         foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_orders')->upsert($chunk, ['order_number', 'parent_sku', 'variation_name'], array_keys($chunk[0] ?? []));
+            DB::table('marketplace_orders')->upsert($chunk, ['user_id', 'order_number', 'parent_sku', 'variation_name'], array_keys($chunk[0] ?? []));
         }
         return count($payload);
     }
 
-    public function importIncome(string $path): int
+    public function importIncome(string $path, int $userId): int
     {
         $sheet = IOFactory::load($path)->getSheetByName('Penghasilan');
         $rows = $sheet->toArray(null, true, true, false);
@@ -103,8 +104,10 @@ class ReportImportService
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
             if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) continue;
             $payload[] = [
+                'user_id' => $userId,
                 'order_number' => $orderNumber,
                 'row_type' => $this->text($data['Lihat berdasarkan'] ?? null),
+                'source_row' => $this->integer($data['No.'] ?? null),
                 'application_number' => $this->text($data['No. Pengajuan'] ?? null),
                 'product_id' => $this->text($data['ID Produk'] ?? null),
                 'product_name' => $this->text($data['Nama Produk'] ?? null),
@@ -137,7 +140,7 @@ class ReportImportService
         DB::table('marketplace_income')->where('row_type', '!=', 'Sku')->delete();
 
         foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_income')->upsert($chunk, ['order_number', 'row_type', 'product_id'], array_keys($chunk[0] ?? []));
+            DB::table('marketplace_income')->upsert($chunk, ['user_id', 'order_number', 'row_type', 'source_row'], array_keys($chunk[0] ?? []));
         }
         return count($payload);
     }

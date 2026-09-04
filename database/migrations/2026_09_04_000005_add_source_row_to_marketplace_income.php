@@ -1,0 +1,3 @@
+<?php
+use Illuminate\Database\Migrations\Migration; use Illuminate\Database\Schema\Blueprint; use Illuminate\Support\Facades\Schema;
+return new class extends Migration { public function up(): void { Schema::table('marketplace_income', function(Blueprint $t){ $t->dropForeign(['user_id']); $t->dropUnique('income_user_scope_unique'); $t->unique(['user_id','order_number','row_type','source_row'],'income_user_row_unique'); $t->foreign('user_id')->references('id')->on('users')->cascadeOnDelete(); }); } public function down(): void {} };
