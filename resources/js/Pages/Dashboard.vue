@@ -10,10 +10,26 @@ type PageProps = {
     auth?: {
         user?: User | null
     }
+    stats: {
+        gross_sales: number
+        net_sales: number
+        settled_sales: number
+        pending_sales: number
+        settled_profit: number
+        pending_profit: number
+        total_profit: number
+        valid_without_tracking: number
+        cancelled_sales: number
+        gross_order_count: number
+        net_order_count: number
+        settled_order_count: number
+        pending_order_count: number
+    }
 }
 
 const page = usePage<PageProps>()
 const logout = useForm({})
+const money = (value: number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value || 0)
 
 function submitLogout() {
     logout.post('/logout')
@@ -42,60 +58,53 @@ function submitLogout() {
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-sm text-slate-500">Net Sales</p>
-                <p class="mt-2 text-2xl font-bold text-slate-900">Rp 0</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Penjualan / Gross Sales</p>
+                <p class="mt-2 text-2xl font-bold text-cyan-500">{{ money(page.props.stats.gross_sales) }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.gross_order_count }} order</p>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-sm text-slate-500">Gross Profit</p>
-                <p class="mt-2 text-2xl font-bold text-slate-900">Rp 0</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Net Sales</p>
+                <p class="mt-2 text-2xl font-bold text-emerald-500">{{ money(page.props.stats.net_sales) }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.net_order_count }} order</p>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-sm text-slate-500">Orders</p>
-                <p class="mt-2 text-2xl font-bold text-slate-900">0</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pesanan Settled</p>
+                <p class="mt-2 text-2xl font-bold text-cyan-500">{{ money(page.props.stats.settled_sales) }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.settled_order_count }} order</p>
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-sm text-slate-500">Profit Margin</p>
-                <p class="mt-2 text-2xl font-bold text-slate-900">0%</p>
-            </div>
-        </div>
-
-        <div class="mt-6 grid gap-6 lg:grid-cols-2">
-            <div class="rounded-xl border border-slate-200 bg-white p-6">
-                <h2 class="font-semibold text-slate-900">
-                    Sales & Profit
-                </h2>
-
-                <div class="mt-6 flex h-64 items-center justify-center rounded-lg bg-slate-50">
-                    <p class="text-sm text-slate-400">
-                        Chart akan tersedia setelah data import aktif.
-                    </p>
-                </div>
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pesanan Pending</p>
+                <p class="mt-2 text-2xl font-bold text-orange-500">{{ money(page.props.stats.pending_sales) }}</p>
+                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.pending_order_count }} order</p>
             </div>
 
-            <div class="rounded-xl border border-slate-200 bg-white p-6">
-                <h2 class="font-semibold text-slate-900">
-                    Reconciliation
-                </h2>
+            <div class="rounded-xl border border-slate-200 bg-white p-5">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Laba Bersih Settled</p>
+                <p class="mt-2 text-2xl font-bold text-emerald-500">{{ money(page.props.stats.settled_profit) }}</p>
+            </div>
 
-                <div class="mt-6 space-y-4">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-slate-500">Matched</span>
-                        <span class="font-semibold text-slate-900">0</span>
-                    </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-5">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Laba Bersih Unsettled</p>
+                <p class="mt-2 text-2xl font-bold text-orange-500">{{ money(page.props.stats.pending_profit) }}</p>
+            </div>
 
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-slate-500">Ambiguous</span>
-                        <span class="font-semibold text-slate-900">0</span>
-                    </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-5">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Laba Bersih</p>
+                <p class="mt-2 text-2xl font-bold text-cyan-500">{{ money(page.props.stats.total_profit) }}</p>
+            </div>
 
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm text-slate-500">Unmatched</span>
-                        <span class="font-semibold text-slate-900">0</span>
-                    </div>
-                </div>
+            <div class="rounded-xl border border-slate-200 bg-white p-5">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Valid Tanpa No. Resi</p>
+                <p class="mt-2 text-2xl font-bold text-orange-500">{{ page.props.stats.valid_without_tracking }}</p>
+                <p class="mt-1 text-xs text-slate-500">order</p>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-white p-5">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Nilai Pembatalan</p>
+                <p class="mt-2 text-2xl font-bold text-orange-500">{{ money(page.props.stats.cancelled_sales) }}</p>
             </div>
         </div>
 

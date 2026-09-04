@@ -1,12 +1,16 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request;
 use App\Http\Controllers\UploadReportsController;
 use App\Http\Controllers\ReconciliationController;
+use App\Services\MarketplaceReconciliationService;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return Inertia::render('Dashboard');
+Route::get('/', function (Request $request, MarketplaceReconciliationService $service) {
+    return Inertia::render('Dashboard', [
+        'stats' => $service->dashboardStats($request->user()->id),
+    ]);
 })->middleware('auth');
 
 Route::get('/login', function () {

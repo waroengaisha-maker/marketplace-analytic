@@ -7,6 +7,64 @@ use Illuminate\Support\Facades\DB;
 
 class MarketplaceReconciliationService
 {
+    public function dashboardStats(int $userId): array
+    {
+        $orders = DB::table('marketplace_orders as orders')
+            ->leftJoin('marketplace_income as income', function ($join): void {
+                $join->on('income.user_id', '=', 'orders.user_id')
+                    ->on('income.order_number', '=', 'orders.order_number')
+                    ->on('income.product_key', '=', 'orders.product_key')
+                    ->on('income.item_index', '=', 'orders.item_index')
+                    ->whereNotNull('income.total_income');
+            })
+            ->where('orders.user_id', $userId)
+            ->selectRaw('
+                orders.order_number,
+                orders.order_status,
+                orders.tracking_number,
+                orders.original_price,
+                orders.quantity,
+                income.total_income,
+                income.platform_fee,
+                income.order_processing_fee,
+                income.free_shipping_xtra_fee,
+                income.promo_xtra_service_fee,
+                income.pph22
+            ')
+            ->get();
+
+        $valid = $orders->filter(fn (object $row): bool => strtolower(trim((string) $row->order_status)) !== 'batal');
+        $settled = $valid->filter(fn (object $row): bool => $row->total_income !== null);
+        $pending = $valid->filter(fn (object $row): bool => $row->total_income === null);
+        $sales = fn ($rows): float => (float) $rows->sum(
+            fn (object $row): float => (float) ($row->original_price ?? 0) * (int) ($row->quantity ?? 0)
+        );
+        $profit = fn ($rows): float => (float) $rows->sum(function (object $row): float {
+            return (float) ($row->total_income ?? ($row->original_price ?? 0) * ($row->quantity ?? 0))
+                + (float) ($row->platform_fee ?? 0)
+                + (float) ($row->order_processing_fee ?? 0)
+                + (float) ($row->free_shipping_xtra_fee ?? 0)
+                + (float) ($row->promo_xtra_service_fee ?? 0)
+                + (float) ($row->pph22 ?? 0);
+        });
+
+        return [
+            'gross_sales' => $sales($orders),
+            'net_sales' => $sales($valid),
+            'settled_sales' => $sales($settled),
+            'pending_sales' => $sales($pending),
+            'settled_profit' => $profit($settled),
+            'pending_profit' => $profit($pending),
+            'total_profit' => $profit($valid),
+            'valid_without_tracking' => $valid->filter(fn (object $row): bool => $row->tracking_number === null)->unique('order_number')->count(),
+            'cancelled_sales' => $sales($orders->filter(fn (object $row): bool => strtolower(trim((string) $row->order_status)) === 'batal')),
+            'gross_order_count' => $orders->unique('order_number')->count(),
+            'net_order_count' => $valid->unique('order_number')->count(),
+            'settled_order_count' => $settled->unique('order_number')->count(),
+            'pending_order_count' => $pending->unique('order_number')->count(),
+        ];
+    }
+
     public function joinedQuery(int $userId): Builder
     {
         return DB::table('marketplace_orders as orders')
