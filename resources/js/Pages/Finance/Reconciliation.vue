@@ -440,7 +440,7 @@ function toggleFullscreen() {
                         </div>
                     </template>
                     <template #body="{ data }">
-                        <Tag v-if="field === 'settlement_status'" :value="String(data[field] || '')" :severity="severity(String(data[field] || ''))" />
+                        <Tag v-if="field === 'settlement_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
                         <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
                         <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
                         <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>
