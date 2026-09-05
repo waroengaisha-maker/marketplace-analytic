@@ -79,6 +79,9 @@ const dateFilteredRows = computed(() => {
     })
 })
 function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
+function clearColumnFilter(field: string) {
+    filters.value[field].value = null
+}
 function exportValue(row: Row, field: string) {
     if (field === 'order_product_name') {
         const productName = String(row[field] ?? '')
@@ -212,15 +215,18 @@ function toggleFullscreen() {
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_minmax(14rem,1.2fr)]">
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-search" class="text-xs font-medium text-color-secondary">Pencarian</label>
-                            <InputText id="reconciliation-search" v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Cari semua kolom..." class="h-11 w-full" />
+                            <div class="relative">
+                                <InputText id="reconciliation-search" v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Cari semua kolom..." class="h-11 w-full pr-10" />
+                                <Button v-if="filters.global.value" icon="pi pi-times" text rounded severity="secondary" aria-label="Hapus pencarian" class="absolute right-1 top-1/2 z-10 h-8 w-8 -translate-y-1/2 p-0" @click="filters.global.value = null" />
+                            </div>
                         </div>
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-from" class="text-xs font-medium text-color-secondary">Tanggal mulai</label>
-                            <DatePicker id="reconciliation-from" v-model="fromDate" date-format="yy-mm-dd" show-icon placeholder="Pilih tanggal" aria-label="Tanggal mulai" fluid class="h-11" />
+                            <DatePicker id="reconciliation-from" v-model="fromDate" date-format="yy-mm-dd" show-icon show-clear placeholder="Pilih tanggal" aria-label="Tanggal mulai" fluid class="h-11" />
                         </div>
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-to" class="text-xs font-medium text-color-secondary">Tanggal akhir</label>
-                            <DatePicker id="reconciliation-to" v-model="toDate" date-format="yy-mm-dd" show-icon placeholder="Pilih tanggal" aria-label="Tanggal akhir" fluid class="h-11" />
+                            <DatePicker id="reconciliation-to" v-model="toDate" date-format="yy-mm-dd" show-icon show-clear placeholder="Pilih tanggal" aria-label="Tanggal akhir" fluid class="h-11" />
                         </div>
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-columns" class="text-xs font-medium text-color-secondary">Kolom</label>
@@ -231,6 +237,7 @@ function toggleFullscreen() {
                                 option-label="1"
                                 placeholder="Tampilkan kolom"
                                 display="chip"
+                                show-clear
                                 class="h-11 w-full"
                             />
                         </div>
@@ -238,7 +245,7 @@ function toggleFullscreen() {
                     <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
                         <span class="text-xs text-color-secondary">{{ filteredRows.length.toLocaleString('id-ID') }} baris tersedia</span>
                         <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-                            <Button label="Export Excel" icon="pi pi-file-excel" severity="success" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportExcel" />
+                            <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportExcel" />
                             <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportCsv" />
                             <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="w-full sm:w-auto" @click="toggleFullscreen" />
                         </div>
@@ -290,7 +297,10 @@ function toggleFullscreen() {
                         <span v-tooltip.top="formulaTooltips[field] || undefined">{{ header }}</span>
                     </template>
                     <template #filter="{ filterModel }">
-                        <InputText v-model="filters[field].value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full" />
+                        <div class="relative">
+                            <InputText v-model="filters[field].value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full pr-8" />
+                            <Button v-if="filterModel.value" icon="pi pi-times" text rounded severity="secondary" :aria-label="`Hapus filter ${header}`" class="absolute right-1 top-1/2 z-10 h-8 w-8 -translate-y-1/2 p-0" @click="clearColumnFilter(field)" />
+                        </div>
                     </template>
                     <template #body="{ data }">
                         <Tag v-if="field === 'settlement_status'" :value="String(data[field] || '')" :severity="severity(String(data[field] || ''))" />
