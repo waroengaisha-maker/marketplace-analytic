@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3'
+import { Head, Link, useForm } from '@inertiajs/vue3'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
@@ -25,7 +25,7 @@ function submit() { form.post('/register') }
                     <Button type="submit" :label="form.processing ? 'Creating account...' : 'Create account'" :loading="form.processing" />
                 </form>
                 <Divider />
-                <p class="text-center text-sm">Already have an account? <a href="/login" class="text-primary font-medium">Sign in</a></p>
+                <p class="text-center text-sm">Already have an account? <Link href="/login" class="text-primary font-medium">Sign in</Link></p>
             </template>
         </Card>
     </main>

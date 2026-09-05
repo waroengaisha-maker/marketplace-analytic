@@ -8,7 +8,7 @@ import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
 
-type Row = Record<string, any>
+type Row = Record<string, unknown>
 const props = defineProps<{ rows: Row[] }>()
 const orderFilter = ref('')
 const productFilter = ref('')
@@ -32,7 +32,12 @@ function severity(status: string) { return status === 'Settled' || status === 'G
     <div class="flex flex-col gap-6">
         <div><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
         <Card>
-            <template #content><div class="flex flex-wrap gap-3"><InputText v-model="orderFilter" placeholder="Filter No. Pesanan" /><InputText v-model="productFilter" placeholder="Filter Nama Produk" class="min-w-80" /></div></template>
+            <template #content>
+                <div class="flex flex-col gap-3 sm:flex-row">
+                    <InputText v-model="orderFilter" aria-label="Filter nomor pesanan" placeholder="Filter No. Pesanan" class="w-full sm:w-80" />
+                    <InputText v-model="productFilter" aria-label="Filter nama produk" placeholder="Filter Nama Produk" class="w-full sm:w-80" />
+                </div>
+            </template>
         </Card>
         <DataTable :value="filteredRows" paginator :rows="25" :rows-per-page-options="[25, 50, 100]" scrollable striped-rows removable-sort>
             <template #empty>Belum ada data rekonsiliasi.</template>
