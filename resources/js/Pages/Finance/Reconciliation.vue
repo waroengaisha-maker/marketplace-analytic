@@ -217,7 +217,9 @@ function toggleFullscreen() {
                             <label for="reconciliation-search" class="text-xs font-medium text-color-secondary">Pencarian</label>
                             <div class="relative">
                                 <InputText id="reconciliation-search" v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Cari semua kolom..." class="h-11 w-full pr-10" />
-                                <Button v-if="filters.global.value" icon="pi pi-times" text rounded severity="secondary" aria-label="Hapus pencarian" class="absolute right-1 top-1/2 z-10 h-8 w-8 -translate-y-1/2 p-0" @click="filters.global.value = null" />
+                                <button v-if="filters.global.value" type="button" aria-label="Hapus pencarian" class="absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color" @click="filters.global.value = null">
+                                    <i class="pi pi-times text-xs" aria-hidden="true"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="flex min-w-0 flex-col gap-1">
@@ -299,7 +301,9 @@ function toggleFullscreen() {
                     <template #filter="{ filterModel }">
                         <div class="relative">
                             <InputText v-model="filters[field].value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full pr-8" />
-                            <Button v-if="filterModel.value" icon="pi pi-times" text rounded severity="secondary" :aria-label="`Hapus filter ${header}`" class="absolute right-1 top-1/2 z-10 h-8 w-8 -translate-y-1/2 p-0" @click="clearColumnFilter(field)" />
+                            <button v-if="filterModel.value" type="button" :aria-label="`Hapus filter ${header}`" class="absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color" @click="clearColumnFilter(field)">
+                                <i class="pi pi-times text-xs" aria-hidden="true"></i>
+                            </button>
                         </div>
                     </template>
                     <template #body="{ data }">
