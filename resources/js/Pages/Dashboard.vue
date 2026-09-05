@@ -1,144 +1,58 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import Card from 'primevue/card'
+import DatePicker from 'primevue/datepicker'
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
 
-type User = {
-    name: string
-    email: string
-}
-
+type User = { name: string; email: string }
 type PageProps = {
-    auth?: {
-        user?: User | null
-    }
-    stats: {
-        gross_sales: number
-        net_sales: number
-        settled_sales: number
-        pending_sales: number
-        settled_profit: number
-        pending_profit: number
-        total_profit: number
-        valid_without_tracking: number
-        valid_without_tracking_sales: number
-        cancelled_sales: number
-        cancelled_order_count: number
-        gross_order_count: number
-        net_order_count: number
-        settled_order_count: number
-        pending_order_count: number
-    }
-    dateRange: {
-        min: string | null
-        max: string | null
-    }
-    filters: {
-        from: string | null
-        to: string | null
-    }
+    auth?: { user?: User | null }
+    stats: Record<string, number>
+    dateRange: { min: string | null; max: string | null }
+    filters: { from: string | null; to: string | null }
 }
-
 const page = usePage<PageProps>()
-const from = ref(page.props.filters.from || '')
-const to = ref(page.props.filters.to || '')
-
+const from = ref(page.props.filters.from ? new Date(`${page.props.filters.from}T00:00:00`) : null)
+const to = ref(page.props.filters.to ? new Date(`${page.props.filters.to}T00:00:00`) : null)
+const dateValue = (date: Date | null) => date ? date.toISOString().slice(0, 10) : undefined
 function applyDateFilter() {
-    router.get('/', { from: from.value || undefined, to: to.value || undefined }, {
-        preserveState: true,
-        preserveScroll: true,
-    })
+    router.get('/', { from: dateValue(from.value), to: dateValue(to.value) }, { preserveState: true, preserveScroll: true })
 }
-
+const cards = [
+    ['Total Penjualan / Gross Sales', 'gross_sales', 'gross_order_count', 'info'],
+    ['Net Sales', 'net_sales', 'net_order_count', 'success'],
+    ['Pesanan Settled', 'settled_sales', 'settled_order_count', 'info'],
+    ['Pesanan Unsettled', 'pending_sales', 'pending_order_count', 'warn'],
+    ['Laba Bersih Settled', 'settled_profit', null, 'success'],
+    ['Laba Bersih Unsettled', 'pending_profit', null, 'warn'],
+    ['Total Laba Bersih', 'total_profit', null, 'info'],
+    ['Valid Tanpa No. Resi', 'valid_without_tracking_sales', 'valid_without_tracking', 'warn'],
+    ['Total Nilai Pembatalan', 'cancelled_sales', 'cancelled_order_count', 'warn'],
+] as const
 </script>
 
 <template>
     <Head title="Dashboard" />
-
-    <div>
-        <div class="mb-8">
-            <p class="text-sm font-medium text-slate-400">
-                Overview
-            </p>
-
-            <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">
-                Dashboard
-            </h1>
-
-            <p class="mt-2 text-sm text-slate-500">
-                Selamat datang<span v-if="page.props.auth?.user?.name">
-                   , {{ page.props.auth.user.name }}
-                </span>.
-            </p>
-        </div>
-
-        <div class="mb-6 rounded-xl border border-slate-200 bg-white p-5">
-            <div class="flex flex-wrap items-end gap-4">
-                <label class="grid gap-1 text-sm text-slate-600">
-                    <span>Tanggal Mulai</span>
-                    <input v-model="from" type="date" :min="page.props.dateRange.min || undefined" :max="page.props.dateRange.max || undefined" class="rounded-lg border border-slate-300 px-3 py-2" />
-                </label>
-                <label class="grid gap-1 text-sm text-slate-600">
-                    <span>Tanggal Akhir</span>
-                    <input v-model="to" type="date" :min="page.props.dateRange.min || undefined" :max="page.props.dateRange.max || undefined" class="rounded-lg border border-slate-300 px-3 py-2" />
-                </label>
-                <button type="button" class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800" @click="applyDateFilter">Terapkan</button>
-            </div>
-            <p class="mt-2 text-xs text-slate-500">Periode berdasarkan tanggal order dibuat.</p>
-        </div>
-
+    <div class="flex flex-col gap-6">
+        <div><Tag value="OVERVIEW" severity="secondary" /><h1 class="mt-2 text-3xl font-bold">Dashboard</h1><p class="mt-2 text-color-secondary">Selamat datang<span v-if="page.props.auth?.user?.name">, {{ page.props.auth.user.name }}</span>.</p></div>
+        <Card>
+            <template #content>
+                <div class="flex flex-wrap items-end gap-4">
+                    <div class="flex flex-col gap-2"><label for="from">Tanggal Mulai</label><DatePicker id="from" v-model="from" date-format="yy-mm-dd" show-icon :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined" :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined" /></div>
+                    <div class="flex flex-col gap-2"><label for="to">Tanggal Akhir</label><DatePicker id="to" v-model="to" date-format="yy-mm-dd" show-icon :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined" :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined" /></div>
+                    <Button label="Terapkan" icon="pi pi-filter" @click="applyDateFilter" />
+                </div>
+                <small class="text-color-secondary block mt-3">Periode berdasarkan tanggal order dibuat.</small>
+            </template>
+        </Card>
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Penjualan / Gross Sales</p>
-                <p class="mt-2 text-2xl font-bold text-cyan-500">{{ formatNominal(page.props.stats.gross_sales) }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.gross_order_count }} order</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Net Sales</p>
-                <p class="mt-2 text-2xl font-bold text-emerald-500">{{ formatNominal(page.props.stats.net_sales) }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.net_order_count }} order</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pesanan Settled</p>
-                <p class="mt-2 text-2xl font-bold text-cyan-500">{{ formatNominal(page.props.stats.settled_sales) }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.settled_order_count }} order</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Pesanan Unsettled</p>
-                <p class="mt-2 text-2xl font-bold text-orange-500">{{ formatNominal(page.props.stats.pending_sales) }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.pending_order_count }} order</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Laba Bersih Settled</p>
-                <p class="mt-2 text-2xl font-bold text-emerald-500">{{ formatNominal(page.props.stats.settled_profit) }}</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Laba Bersih Unsettled</p>
-                <p class="mt-2 text-2xl font-bold text-orange-500">{{ formatNominal(page.props.stats.pending_profit) }}</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Laba Bersih</p>
-                <p class="mt-2 text-2xl font-bold text-cyan-500">{{ formatNominal(page.props.stats.total_profit) }}</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Valid Tanpa No. Resi</p>
-                <p class="mt-2 text-2xl font-bold text-orange-500">{{ formatNominal(page.props.stats.valid_without_tracking_sales) }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.valid_without_tracking }} order</p>
-            </div>
-
-            <div class="rounded-xl border border-slate-200 bg-white p-5">
-                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Nilai Pembatalan</p>
-                <p class="mt-2 text-2xl font-bold text-orange-500">{{ formatNominal(page.props.stats.cancelled_sales) }}</p>
-                <p class="mt-1 text-xs text-slate-500">{{ page.props.stats.cancelled_order_count }} order</p>
-            </div>
+            <Card v-for="([label, value, count, severity]) in cards" :key="value">
+                <template #title><span class="text-sm">{{ label }}</span></template>
+                <template #content><div class="text-2xl font-bold">{{ formatNominal(page.props.stats[value]) }}</div><small v-if="count" class="text-color-secondary">{{ page.props.stats[count] }} order</small><Tag v-else class="mt-2" :severity="severity" value="Ringkasan" /></template>
+            </Card>
         </div>
-
     </div>
 </template>

@@ -1,58 +1,32 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm } from '@inertiajs/vue3'
+import Card from 'primevue/card'
+import InputText from 'primevue/inputtext'
+import Password from 'primevue/password'
+import Button from 'primevue/button'
+import Divider from 'primevue/divider'
 
-const form = useForm({
-    name: '',
-    email: '',
-    password: '',
-    password_confirmation: '',
-});
-
-function submit() {
-    form.post('/register');
-}
+const form = useForm({ name: '', email: '', password: '', password_confirmation: '' })
+function submit() { form.post('/register') }
 </script>
 
 <template>
     <Head title="Register" />
-
-    <div class="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-        <div class="w-full max-w-md rounded-lg bg-white p-8 shadow">
-            <h1 class="text-2xl font-bold text-gray-900">Marketplace Analytics</h1>
-            <p class="mt-2 text-gray-600">Create your account</p>
-
-            <form class="mt-6 space-y-5" @submit.prevent="submit">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Name</label>
-                    <input v-model="form.name" type="text" autocomplete="name" required class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-                    <p v-if="form.errors.name" class="mt-1 text-sm text-red-600">{{ form.errors.name }}</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Email</label>
-                    <input v-model="form.email" type="email" autocomplete="email" required class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-                    <p v-if="form.errors.email" class="mt-1 text-sm text-red-600">{{ form.errors.email }}</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Password</label>
-                    <input v-model="form.password" type="password" autocomplete="new-password" required class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-                    <p v-if="form.errors.password" class="mt-1 text-sm text-red-600">{{ form.errors.password }}</p>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Confirm password</label>
-                    <input v-model="form.password_confirmation" type="password" autocomplete="new-password" required class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-                </div>
-
-                <button type="submit" :disabled="form.processing" class="w-full rounded-md bg-gray-900 px-4 py-2 font-medium text-white disabled:opacity-50">
-                    {{ form.processing ? 'Creating account...' : 'Create account' }}
-                </button>
-            </form>
-
-            <p class="mt-6 text-center text-sm text-gray-600">
-                Already have an account? <a href="/login" class="font-medium text-gray-900 underline">Sign in</a>
-            </p>
-        </div>
-    </div>
+    <main class="min-h-screen flex items-center justify-center bg-surface-50 p-4">
+        <Card class="w-full max-w-md">
+            <template #title>Marketplace Analytics</template>
+            <template #subtitle>Create your account</template>
+            <template #content>
+                <form class="flex flex-col gap-5" @submit.prevent="submit">
+                    <div class="flex flex-col gap-2"><label for="name">Name</label><InputText id="name" v-model="form.name" autocomplete="name" required /><small v-if="form.errors.name" class="p-error">{{ form.errors.name }}</small></div>
+                    <div class="flex flex-col gap-2"><label for="email">Email</label><InputText id="email" v-model="form.email" type="email" autocomplete="email" required /><small v-if="form.errors.email" class="p-error">{{ form.errors.email }}</small></div>
+                    <div class="flex flex-col gap-2"><label for="password">Password</label><Password id="password" v-model="form.password" input-class="w-full" toggle-mask :feedback="false" autocomplete="new-password" required /><small v-if="form.errors.password" class="p-error">{{ form.errors.password }}</small></div>
+                    <div class="flex flex-col gap-2"><label for="password_confirmation">Confirm password</label><Password id="password_confirmation" v-model="form.password_confirmation" input-class="w-full" toggle-mask :feedback="false" autocomplete="new-password" required /></div>
+                    <Button type="submit" :label="form.processing ? 'Creating account...' : 'Create account'" :loading="form.processing" />
+                </form>
+                <Divider />
+                <p class="text-center text-sm">Already have an account? <a href="/login" class="text-primary font-medium">Sign in</a></p>
+            </template>
+        </Card>
+    </main>
 </template>

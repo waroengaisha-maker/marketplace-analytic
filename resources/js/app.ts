@@ -3,6 +3,9 @@ import { createApp, h } from 'vue'
 import { createInertiaApp } from '@inertiajs/vue3'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import AppLayout from './Layouts/AppLayout.vue'
+import PrimeVue from 'primevue/config'
+import Aura from '@primevue/themes/aura'
+import 'primeicons/primeicons.css'
 
 createInertiaApp({
     title: (title) => `${title} - Marketplace Analytics`,
@@ -25,6 +28,14 @@ createInertiaApp({
             render: () => h(App, props),
         })
             .use(plugin)
+            .use(PrimeVue, {
+                theme: {
+                    preset: Aura,
+                    options: {
+                        darkModeSelector: '.dark',
+                    },
+                },
+            })
             .mount(el)
     },
 })

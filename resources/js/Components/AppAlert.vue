@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import Message from 'primevue/message'
+
 defineProps<{ type: 'success' | 'error'; message?: string }>()
 </script>
 
 <template>
-    <div v-if="message" class="mb-4 rounded-lg p-4 text-sm" :class="type === 'success' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'" role="alert">
+    <Message v-if="message" class="mb-4" :severity="type === 'success' ? 'success' : 'error'" :closable="false">
         {{ message }}
-    </div>
+    </Message>
 </template>

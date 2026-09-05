@@ -2,6 +2,7 @@
 import { Head, useForm, usePage } from '@inertiajs/vue3'
 import AppAlert from '../../Components/AppAlert.vue'
 import FileUploadCard from '../../Components/FileUploadCard.vue'
+import Tag from 'primevue/tag'
 
 const page = usePage<{ flash?: { success?: string; error?: string } }>()
 const orderForm = useForm<{ order_report: File | null }>({ order_report: null })
@@ -13,8 +14,8 @@ function submitIncome() { incomeForm.post('/imports/upload', { forceFormData: tr
 
 <template>
     <Head title="Upload Files" />
-    <div class="mx-auto max-w-3xl">
-        <div class="mb-8"><p class="text-sm font-medium text-slate-400">IMPORTS</p><h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Upload Laporan</h1><p class="mt-2 text-sm text-slate-500">Perbarui setiap laporan secara terpisah.</p></div>
+    <div class="mx-auto max-w-3xl flex flex-col gap-6">
+    <div><Tag value="IMPORTS" severity="secondary" /><h1 class="mt-2 text-3xl font-bold">Upload Laporan</h1><p class="mt-2 text-color-secondary">Perbarui setiap laporan secara terpisah.</p></div>
         <AppAlert type="success" :message="page.props.flash?.success" />
         <AppAlert type="error" :message="page.props.flash?.error" />
         <div class="space-y-4">

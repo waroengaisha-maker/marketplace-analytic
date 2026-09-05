@@ -1,31 +1,51 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { ref, computed } from 'vue'
+import Card from 'primevue/card'
+import InputText from 'primevue/inputtext'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
+import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
 
 type Row = Record<string, any>
 const props = defineProps<{ rows: Row[] }>()
 const orderFilter = ref('')
 const productFilter = ref('')
-const sortKey = ref('item_index')
-const sortDirection = ref<'asc' | 'desc'>('asc')
+const filteredRows = computed(() => (props.rows || []).filter((row) =>
+    String(row.order_number || '').toLowerCase().includes(orderFilter.value.toLowerCase()) &&
+    String(row.order_product_name || row.product_name || '').toLowerCase().includes(productFilter.value.toLowerCase()),
+))
+const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'fee_per_unit', 'order_processing_fee', 'total_fee', 'tax']
 const columns = [
-    { key: 'item_index', label: 'No. Urut' }, { key: 'settlement_status', label: 'Status Settlement' }, { key: 'order_number', label: 'No. Pesanan' },
-    { key: 'order_product_name', label: 'Nama Produk' }, { key: 'net_quantity', label: 'Jumlah Bersih' },
-    { key: 'discounted_price', label: 'Harga (@)' }, { key: 'quantity', label: 'Jumlah' }, { key: 'returned_quantity', label: 'Retur' },
-    { key: 'order_subtotal', label: 'Subtotal' }, { key: 'platform_fee', label: 'Biaya Administrasi' }, { key: 'admin_fee_percent', label: 'Biaya Administrasi (%)' },
-    { key: 'free_shipping_xtra_fee', label: 'Biaya Gratis Ongkir XTRA' }, { key: 'free_shipping_xtra_fee_percent', label: 'Biaya Gratis Ongkir XTRA (%)' },
-    { key: 'promo_xtra_service_fee', label: 'Biaya Promo XTRA' }, { key: 'promo_xtra_fee_percent', label: 'Biaya Promo XTRA (%)' },
-    { key: 'fee_subtotal', label: 'Subtotal Biaya' }, { key: 'fee_per_unit', label: 'Subtotal Biaya (@)' },
-    { key: 'order_processing_fee', label: 'Biaya Proses Pesanan' }, { key: 'total_fee', label: 'Total Biaya' }, { key: 'tax', label: 'Pajak' },
-]
-const sortableColumns = columns.map((column) => column.key)
-const filteredRows = computed(() => [...(props.rows || [])].filter((row) => String(row.order_number || '').toLowerCase().includes(orderFilter.value.toLowerCase()) && String(row.order_product_name || row.product_name || '').toLowerCase().includes(productFilter.value.toLowerCase())).sort((a, b) => { const result = String(a[sortKey.value] ?? '').localeCompare(String(b[sortKey.value] ?? ''), 'id', { numeric: true, sensitivity: 'base' }); return sortDirection.value === 'asc' ? result : -result }))
-function sortBy(key: string) { if (sortKey.value === key) sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc'; else { sortKey.value = key; sortDirection.value = 'asc' } }
+    ['item_index', 'No. Urut'], ['order_number', 'No. Pesanan'], ['order_product_name', 'Nama Produk'],
+    ['net_quantity', 'Jumlah Bersih'], ['discounted_price', 'Harga (@)'], ['quantity', 'Jumlah'], ['returned_quantity', 'Retur'],
+    ['order_subtotal', 'Subtotal'], ['platform_fee', 'Biaya Administrasi'], ['admin_fee_percent', 'Admin (%)'],
+    ['free_shipping_xtra_fee', 'Gratis Ongkir'], ['promo_xtra_service_fee', 'Promo XTRA'], ['fee_subtotal', 'Subtotal Biaya'],
+    ['fee_per_unit', 'Biaya (@)'], ['order_processing_fee', 'Biaya Proses'], ['total_fee', 'Total Biaya'], ['tax', 'Pajak'],
+] as const
+function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
 </script>
+
 <template>
     <Head title="Reconciliation" />
-    <div><div class="mb-6"><h1 class="text-2xl font-bold">Reconciliation</h1><p class="mt-2 text-sm text-slate-500">Detail Order dan Income berdasarkan user, nomor pesanan, nama produk, dan item index.</p></div>
-        <div class="mb-4 flex flex-wrap gap-3"><input v-model="orderFilter" class="rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Filter No. Pesanan" /><input v-model="productFilter" class="min-w-72 rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Filter Nama Produk" /></div>
-        <div class="overflow-x-auto rounded-xl border border-slate-200 bg-white"><table class="min-w-[1900px] text-left text-sm"><thead class="bg-slate-50 text-xs uppercase text-slate-500"><tr><th v-for="column in columns" :key="column.key" class="cursor-pointer p-3" @click="sortBy(column.key)">{{ column.label }}</th></tr></thead><tbody><tr v-for="(row, index) in filteredRows" :key="row.order_number + '-' + row.item_index + '-' + (row.variation_key || '')" class="border-t"><td class="p-3">{{ index + 1 }}</td><td class="whitespace-nowrap p-3">{{ row.settlement_status }}</td><td class="whitespace-nowrap p-3">{{ row.order_number }}</td><td class="min-w-80 p-3">{{ row.order_product_name }}<span v-if="row.order_variation_name"> - {{ row.order_variation_name }}</span></td><td class="p-3">{{ row.net_quantity }}</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.discounted_price) }}</td><td class="p-3">{{ row.quantity ?? 0 }}</td><td class="p-3">{{ row.returned_quantity ?? 0 }}</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.order_subtotal) }}</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.platform_fee) }}</td><td class="p-3">{{ row.admin_fee_percent.toFixed(2) }}%</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.free_shipping_xtra_fee) }}</td><td class="p-3">{{ row.free_shipping_xtra_fee_percent.toFixed(2) }}%</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.promo_xtra_service_fee) }}</td><td class="p-3">{{ row.promo_xtra_fee_percent.toFixed(2) }}%</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.fee_subtotal) }}</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.fee_per_unit) }}</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.order_processing_fee) }}</td><td class="whitespace-nowrap p-3 font-semibold">{{ formatNominal(row.total_fee) }}</td><td class="whitespace-nowrap p-3">{{ formatNominal(row.tax) }}</td></tr><tr v-if="!filteredRows.length"><td colspan="20" class="p-10 text-center text-slate-500">Belum ada data rekonsiliasi.</td></tr></tbody></table></div></div>
+    <div class="flex flex-col gap-6">
+        <div><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
+        <Card>
+            <template #content><div class="flex flex-wrap gap-3"><InputText v-model="orderFilter" placeholder="Filter No. Pesanan" /><InputText v-model="productFilter" placeholder="Filter Nama Produk" class="min-w-80" /></div></template>
+        </Card>
+        <DataTable :value="filteredRows" paginator :rows="25" :rows-per-page-options="[25, 50, 100]" scrollable striped-rows removable-sort>
+            <template #empty>Belum ada data rekonsiliasi.</template>
+            <Column field="settlement_status" header="Status" frozen sortable><template #body="{ data }"><Tag :value="data.settlement_status" :severity="severity(data.settlement_status)" /></template></Column>
+            <Column field="order_variation_name" header="Variasi" sortable />
+            <Column v-for="[field, header] in columns" :key="field" :field="field" :header="header" sortable>
+                <template #body="{ data }">
+                    <span v-if="field === 'order_product_name'">{{ data[field] }}<span v-if="data.order_variation_name"> - {{ data.order_variation_name }}</span></span>
+                    <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
+                    <span v-else-if="field === 'admin_fee_percent'">{{ Number(data[field] || 0).toFixed(2) }}%</span>
+                    <span v-else>{{ data[field] ?? 0 }}</span>
+                </template>
+            </Column>
+        </DataTable>
+    </div>
 </template>

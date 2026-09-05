@@ -1,11 +1,27 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { Link, useForm, usePage } from '@inertiajs/vue3'
+import ToggleSwitch from 'primevue/toggleswitch'
 
 const page = usePage()
 const sidebarOpen = ref(false)
 const accountOpen = ref(false)
+const darkMode = ref(false)
 const logout = useForm({})
+
+const applyDarkMode = (enabled: boolean) => {
+    document.documentElement.classList.toggle('dark', enabled)
+    localStorage.setItem('marketplace-dark-mode', enabled ? 'true' : 'false')
+}
+
+onMounted(() => {
+    darkMode.value = localStorage.getItem('marketplace-dark-mode') === 'true'
+    applyDarkMode(darkMode.value)
+})
+
+watch(darkMode, (enabled) => {
+    applyDarkMode(enabled)
+})
 
 const navigation = [
     {
@@ -84,18 +100,18 @@ const submitLogout = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 text-slate-900">
+    <div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
 
         <!-- Mobile overlay -->
         <div
             v-if="sidebarOpen"
-            class="fixed inset-0 z-40 bg-slate-900/40 lg:hidden"
+            class="fixed inset-0 z-40 bg-slate-900/40 dark:bg-black/60 lg:hidden"
             @click="closeSidebar"
         />
 
         <!-- Sidebar -->
         <aside
-            class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 lg:translate-x-0"
+            class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:translate-x-0"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
         >
             <!-- Logo -->
@@ -105,7 +121,7 @@ const submitLogout = () => {
                     class="flex items-center gap-3"
                     @click="closeSidebar"
                 >
-                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
+                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white dark:bg-slate-700">
                         M
                     </div>
 
@@ -139,14 +155,14 @@ const submitLogout = () => {
                             class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
                             :class="isActive(item.href)
                                 ? 'bg-slate-100 text-slate-900'
-                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'"
+                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'"
                             @click="closeSidebar"
                         >
                             <span
                                 class="flex h-5 w-5 items-center justify-center text-xs"
                                 :class="isActive(item.href)
                                     ? 'text-slate-900'
-                                    : 'text-slate-400 group-hover:text-slate-600'"
+                                    : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300'"
                             >
                                 {{ item.icon }}
                             </span>
@@ -164,14 +180,14 @@ const submitLogout = () => {
 
             <!-- Sidebar footer -->
             <div class="border-t border-slate-200 p-3">
-                <div class="rounded-lg bg-slate-50 p-3">
+                <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
                     <div class="flex items-center gap-3">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
                             {{ page.props.auth?.user?.name?.charAt(0)?.toUpperCase() || 'U' }}
                         </div>
 
                         <div class="min-w-0">
-                            <div class="truncate text-sm font-semibold text-slate-800">
+                            <div class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                                 {{ page.props.auth?.user?.name || 'User' }}
                             </div>
                             <div class="truncate text-xs text-slate-400">
@@ -187,11 +203,11 @@ const submitLogout = () => {
         <div class="lg:pl-64">
 
             <!-- Topbar -->
-            <header class="sticky top-0 z-30 flex h-16 items-center border-b border-slate-200 bg-white/95 px-4 backdrop-blur sm:px-6">
+            <header class="sticky top-0 z-30 flex h-16 items-center border-b border-slate-200 bg-white/95 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:px-6">
 
                 <button
                     type="button"
-                    class="mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-100 lg:hidden"
+                    class="mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
                     aria-label="Open navigation"
                     @click="sidebarOpen = true"
                 >
@@ -211,15 +227,27 @@ const submitLogout = () => {
                 </button>
 
                 <div class="flex-1">
-                    <div class="hidden text-sm font-medium text-slate-400 sm:block">
+                    <div class="hidden text-sm font-medium text-slate-400 dark:text-slate-500 sm:block">
                         Marketplace Analytics
                     </div>
+                </div>
+
+                <div class="mr-2 flex items-center gap-2">
+                    <i
+                        class="pi text-sm text-slate-500 dark:text-slate-400"
+                        :class="darkMode ? 'pi-moon' : 'pi-sun'"
+                        aria-hidden="true"
+                    />
+                    <ToggleSwitch
+                        v-model="darkMode"
+                        :aria-label="darkMode ? 'Matikan dark mode' : 'Aktifkan dark mode'"
+                    />
                 </div>
 
                 <!-- Search -->
                 <button
                     type="button"
-                    class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-400 transition hover:border-slate-300 hover:bg-white sm:flex"
+                    class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-400 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700 sm:flex"
                 >
                     <svg
                         class="h-4 w-4"
@@ -236,7 +264,7 @@ const submitLogout = () => {
                     </svg>
 
                     <span>Search</span>
-                    <kbd class="ml-4 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px]">
+                    <kbd class="ml-4 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-900">
                         /
                     </kbd>
                 </button>
@@ -244,7 +272,7 @@ const submitLogout = () => {
                 <!-- Notifications -->
                 <button
                     type="button"
-                    class="relative ml-2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                    class="relative ml-2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                     aria-label="Notifications"
                 >
                     <svg
@@ -265,39 +293,39 @@ const submitLogout = () => {
                 </button>
 
                 <!-- User -->
-                <div class="ml-2 hidden h-8 w-px bg-slate-200 sm:block" />
+                <div class="ml-2 hidden h-8 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
 
                 <div class="relative ml-3">
                     <button
                         type="button"
-                        class="flex items-center gap-2 rounded-lg p-1.5 transition hover:bg-slate-100"
+                        class="flex items-center gap-2 rounded-lg p-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800"
                         :aria-expanded="accountOpen"
                         aria-haspopup="menu"
                         aria-label="Buka menu akun"
                         @click="accountOpen = !accountOpen"
                     >
-                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-slate-700">
                             {{ page.props.auth?.user?.name?.charAt(0)?.toUpperCase() || 'U' }}
                         </div>
 
                         <div class="hidden text-left lg:block">
-                            <div class="max-w-32 truncate text-xs font-semibold text-slate-800">
+                            <div class="max-w-32 truncate text-xs font-semibold text-slate-800 dark:text-slate-100">
                                 {{ page.props.auth?.user?.name || 'User' }}
                             </div>
                         </div>
 
-                        <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <svg class="h-4 w-4 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
                         </svg>
                     </button>
 
                     <div
                         v-if="accountOpen"
-                        class="absolute right-0 top-11 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg"
+                        class="absolute right-0 top-11 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
                         role="menu"
                     >
-                        <div class="border-b border-slate-100 px-3 py-2">
-                            <div class="truncate text-sm font-semibold text-slate-800">
+                        <div class="border-b border-slate-100 px-3 py-2 dark:border-slate-700">
+                            <div class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                                 {{ page.props.auth?.user?.name || 'User' }}
                             </div>
                             <div class="truncate text-xs text-slate-400">
@@ -308,7 +336,7 @@ const submitLogout = () => {
                         <button
                             type="button"
                             role="menuitem"
-                            class="mt-2 flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
+                            class="mt-2 flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white disabled:opacity-50"
                             :disabled="logout.processing"
                             @click="submitLogout"
                         >
