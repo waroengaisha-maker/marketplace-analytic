@@ -24,10 +24,10 @@ class MarketplaceReconciliationService
             ->selectRaw("
                 COALESCE(SUM({$sales}), 0) AS gross_sales,
                 COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS net_sales,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND rows.total_income IS NOT NULL THEN {$sales} ELSE 0 END), 0) AS settled_sales,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND rows.total_income IS NULL THEN {$sales} ELSE 0 END), 0) AS pending_sales,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND rows.total_income IS NOT NULL THEN {$profit} ELSE 0 END), 0) AS settled_profit,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND rows.total_income IS NULL THEN {$profit} ELSE 0 END), 0) AS pending_profit,
+                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) > 0 THEN {$sales} ELSE 0 END), 0) AS settled_sales,
+                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) <= 0 THEN {$sales} ELSE 0 END), 0) AS pending_sales,
+                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) > 0 THEN {$profit} ELSE 0 END), 0) AS settled_profit,
+                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) <= 0 THEN {$profit} ELSE 0 END), 0) AS pending_profit,
                 COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS total_profit,
                 COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$withoutTracking} THEN rows.order_number END) AS valid_without_tracking,
                 COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$withoutTracking} THEN {$sales} ELSE 0 END), 0) AS valid_without_tracking_sales,
@@ -35,8 +35,8 @@ class MarketplaceReconciliationService
                 COUNT(DISTINCT CASE WHEN NOT {$statusIsValid} THEN rows.order_number END) AS cancelled_order_count,
                 COUNT(DISTINCT rows.order_number) AS gross_order_count,
                 COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$hasTracking} THEN rows.order_number END) AS net_order_count,
-                COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$hasTracking} AND rows.total_income IS NOT NULL THEN rows.order_number END) AS settled_order_count,
-                COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$hasTracking} AND rows.total_income IS NULL THEN rows.order_number END) AS pending_order_count
+                COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) > 0 THEN rows.order_number END) AS settled_order_count,
+                COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) <= 0 THEN rows.order_number END) AS pending_order_count
             ")
             ->first();
 
