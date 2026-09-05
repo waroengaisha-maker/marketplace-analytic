@@ -138,6 +138,9 @@ function numericValue(row: Row, field: string) {
 function sumRows(rows: Row[], field: string) {
     return rows.reduce((total, row) => total + numericValue(row, field), 0)
 }
+function countOrders(rows: Row[]) {
+    return new Set(rows.map((row) => String(row.order_number ?? '').trim()).filter(Boolean)).size
+}
 const summaryMetrics = [
     ['platform_fee', 'Total Biaya Administrasi'],
     ['free_shipping_xtra_fee', 'Total Gratis Ongkir'],
@@ -152,12 +155,17 @@ const summaryMetrics = [
 function buildSummaryCards(rows: Row[]) {
     const subtotal = sumRows(rows, 'order_subtotal')
 
-    return summaryMetrics.map(([field, label]) => ({
-        field,
-        label,
-        value: sumRows(rows, field),
-        percentage: subtotal ? sumRows(rows, field) / subtotal * 100 : 0,
-    }))
+    return [
+        { field: 'subtotal', label: 'Nilai Subtotal', value: subtotal, percentage: 100, type: 'money' },
+        { field: 'order_count', label: 'Jumlah Order', value: countOrders(rows), percentage: 0, type: 'count' },
+        ...summaryMetrics.map(([field, label]) => ({
+            field,
+            label,
+            value: sumRows(rows, field),
+            percentage: subtotal ? sumRows(rows, field) / subtotal * 100 : 0,
+            type: 'money',
+        })),
+    ]
 }
 const totalSummary = computed(() => ({
     count: searchableFilteredRows.value.length,
@@ -277,8 +285,10 @@ function toggleFullscreen() {
                     <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`">
                         <template #content>
                             <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-2 text-xl font-bold">{{ formatNominal(card.value) }}</p>
-                            <small class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
+                            <p class="mt-2 text-xl font-bold">
+                                {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
+                            </p>
+                            <small v-if="card.type !== 'count'" class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
                         </template>
                     </Card>
                 </div>
@@ -292,8 +302,10 @@ function toggleFullscreen() {
                     <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`">
                         <template #content>
                             <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-2 text-xl font-bold">{{ formatNominal(card.value) }}</p>
-                            <small class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
+                            <p class="mt-2 text-xl font-bold">
+                                {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
+                            </p>
+                            <small v-if="card.type !== 'count'" class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
                         </template>
                     </Card>
                 </div>
