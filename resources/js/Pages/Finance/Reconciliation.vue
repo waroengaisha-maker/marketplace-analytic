@@ -19,7 +19,7 @@ const filteredRows = computed(() => (props.rows || []).filter((row) =>
     String(row.order_number || '').toLowerCase().includes(orderFilter.value.toLowerCase()) &&
     String(row.order_product_name || row.product_name || '').toLowerCase().includes(productFilter.value.toLowerCase()),
 ))
-const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax']
+const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const columns = [
     ['order_number', 'No. Pesanan'], ['order_product_name', 'Nama Produk'],
     ['net_quantity', 'Jumlah Bersih'], ['discounted_price', 'Harga (@)'], ['quantity', 'Jumlah'], ['returned_quantity', 'Retur'],
@@ -27,6 +27,7 @@ const columns = [
     ['free_shipping_xtra_fee', 'Gratis Ongkir'], ['free_shipping_xtra_fee_percent', 'Gratis Ongkir (%)'],
     ['promo_xtra_service_fee', 'Promo XTRA'], ['promo_xtra_fee_percent', 'Promo XTRA (%)'],
     ['fee_subtotal', 'Subtotal Biaya'], ['order_processing_fee', 'Biaya Proses'], ['total_fee', 'Total Biaya'], ['tax', 'Pajak'],
+    ['penghasilan', 'Penghasilan'], ['hpp', 'HPP'], ['laba', 'Laba'],
 ] as const
 function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
 function exportCsv() { dataTable.value?.exportCSV() }

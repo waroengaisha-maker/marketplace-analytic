@@ -244,16 +244,21 @@ class MarketplaceReconciliationService
         $processing = (float) ($row->order_processing_fee ?? 0);
         $tax = (float) ($row->pph22 ?? 0);
         $net = $quantity - $returned;
-        $feeSubtotal = $admin + $shipping + $promo + $processing;
+        $feeSubtotal = $admin + $shipping + $promo;
+        $totalFee = $feeSubtotal + $processing;
+        $earnings = $totalFee - $tax;
+        $hpp = 0.0;
 
         $row->net_quantity = $net;
         $row->admin_fee_percent = $this->percent($admin, $subtotal);
         $row->free_shipping_xtra_fee_percent = $this->percent($shipping, $subtotal);
         $row->promo_xtra_fee_percent = $this->percent($promo, $subtotal);
         $row->fee_subtotal = $feeSubtotal;
-        $row->fee_per_unit = $net > 0 ? $feeSubtotal / $net : 0;
-        $row->total_fee = $feeSubtotal + $tax;
+        $row->total_fee = $totalFee;
         $row->tax = $tax;
+        $row->penghasilan = $earnings;
+        $row->hpp = $hpp;
+        $row->laba = $earnings - $hpp;
 
         return $row;
     }

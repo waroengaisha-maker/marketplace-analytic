@@ -272,6 +272,28 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(500.0, $stats['valid_without_tracking_sales']);
     }
 
+    public function test_financial_columns_follow_reconciliation_fee_contract(): void
+    {
+        $row = (object) [
+            'quantity' => 2,
+            'returned_quantity' => 0,
+            'order_subtotal' => 1000,
+            'platform_fee' => 100,
+            'free_shipping_xtra_fee' => 50,
+            'promo_xtra_service_fee' => 25,
+            'order_processing_fee' => 10,
+            'pph22' => 5,
+        ];
+
+        $result = app(MarketplaceReconciliationService::class)->calculateFinancials($row);
+
+        $this->assertSame(175.0, $result->fee_subtotal);
+        $this->assertSame(185.0, $result->total_fee);
+        $this->assertSame(180.0, $result->penghasilan);
+        $this->assertSame(0.0, $result->hpp);
+        $this->assertSame(180.0, $result->laba);
+    }
+
     private function order(int $userId, array $overrides = []): array
     {
         return array_merge([
