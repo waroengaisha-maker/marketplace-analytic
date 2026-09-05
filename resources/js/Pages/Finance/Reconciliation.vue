@@ -60,7 +60,7 @@ const tableFilters = Object.fromEntries(
     allColumns.map(([field]) => [field, { value: null, matchMode: FilterMatchMode.CONTAINS }]),
 )
 const visibleColumns = computed(() => selectedColumns.value)
-const orderStatusOptions = ['Settled', 'Unsettled', 'Batal / Tidak Valid']
+const orderStatusOptions = ['Settled', 'Unsettled', 'Batal', 'Tidak Valid']
 function localDateKey(date: Date) {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -87,8 +87,12 @@ function orderCategory(row: Row) {
     const hasTracking = String(row.tracking_number ?? '').trim() !== ''
     const hasIncome = numericValue(row, 'total_income') > 0
 
-    if (rawStatus === 'batal' || !hasTracking) {
-        return 'Batal / Tidak Valid'
+    if (rawStatus === 'batal') {
+        return 'Batal'
+    }
+
+    if (!hasTracking) {
+        return 'Tidak Valid'
     }
 
     return hasIncome ? 'Settled' : 'Unsettled'
@@ -151,7 +155,9 @@ const summaryMetrics = [
 function buildSummaryCards(rows: Row[]) {
     const subtotal = sumRows(rows, 'order_subtotal')
 
-    if (rows.length > 0 && rows.every((row) => orderCategory(row) === 'Batal / Tidak Valid')) {
+    const isNonFinancialGroup = rows.length > 0 && rows.every((row) => ['Batal', 'Tidak Valid'].includes(orderCategory(row)))
+
+    if (isNonFinancialGroup) {
         return [
             { field: 'subtotal', label: 'Nilai Subtotal', value: subtotal, percentage: 100, type: 'money', orderCount: countOrders(rows) },
         ]
@@ -183,7 +189,8 @@ const summaryGroups = computed(() => {
     const groups = [
         { label: 'Settled', severity: 'success', icon: 'pi pi-check-circle' },
         { label: 'Unsettled', severity: 'warn', icon: 'pi pi-clock' },
-        { label: 'Batal / Tidak Valid', severity: 'danger', icon: 'pi pi-exclamation-triangle' },
+        { label: 'Batal', severity: 'danger', icon: 'pi pi-times-circle' },
+        { label: 'Tidak Valid', severity: 'secondary', icon: 'pi pi-ban' },
     ]
     return groups.map((group) => {
         const rows = filteredRows.value.filter((row) => orderCategory(row) === group.label)
