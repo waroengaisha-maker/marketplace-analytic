@@ -19,7 +19,7 @@ const dataTable = ref<DataTableInstance | null>(null)
 const isFullscreen = ref(false)
 const fromDate = ref<Date | null>(null)
 const toDate = ref<Date | null>(null)
-const selectedOrderStatuses = ref<string[]>([])
+const selectedOrderStatuses = ref<string[]>(['Settled', 'Unsettled'])
 const clearButtonClass = 'absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color'
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
@@ -137,22 +137,39 @@ function numericValue(row: Row, field: string) {
 function sumRows(rows: Row[], field: string) {
     return rows.reduce((total, row) => total + numericValue(row, field), 0)
 }
-const summaryCards = computed(() => {
-    const rows = filteredRows.value
-    const settled = rows.filter((row) => orderCategory(row) === 'Settled').length
-    const unsettled = rows.filter((row) => orderCategory(row) === 'Unsettled').length
-    const invalid = rows.filter((row) => orderCategory(row) === 'Batal / Tidak Valid').length
-
-    return [
-        { label: 'Total Baris', value: rows.length, type: 'count', icon: 'pi pi-list', severity: 'info' },
-        { label: 'Settled', value: settled, type: 'count', icon: 'pi pi-check-circle', severity: 'success' },
-        { label: 'Unsettled', value: unsettled, type: 'count', icon: 'pi pi-clock', severity: 'warn' },
-        { label: 'Batal / Tidak Valid', value: invalid, type: 'count', icon: 'pi pi-exclamation-triangle', severity: 'danger' },
-        { label: 'Subtotal', value: sumRows(rows, 'order_subtotal'), type: 'money', icon: 'pi pi-shopping-cart', severity: 'info' },
-        { label: 'Total Biaya', value: sumRows(rows, 'total_fee'), type: 'money', icon: 'pi pi-wallet', severity: 'warn' },
-        { label: 'Penghasilan', value: sumRows(rows, 'penghasilan'), type: 'money', icon: 'pi pi-chart-line', severity: 'success' },
-        { label: 'Laba', value: sumRows(rows, 'laba'), type: 'money', icon: 'pi pi-arrow-up-right', severity: 'success' },
+const summaryGroups = computed(() => {
+    const groups = [
+        { label: 'Settled', severity: 'success', icon: 'pi pi-check-circle' },
+        { label: 'Unsettled', severity: 'warn', icon: 'pi pi-clock' },
+        { label: 'Batal / Tidak Valid', severity: 'danger', icon: 'pi pi-exclamation-triangle' },
     ]
+    const metrics = [
+        ['platform_fee', 'Total Biaya Administrasi'],
+        ['free_shipping_xtra_fee', 'Total Gratis Ongkir'],
+        ['promo_xtra_service_fee', 'Total Promo XTRA'],
+        ['fee_subtotal', 'Total Subtotal Biaya'],
+        ['order_processing_fee', 'Total Biaya Proses'],
+        ['total_fee', 'Total Biaya'],
+        ['tax', 'Total Pajak'],
+        ['hpp', 'Total HPP'],
+        ['laba', 'Total Laba'],
+    ] as const
+
+    return groups.map((group) => {
+        const rows = filteredRows.value.filter((row) => orderCategory(row) === group.label)
+        const subtotal = sumRows(rows, 'order_subtotal')
+
+        return {
+            ...group,
+            count: rows.length,
+            cards: metrics.map(([field, label]) => ({
+                field,
+                label,
+                value: sumRows(rows, field),
+                percentage: subtotal ? sumRows(rows, field) / subtotal * 100 : 0,
+            })),
+        }
+    })
 })
 function buildProductSummary(rows: Row[]) {
     const summary = new Map<string, Row>()
@@ -242,20 +259,22 @@ function toggleFullscreen() {
     <Head title="Reconciliation" />
     <div class="flex flex-col gap-6">
         <div v-if="!isFullscreen"><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
-        <div v-if="!isFullscreen" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <Card v-for="card in summaryCards" :key="card.label">
-                <template #content>
-                    <div class="flex items-start justify-between gap-3">
-                        <div class="min-w-0">
+        <div v-if="!isFullscreen" class="flex flex-col gap-4">
+            <section v-for="group in summaryGroups" :key="group.label" class="flex flex-col gap-3">
+                <div class="flex items-center gap-2">
+                    <Tag :severity="group.severity" :value="group.label" :icon="group.icon" />
+                    <span class="text-sm text-color-secondary">{{ group.count.toLocaleString('id-ID') }} baris</span>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`">
+                        <template #content>
                             <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-2 text-2xl font-bold">
-                                {{ card.type === 'money' ? formatNominal(card.value) : Number(card.value).toLocaleString('id-ID') }}
-                            </p>
-                        </div>
-                        <Tag :severity="card.severity" :value="card.label" :icon="card.icon" />
-                    </div>
-                </template>
-            </Card>
+                            <p class="mt-2 text-xl font-bold">{{ formatNominal(card.value) }}</p>
+                            <small class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
+                        </template>
+                    </Card>
+                </div>
+            </section>
         </div>
         <Card v-if="!isFullscreen">
             <template #content>
