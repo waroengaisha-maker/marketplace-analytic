@@ -60,10 +60,7 @@ const tableFilters = Object.fromEntries(
     allColumns.map(([field]) => [field, { value: null, matchMode: FilterMatchMode.CONTAINS }]),
 )
 const visibleColumns = computed(() => selectedColumns.value)
-const orderStatusOptions = computed(() => Array.from(new Set(
-    (props.rows || [])
-        .map((row) => String(row.order_status ?? '').trim() || 'Tidak ada status')
-)).sort((first, second) => first.localeCompare(second, 'id')))
+const orderStatusOptions = ['Settled', 'Unsettled', 'Batal / Tidak Valid']
 function localDateKey(date: Date) {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -84,11 +81,26 @@ const dateFilteredRows = computed(() => {
         return (!from || rowDate >= from) && (!to || rowDate <= to)
     })
 })
-function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
+function severity(status: string) { return status === 'Settled' ? 'success' : status === 'Unsettled' ? 'warn' : 'danger' }
+function orderCategory(row: Row) {
+    const rawStatus = String(row.order_status ?? '').trim().toLowerCase()
+    const hasTracking = String(row.tracking_number ?? '').trim() !== ''
+    const hasIncome = numericValue(row, 'total_income') > 0
+
+    if (rawStatus === 'batal' || !hasTracking) {
+        return 'Batal / Tidak Valid'
+    }
+
+    return hasIncome ? 'Settled' : 'Unsettled'
+}
 function clearColumnFilter(field: string) {
     filters.value[field].value = null
 }
 function exportValue(row: Row, field: string) {
+    if (field === 'settlement_status') {
+        return orderCategory(row)
+    }
+
     if (field === 'order_product_name') {
         const productName = String(row[field] ?? '')
         const variationName = String(row.order_variation_name ?? '').trim()
@@ -105,7 +117,7 @@ const filteredRows = computed(() => {
     const globalValue = String(filters.value.global.value ?? '').trim().toLocaleLowerCase('id-ID')
 
     return dateFilteredRows.value.filter((row) => {
-        const orderStatus = String(row.order_status ?? '').trim() || 'Tidak ada status'
+        const orderStatus = orderCategory(row)
         const matchesOrderStatus = selectedOrderStatuses.value.length === 0 || selectedOrderStatuses.value.includes(orderStatus)
         const matchesGlobal = !globalValue || allColumns.some(([field]) => searchableValue(row, field).includes(globalValue))
         const matchesColumns = allColumns.every(([field]) => {
@@ -127,14 +139,15 @@ function sumRows(rows: Row[], field: string) {
 }
 const summaryCards = computed(() => {
     const rows = filteredRows.value
-    const settled = rows.filter((row) => ['Settled', 'Grouped Match'].includes(String(row.settlement_status))).length
-    const ambiguous = rows.filter((row) => row.settlement_status === 'Ambiguous').length
+    const settled = rows.filter((row) => orderCategory(row) === 'Settled').length
+    const unsettled = rows.filter((row) => orderCategory(row) === 'Unsettled').length
+    const invalid = rows.filter((row) => orderCategory(row) === 'Batal / Tidak Valid').length
 
     return [
         { label: 'Total Baris', value: rows.length, type: 'count', icon: 'pi pi-list', severity: 'info' },
         { label: 'Settled', value: settled, type: 'count', icon: 'pi pi-check-circle', severity: 'success' },
-        { label: 'Belum Settlement', value: rows.length - settled - ambiguous, type: 'count', icon: 'pi pi-clock', severity: 'warn' },
-        { label: 'Ambiguous', value: ambiguous, type: 'count', icon: 'pi pi-exclamation-triangle', severity: 'danger' },
+        { label: 'Unsettled', value: unsettled, type: 'count', icon: 'pi pi-clock', severity: 'warn' },
+        { label: 'Batal / Tidak Valid', value: invalid, type: 'count', icon: 'pi pi-exclamation-triangle', severity: 'danger' },
         { label: 'Subtotal', value: sumRows(rows, 'order_subtotal'), type: 'money', icon: 'pi pi-shopping-cart', severity: 'info' },
         { label: 'Total Biaya', value: sumRows(rows, 'total_fee'), type: 'money', icon: 'pi pi-wallet', severity: 'warn' },
         { label: 'Penghasilan', value: sumRows(rows, 'penghasilan'), type: 'money', icon: 'pi pi-chart-line', severity: 'success' },
