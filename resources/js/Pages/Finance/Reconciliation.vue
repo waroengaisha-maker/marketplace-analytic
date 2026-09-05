@@ -64,6 +64,53 @@ function exportValue(row: Row, field: string) {
 
     return row[field] ?? ''
 }
+function numericValue(row: Row, field: string) {
+    const value = Number(row[field] ?? 0)
+
+    return Number.isFinite(value) ? value : 0
+}
+function buildProductSummary(rows: Row[]) {
+    const summary = new Map<string, Row>()
+
+    rows.forEach((row) => {
+        const productName = String(exportValue(row, 'order_product_name'))
+        const unitPrice = numericValue(row, 'discounted_price')
+        const key = `${productName}\u0000${unitPrice}`
+        const existing = summary.get(key)
+
+        if (existing) {
+            ;['quantity', 'returned_quantity', 'net_quantity', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee',
+                'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
+                .forEach((field) => {
+                    existing[field] = numericValue(existing, field) + numericValue(row, field)
+                })
+        } else {
+            summary.set(key, {
+                product_name: productName,
+                unit_price: unitPrice,
+                quantity: numericValue(row, 'quantity'),
+                returned_quantity: numericValue(row, 'returned_quantity'),
+                net_quantity: numericValue(row, 'net_quantity'),
+                order_subtotal: numericValue(row, 'order_subtotal'),
+                platform_fee: numericValue(row, 'platform_fee'),
+                free_shipping_xtra_fee: numericValue(row, 'free_shipping_xtra_fee'),
+                promo_xtra_service_fee: numericValue(row, 'promo_xtra_service_fee'),
+                fee_subtotal: numericValue(row, 'fee_subtotal'),
+                order_processing_fee: numericValue(row, 'order_processing_fee'),
+                total_fee: numericValue(row, 'total_fee'),
+                tax: numericValue(row, 'tax'),
+                penghasilan: numericValue(row, 'penghasilan'),
+                hpp: numericValue(row, 'hpp'),
+                laba: numericValue(row, 'laba'),
+            })
+        }
+    })
+
+    return Array.from(summary.values()).sort((first, second) =>
+        String(first.product_name).localeCompare(String(second.product_name), 'id', { sensitivity: 'base' }) ||
+        numericValue(first, 'unit_price') - numericValue(second, 'unit_price'),
+    )
+}
 function exportCsv() { dataTable.value?.exportCSV() }
 async function exportExcel() {
     const XLSX = await import('xlsx')
@@ -75,6 +122,26 @@ async function exportExcel() {
     const worksheet = XLSX.utils.json_to_sheet(data)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Reconciliation')
+    const summaryRows = buildProductSummary(exportRows).map((row) => ({
+        'Nama Produk': row.product_name,
+        'Harga (@)': row.unit_price,
+        'Jumlah': row.quantity,
+        'Retur': row.returned_quantity,
+        'Jumlah Bersih': row.net_quantity,
+        'Subtotal': row.order_subtotal,
+        'Biaya Administrasi': row.platform_fee,
+        'Gratis Ongkir': row.free_shipping_xtra_fee,
+        'Promo XTRA': row.promo_xtra_service_fee,
+        'Subtotal Biaya': row.fee_subtotal,
+        'Biaya Proses': row.order_processing_fee,
+        'Total Biaya': row.total_fee,
+        'Pajak': row.tax,
+        'Penghasilan': row.penghasilan,
+        'HPP': row.hpp,
+        'Laba': row.laba,
+    }))
+    const summaryWorksheet = XLSX.utils.json_to_sheet(summaryRows)
+    XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Rekapan Produk')
     XLSX.writeFile(workbook, 'reconciliation.xlsx')
 }
 function toggleFullscreen() {
