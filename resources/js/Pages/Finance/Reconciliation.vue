@@ -142,11 +142,6 @@ function countOrders(rows: Row[]) {
     return new Set(rows.map((row) => String(row.order_number ?? '').trim()).filter(Boolean)).size
 }
 const summaryMetrics = [
-    ['platform_fee', 'Total Biaya Administrasi'],
-    ['free_shipping_xtra_fee', 'Total Gratis Ongkir'],
-    ['promo_xtra_service_fee', 'Total Promo XTRA'],
-    ['fee_subtotal', 'Total Subtotal Biaya'],
-    ['order_processing_fee', 'Total Biaya Proses'],
     ['total_fee', 'Total Biaya'],
     ['tax', 'Total Pajak'],
     ['penghasilan', 'Total Penghasilan'],
@@ -155,6 +150,12 @@ const summaryMetrics = [
 ] as const
 function buildSummaryCards(rows: Row[]) {
     const subtotal = sumRows(rows, 'order_subtotal')
+
+    if (rows.length > 0 && rows.every((row) => orderCategory(row) === 'Batal / Tidak Valid')) {
+        return [
+            { field: 'subtotal', label: 'Nilai Subtotal', value: subtotal, percentage: 100, type: 'money', orderCount: countOrders(rows) },
+        ]
+    }
 
     return [
         { field: 'subtotal', label: 'Nilai Subtotal', value: subtotal, percentage: 100, type: 'money', orderCount: countOrders(rows) },
@@ -165,6 +166,12 @@ function buildSummaryCards(rows: Row[]) {
             percentage: subtotal ? sumRows(rows, field) / subtotal * 100 : 0,
             type: 'money',
             orderCount: countOrders(rows),
+            breakdown: field === 'total_fee' ? [
+                ['Admin', sumRows(rows, 'platform_fee')],
+                ['Gratis Ongkir', sumRows(rows, 'free_shipping_xtra_fee')],
+                ['Promo XTRA', sumRows(rows, 'promo_xtra_service_fee')],
+                ['Biaya Proses', sumRows(rows, 'order_processing_fee')],
+            ] : undefined,
         })),
     ]
 }
@@ -331,13 +338,19 @@ function toggleFullscreen() {
                     <span class="text-sm text-color-secondary">{{ totalSummary.count.toLocaleString('id-ID') }} baris</span>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`" class="[&_.p-card-body]:p-3">
+                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`" :class="card.field === 'total_fee' ? 'xl:col-span-2 [&_.p-card-body]:p-4' : '[&_.p-card-body]:p-3'">
                         <template #content>
-                            <p class="truncate text-xs text-color-secondary">{{ card.label }}</p>
+                            <p class="text-xs font-semibold text-color-secondary">{{ card.label }}</p>
                             <p class="mt-1 text-lg font-bold">
                                 {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
                             </p>
                             <small v-if="card.field === 'subtotal'" class="text-xs text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
+                            <div v-if="card.breakdown" class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-surface pt-3 text-xs text-color-secondary sm:grid-cols-4">
+                                <span v-for="[label, value] in card.breakdown" :key="label" class="flex min-w-0 flex-col gap-0.5">
+                                    <span class="font-medium">{{ label }}</span>
+                                    <span class="whitespace-nowrap font-semibold text-color">{{ formatNominal(value) }}</span>
+                                </span>
+                            </div>
                             <small v-if="card.type !== 'count'" class="text-xs text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
                         </template>
                     </Card>
@@ -349,13 +362,19 @@ function toggleFullscreen() {
                     <span class="text-sm text-color-secondary">{{ group.count.toLocaleString('id-ID') }} baris</span>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`" class="[&_.p-card-body]:p-3">
+                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`" :class="card.field === 'total_fee' ? 'xl:col-span-2 [&_.p-card-body]:p-4' : '[&_.p-card-body]:p-3'">
                         <template #content>
-                            <p class="truncate text-xs text-color-secondary">{{ card.label }}</p>
+                            <p class="text-xs font-semibold text-color-secondary">{{ card.label }}</p>
                             <p class="mt-1 text-lg font-bold">
                                 {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
                             </p>
                             <small v-if="card.field === 'subtotal'" class="text-xs text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
+                            <div v-if="card.breakdown" class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-surface pt-3 text-xs text-color-secondary sm:grid-cols-4">
+                                <span v-for="[label, value] in card.breakdown" :key="label" class="flex min-w-0 flex-col gap-0.5">
+                                    <span class="font-medium">{{ label }}</span>
+                                    <span class="whitespace-nowrap font-semibold text-color">{{ formatNominal(value) }}</span>
+                                </span>
+                            </div>
                             <small v-if="card.type !== 'count'" class="text-xs text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
                         </template>
                     </Card>
