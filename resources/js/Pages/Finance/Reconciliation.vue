@@ -5,6 +5,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import MultiSelect from 'primevue/multiselect'
+import DatePicker from 'primevue/datepicker'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -16,6 +17,8 @@ type DataTableInstance = { exportCSV: () => void; filteredValue?: Row[] }
 const props = defineProps<{ rows: Row[] }>()
 const dataTable = ref<DataTableInstance | null>(null)
 const isFullscreen = ref(false)
+const fromDate = ref<Date | null>(null)
+const toDate = ref<Date | null>(null)
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
     net_quantity: 'Jumlah Bersih = Jumlah - Retur',
@@ -52,7 +55,26 @@ const filters = ref<Record<string, { value: string | null; matchMode: string }>>
     },
 )
 const visibleColumns = computed(() => selectedColumns.value)
-const filteredRows = computed(() => props.rows || [])
+function localDateKey(date: Date) {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+
+    return `${year}-${month}-${day}`
+}
+function localTimestamp(date: Date) {
+    return `${localDateKey(date)}_${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`
+}
+const filteredRows = computed(() => {
+    const from = fromDate.value ? localDateKey(fromDate.value) : null
+    const to = toDate.value ? localDateKey(toDate.value) : null
+
+    return (props.rows || []).filter((row) => {
+        const rowDate = String(row.order_created_at ?? '').slice(0, 10)
+
+        return (!from || rowDate >= from) && (!to || rowDate <= to)
+    })
+})
 function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
 function exportValue(row: Row, field: string) {
     if (field === 'order_product_name') {
@@ -124,10 +146,10 @@ async function exportExcel() {
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Reconciliation')
     const summaryRows = buildProductSummary(exportRows).map((row) => ({
         'Nama Produk': row.product_name,
+        'Jumlah Bersih': row.net_quantity,
         'Harga (@)': row.unit_price,
         'Jumlah': row.quantity,
         'Retur': row.returned_quantity,
-        'Jumlah Bersih': row.net_quantity,
         'Subtotal': row.order_subtotal,
         'Biaya Administrasi': row.platform_fee,
         'Gratis Ongkir': row.free_shipping_xtra_fee,
@@ -142,7 +164,11 @@ async function exportExcel() {
     }))
     const summaryWorksheet = XLSX.utils.json_to_sheet(summaryRows)
     XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Rekapan Produk')
-    XLSX.writeFile(workbook, 'reconciliation.xlsx')
+    const fromLabel = fromDate.value ? localDateKey(fromDate.value) : 'awal'
+    const toLabel = toDate.value ? localDateKey(toDate.value) : 'akhir'
+    const timestamp = localTimestamp(new Date())
+
+    XLSX.writeFile(workbook, `reconciliation_${fromLabel}_sampai_${toLabel}_${timestamp}.xlsx`)
 }
 function toggleFullscreen() {
     isFullscreen.value = !isFullscreen.value
@@ -158,6 +184,8 @@ function toggleFullscreen() {
                 <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                     <div class="flex min-w-0 flex-col gap-3 sm:flex-row">
                         <InputText v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Filter semua kolom..." class="w-full sm:w-64" />
+                        <DatePicker v-model="fromDate" date-format="yy-mm-dd" show-icon placeholder="Tanggal mulai" aria-label="Tanggal mulai" class="w-full sm:w-44" />
+                        <DatePicker v-model="toDate" date-format="yy-mm-dd" show-icon placeholder="Tanggal akhir" aria-label="Tanggal akhir" class="w-full sm:w-44" />
                         <MultiSelect
                             v-model="selectedColumns"
                             :options="allColumns"
