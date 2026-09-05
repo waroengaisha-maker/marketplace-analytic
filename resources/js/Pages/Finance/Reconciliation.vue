@@ -54,6 +54,9 @@ const filters = ref<Record<string, { value: string | null; matchMode: string }>>
         ...Object.fromEntries(allColumns.map(([field]) => [field, { value: null, matchMode: FilterMatchMode.CONTAINS }])),
     },
 )
+const tableFilters = Object.fromEntries(
+    allColumns.map(([field]) => [field, { value: null, matchMode: FilterMatchMode.CONTAINS }]),
+)
 const visibleColumns = computed(() => selectedColumns.value)
 function localDateKey(date: Date) {
     const year = date.getFullYear()
@@ -65,7 +68,7 @@ function localDateKey(date: Date) {
 function localTimestamp(date: Date) {
     return `${localDateKey(date)}_${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`
 }
-const filteredRows = computed(() => {
+const dateFilteredRows = computed(() => {
     const from = fromDate.value ? localDateKey(fromDate.value) : null
     const to = toDate.value ? localDateKey(toDate.value) : null
 
@@ -86,6 +89,23 @@ function exportValue(row: Row, field: string) {
 
     return row[field] ?? ''
 }
+function searchableValue(row: Row, field: string) {
+    return String(exportValue(row, field) ?? '').toLocaleLowerCase('id-ID')
+}
+const filteredRows = computed(() => {
+    const globalValue = String(filters.value.global.value ?? '').trim().toLocaleLowerCase('id-ID')
+
+    return dateFilteredRows.value.filter((row) => {
+        const matchesGlobal = !globalValue || allColumns.some(([field]) => searchableValue(row, field).includes(globalValue))
+        const matchesColumns = allColumns.every(([field]) => {
+            const value = String(filters.value[field]?.value ?? '').trim().toLocaleLowerCase('id-ID')
+
+            return !value || searchableValue(row, field).includes(value)
+        })
+
+        return matchesGlobal && matchesColumns
+    })
+})
 function numericValue(row: Row, field: string) {
     const value = Number(row[field] ?? 0)
 
@@ -137,7 +157,7 @@ function exportCsv() { dataTable.value?.exportCSV() }
 async function exportExcel() {
     const XLSX = await import('xlsx')
     const visibleFields = visibleColumns.value
-    const exportRows = dataTable.value?.filteredValue || filteredRows.value
+    const exportRows = filteredRows.value
     const data = exportRows.map((row) => Object.fromEntries(
         visibleFields.map(([field, header]) => [header, exportValue(row, field)]),
     ))
@@ -243,7 +263,7 @@ function toggleFullscreen() {
             <DataTable
                 ref="dataTable"
                 :value="filteredRows"
-                v-model:filters="filters"
+                :filters="tableFilters"
                 filter-display="row"
                 :global-filter-fields="allColumns.map(([field]) => field)"
                 paginator
@@ -270,7 +290,7 @@ function toggleFullscreen() {
                         <span v-tooltip.top="formulaTooltips[field] || undefined">{{ header }}</span>
                     </template>
                     <template #filter="{ filterModel }">
-                        <InputText v-model="filterModel.value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full" />
+                        <InputText v-model="filters[field].value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full" />
                     </template>
                     <template #body="{ data }">
                         <Tag v-if="field === 'settlement_status'" :value="String(data[field] || '')" :severity="severity(String(data[field] || ''))" />
