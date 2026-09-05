@@ -209,7 +209,10 @@ const submitLogout = () => {
         </aside>
 
         <!-- Main -->
-        <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'">
+        <div
+            class="min-w-0"
+            :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'"
+        >
 
             <!-- Topbar -->
             <header class="sticky top-0 z-30 flex h-16 min-w-0 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur dark:border-slate-800 dark:bg-black/95 sm:px-6">
@@ -356,7 +359,7 @@ const submitLogout = () => {
             </header>
 
             <!-- Page content -->
-            <main class="mx-auto min-h-[calc(100vh-4rem)] max-w-[1600px] bg-transparent p-4 sm:p-6 lg:p-8">
+            <main class="min-h-[calc(100vh-4rem)] w-full min-w-0 bg-transparent p-4 sm:p-6 lg:p-8">
                 <slot />
             </main>
         </div>

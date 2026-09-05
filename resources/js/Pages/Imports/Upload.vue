@@ -14,7 +14,7 @@ function submitIncome() { incomeForm.post('/imports/upload', { forceFormData: tr
 
 <template>
     <Head title="Upload Files" />
-    <div class="mx-auto max-w-3xl flex flex-col gap-6">
+    <div class="flex w-full min-w-0 flex-col gap-6">
     <div><Tag value="IMPORTS" severity="secondary" /><h1 class="mt-2 text-3xl font-bold">Upload Laporan</h1><p class="mt-2 text-color-secondary">Perbarui setiap laporan secara terpisah.</p></div>
         <AppAlert type="success" :message="page.props.flash?.success" />
         <AppAlert type="error" :message="page.props.flash?.error" />
