@@ -4,21 +4,18 @@ import { ref, computed } from 'vue'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
+import MultiSelect from 'primevue/multiselect'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
+import { FilterMatchMode } from '@primevue/core/api'
 
 type Row = Record<string, unknown>
-type DataTableInstance = { exportCSV: () => void }
+type DataTableInstance = { exportCSV: () => void; filteredValue?: Row[] }
 const props = defineProps<{ rows: Row[] }>()
 const dataTable = ref<DataTableInstance | null>(null)
-const orderFilter = ref('')
-const productFilter = ref('')
-const filteredRows = computed(() => (props.rows || []).filter((row) =>
-    String(row.order_number || '').toLowerCase().includes(orderFilter.value.toLowerCase()) &&
-    String(row.order_product_name || row.product_name || '').toLowerCase().includes(productFilter.value.toLowerCase()),
-))
+const isFullscreen = ref(false)
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
     net_quantity: 'Jumlah Bersih = Jumlah - Retur',
@@ -43,43 +40,80 @@ const columns = [
     ['order_processing_fee', 'Biaya Proses'], ['total_fee', 'Total Biaya'], ['tax', 'Pajak'],
     ['penghasilan', 'Penghasilan'], ['hpp', 'HPP'], ['laba', 'Laba'],
 ] as const
+const allColumns = [
+    ['settlement_status', 'Status'],
+    ...columns,
+] as const
+const selectedColumns = ref([...allColumns])
+const filters = ref<Record<string, { value: string | null; matchMode: string }>>(
+    {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+        ...Object.fromEntries(allColumns.map(([field]) => [field, { value: null, matchMode: FilterMatchMode.CONTAINS }])),
+    },
+)
+const visibleColumns = computed(() => selectedColumns.value)
+const filteredRows = computed(() => props.rows || [])
 function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
 function exportCsv() { dataTable.value?.exportCSV() }
+async function exportExcel() {
+    const XLSX = await import('xlsx')
+    const visibleFields = visibleColumns.value
+    const exportRows = dataTable.value?.filteredValue || filteredRows.value
+    const data = exportRows.map((row) => Object.fromEntries(
+        visibleFields.map(([field, header]) => [header, row[field] ?? '']),
+    ))
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Reconciliation')
+    XLSX.writeFile(workbook, 'reconciliation.xlsx')
+}
+function toggleFullscreen() {
+    isFullscreen.value = !isFullscreen.value
+}
 </script>
 
 <template>
     <Head title="Reconciliation" />
-    <div class="flex flex-col gap-6">
+    <div
+        class="flex flex-col gap-6"
+        :class="isFullscreen ? 'fixed inset-0 z-50 overflow-auto bg-white p-4 dark:bg-black sm:p-6' : ''"
+    >
         <div><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
         <Card>
             <template #content>
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                     <div class="flex min-w-0 flex-col gap-3 sm:flex-row">
-                    <InputText v-model="orderFilter" aria-label="Filter nomor pesanan" placeholder="Filter No. Pesanan" class="w-full sm:w-80" />
-                    <InputText v-model="productFilter" aria-label="Filter nama produk" placeholder="Filter Nama Produk" class="w-full sm:w-80" />
+                        <InputText v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Filter semua kolom..." class="w-full sm:w-64" />
+                        <MultiSelect
+                            v-model="selectedColumns"
+                            :options="allColumns"
+                            option-label="1"
+                            placeholder="Tampilkan kolom"
+                            display="chip"
+                            class="w-full sm:w-72"
+                        />
                     </div>
-                    <Button
-                        label="Export CSV"
-                        icon="pi pi-download"
-                        severity="secondary"
-                        outlined
-                        class="w-full sm:w-auto"
-                        :disabled="filteredRows.length === 0"
-                        @click="exportCsv"
-                    />
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <Button label="Export Excel" icon="pi pi-file-excel" severity="success" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportExcel" />
+                        <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportCsv" />
+                        <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="w-full sm:w-auto" @click="toggleFullscreen" />
+                    </div>
                 </div>
             </template>
         </Card>
         <DataTable
             ref="dataTable"
             :value="filteredRows"
+            v-model:filters="filters"
+            filter-display="row"
+            :global-filter-fields="allColumns.map(([field]) => field)"
             paginator
             :rows="25"
             :rows-per-page-options="[25, 50, 100]"
             paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
             current-page-report-template="{first}–{last} dari {totalRecords}"
             scrollable
-            scroll-height="calc(100vh - 20rem)"
+            :scroll-height="isFullscreen ? 'calc(100vh - 16rem)' : 'calc(100vh - 20rem)'"
             resizable-columns
             column-resize-mode="expand"
             reorderable-columns
@@ -92,13 +126,16 @@ function exportCsv() { dataTable.value?.exportCSV() }
             class="w-full text-xs"
         >
             <template #empty>Belum ada data rekonsiliasi.</template>
-            <Column field="settlement_status" header="Status" frozen sortable><template #body="{ data }"><Tag :value="data.settlement_status" :severity="severity(data.settlement_status)" /></template></Column>
-            <Column v-for="[field, header] in columns" :key="field" :field="field" sortable>
+            <Column v-for="[field, header] in visibleColumns" :key="field" :field="field" sortable :show-filter-menu="false">
                 <template #header>
                     <span v-tooltip.top="formulaTooltips[field] || undefined">{{ header }}</span>
                 </template>
+                <template #filter="{ filterModel }">
+                    <InputText v-model="filterModel.value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full" />
+                </template>
                 <template #body="{ data }">
-                    <span v-if="field === 'order_product_name'">{{ data[field] }}<span v-if="data.order_variation_name"> - {{ data.order_variation_name }}</span></span>
+                    <Tag v-if="field === 'settlement_status'" :value="String(data[field] || '')" :severity="severity(String(data[field] || ''))" />
+                    <span v-else-if="field === 'order_product_name'">{{ data[field] }}<span v-if="data.order_variation_name"> - {{ data.order_variation_name }}</span></span>
                     <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
                     <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>
                     <span v-else>{{ data[field] ?? 0 }}</span>
