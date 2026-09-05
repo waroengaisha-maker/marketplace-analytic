@@ -3,13 +3,16 @@ import { Head } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
+import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
 
 type Row = Record<string, unknown>
+type DataTableInstance = { exportCSV: () => void }
 const props = defineProps<{ rows: Row[] }>()
+const dataTable = ref<DataTableInstance | null>(null)
 const orderFilter = ref('')
 const productFilter = ref('')
 const filteredRows = computed(() => (props.rows || []).filter((row) =>
@@ -25,6 +28,7 @@ const columns = [
     ['fee_per_unit', 'Biaya (@)'], ['order_processing_fee', 'Biaya Proses'], ['total_fee', 'Total Biaya'], ['tax', 'Pajak'],
 ] as const
 function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
+function exportCsv() { dataTable.value?.exportCSV() }
 </script>
 
 <template>
@@ -33,13 +37,44 @@ function severity(status: string) { return status === 'Settled' || status === 'G
         <div><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
         <Card>
             <template #content>
-                <div class="flex flex-col gap-3 sm:flex-row">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex min-w-0 flex-col gap-3 sm:flex-row">
                     <InputText v-model="orderFilter" aria-label="Filter nomor pesanan" placeholder="Filter No. Pesanan" class="w-full sm:w-80" />
                     <InputText v-model="productFilter" aria-label="Filter nama produk" placeholder="Filter Nama Produk" class="w-full sm:w-80" />
+                    </div>
+                    <Button
+                        label="Export CSV"
+                        icon="pi pi-download"
+                        severity="secondary"
+                        outlined
+                        class="w-full sm:w-auto"
+                        :disabled="filteredRows.length === 0"
+                        @click="exportCsv"
+                    />
                 </div>
             </template>
         </Card>
-        <DataTable :value="filteredRows" paginator :rows="25" :rows-per-page-options="[25, 50, 100]" scrollable striped-rows removable-sort>
+        <DataTable
+            ref="dataTable"
+            :value="filteredRows"
+            paginator
+            :rows="25"
+            :rows-per-page-options="[25, 50, 100]"
+            paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+            current-page-report-template="{first}–{last} dari {totalRecords}"
+            scrollable
+            scroll-height="calc(100vh - 20rem)"
+            resizable-columns
+            column-resize-mode="expand"
+            reorderable-columns
+            striped-rows
+            row-hover
+            show-gridlines
+            removable-sort
+            size="small"
+            table-style="min-width: 120rem"
+            class="w-full"
+        >
             <template #empty>Belum ada data rekonsiliasi.</template>
             <Column field="settlement_status" header="Status" frozen sortable><template #body="{ data }"><Tag :value="data.settlement_status" :severity="severity(data.settlement_status)" /></template></Column>
             <Column field="order_variation_name" header="Variasi" sortable />
