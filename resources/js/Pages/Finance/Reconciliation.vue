@@ -19,13 +19,14 @@ const filteredRows = computed(() => (props.rows || []).filter((row) =>
     String(row.order_number || '').toLowerCase().includes(orderFilter.value.toLowerCase()) &&
     String(row.order_product_name || row.product_name || '').toLowerCase().includes(productFilter.value.toLowerCase()),
 ))
-const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'fee_per_unit', 'order_processing_fee', 'total_fee', 'tax']
+const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax']
 const columns = [
-    ['item_index', 'No. Urut'], ['order_number', 'No. Pesanan'], ['order_product_name', 'Nama Produk'],
+    ['order_number', 'No. Pesanan'], ['order_product_name', 'Nama Produk'],
     ['net_quantity', 'Jumlah Bersih'], ['discounted_price', 'Harga (@)'], ['quantity', 'Jumlah'], ['returned_quantity', 'Retur'],
     ['order_subtotal', 'Subtotal'], ['platform_fee', 'Biaya Administrasi'], ['admin_fee_percent', 'Admin (%)'],
-    ['free_shipping_xtra_fee', 'Gratis Ongkir'], ['promo_xtra_service_fee', 'Promo XTRA'], ['fee_subtotal', 'Subtotal Biaya'],
-    ['fee_per_unit', 'Biaya (@)'], ['order_processing_fee', 'Biaya Proses'], ['total_fee', 'Total Biaya'], ['tax', 'Pajak'],
+    ['free_shipping_xtra_fee', 'Gratis Ongkir'], ['free_shipping_xtra_fee_percent', 'Gratis Ongkir (%)'],
+    ['promo_xtra_service_fee', 'Promo XTRA'], ['promo_xtra_fee_percent', 'Promo XTRA (%)'],
+    ['fee_subtotal', 'Subtotal Biaya'], ['order_processing_fee', 'Biaya Proses'], ['total_fee', 'Total Biaya'], ['tax', 'Pajak'],
 ] as const
 function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
 function exportCsv() { dataTable.value?.exportCSV() }
@@ -72,17 +73,16 @@ function exportCsv() { dataTable.value?.exportCSV() }
             show-gridlines
             removable-sort
             size="small"
-            table-style="min-width: 120rem"
-            class="w-full"
+            table-style="min-width: 108rem"
+            class="w-full text-xs"
         >
             <template #empty>Belum ada data rekonsiliasi.</template>
             <Column field="settlement_status" header="Status" frozen sortable><template #body="{ data }"><Tag :value="data.settlement_status" :severity="severity(data.settlement_status)" /></template></Column>
-            <Column field="order_variation_name" header="Variasi" sortable />
             <Column v-for="[field, header] in columns" :key="field" :field="field" :header="header" sortable>
                 <template #body="{ data }">
-                    <span v-if="field === 'order_product_name'">{{ data[field] }}<span v-if="data.order_variation_name"> - {{ data.order_variation_name }}</span></span>
+                    <span v-if="field === 'order_product_name'">{{ data[field] }}</span>
                     <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
-                    <span v-else-if="field === 'admin_fee_percent'">{{ Number(data[field] || 0).toFixed(2) }}%</span>
+                    <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>
                     <span v-else>{{ data[field] ?? 0 }}</span>
                 </template>
             </Column>
