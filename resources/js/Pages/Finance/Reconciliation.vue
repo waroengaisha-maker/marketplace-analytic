@@ -19,6 +19,7 @@ const dataTable = ref<DataTableInstance | null>(null)
 const isFullscreen = ref(false)
 const fromDate = ref<Date | null>(null)
 const toDate = ref<Date | null>(null)
+const selectedOrderStatuses = ref<string[]>([])
 const clearButtonClass = 'absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color'
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
@@ -59,6 +60,10 @@ const tableFilters = Object.fromEntries(
     allColumns.map(([field]) => [field, { value: null, matchMode: FilterMatchMode.CONTAINS }]),
 )
 const visibleColumns = computed(() => selectedColumns.value)
+const orderStatusOptions = computed(() => Array.from(new Set(
+    (props.rows || [])
+        .map((row) => String(row.order_status ?? '').trim() || 'Tidak ada status')
+)).sort((first, second) => first.localeCompare(second, 'id')))
 function localDateKey(date: Date) {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -100,6 +105,8 @@ const filteredRows = computed(() => {
     const globalValue = String(filters.value.global.value ?? '').trim().toLocaleLowerCase('id-ID')
 
     return dateFilteredRows.value.filter((row) => {
+        const orderStatus = String(row.order_status ?? '').trim() || 'Tidak ada status'
+        const matchesOrderStatus = selectedOrderStatuses.value.length === 0 || selectedOrderStatuses.value.includes(orderStatus)
         const matchesGlobal = !globalValue || allColumns.some(([field]) => searchableValue(row, field).includes(globalValue))
         const matchesColumns = allColumns.every(([field]) => {
             const value = String(filters.value[field]?.value ?? '').trim().toLocaleLowerCase('id-ID')
@@ -107,7 +114,7 @@ const filteredRows = computed(() => {
             return !value || searchableValue(row, field).includes(value)
         })
 
-        return matchesGlobal && matchesColumns
+        return matchesOrderStatus && matchesGlobal && matchesColumns
     })
 })
 function numericValue(row: Row, field: string) {
@@ -247,7 +254,7 @@ function toggleFullscreen() {
                         </div>
                         <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit hasil rekonsiliasi</span>
                     </div>
-                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_minmax(14rem,1.2fr)]">
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_minmax(14rem,1.2fr)_minmax(12rem,1fr)]">
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-search" class="text-xs font-medium text-color-secondary">Pencarian</label>
                             <div class="relative">
@@ -274,6 +281,19 @@ function toggleFullscreen() {
                                 option-label="1"
                                 placeholder="Tampilkan kolom"
                                 display="chip"
+                                show-clear
+                                class="h-11 w-full"
+                            />
+                        </div>
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="reconciliation-order-status" class="text-xs font-medium text-color-secondary">Status order</label>
+                            <MultiSelect
+                                input-id="reconciliation-order-status"
+                                v-model="selectedOrderStatuses"
+                                :options="orderStatusOptions"
+                                placeholder="Semua status"
+                                display="chip"
+                                filter
                                 show-clear
                                 class="h-11 w-full"
                             />

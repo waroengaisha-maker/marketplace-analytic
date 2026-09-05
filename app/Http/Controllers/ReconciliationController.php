@@ -10,7 +10,7 @@ class ReconciliationController extends Controller
 {
     public function index(Request $request, MarketplaceReconciliationService $service)
     {
-        $rows = $service->joinedQuery($request->user()->id)
+        $rows = $service->joinedQuery($request->user()->id, true)
             ->orderBy('orders.order_number')
             ->orderBy('orders.item_index')
             ->get()
