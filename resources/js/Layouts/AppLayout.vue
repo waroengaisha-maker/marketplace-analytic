@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
-import { Link, useForm, usePage } from '@inertiajs/vue3'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Skeleton from 'primevue/skeleton'
 
 const page = usePage()
 const sidebarOpen = ref(false)
 const sidebarCollapsed = ref(false)
 const accountOpen = ref(false)
 const darkMode = ref(false)
+const isNavigating = ref(false)
 const logout = useForm({})
+
+const removeNavigationStartListener = router.on('start', () => {
+    isNavigating.value = true
+})
+
+const removeNavigationFinishListener = router.on('finish', () => {
+    isNavigating.value = false
+})
 
 const applyDarkMode = (enabled: boolean) => {
     document.documentElement.classList.toggle('dark', enabled)
@@ -22,6 +32,11 @@ onMounted(() => {
         sidebarCollapsed.value = false
     }
     applyDarkMode(darkMode.value)
+})
+
+onUnmounted(() => {
+    removeNavigationStartListener()
+    removeNavigationFinishListener()
 })
 
 watch(darkMode, (enabled) => {
@@ -359,8 +374,30 @@ const submitLogout = () => {
             </header>
 
             <!-- Page content -->
-            <main class="min-h-[calc(100vh-4rem)] w-full min-w-0 bg-transparent p-4 sm:p-6 lg:p-8">
-                <slot />
+            <main
+                class="min-h-[calc(100vh-4rem)] w-full min-w-0 bg-transparent p-4 sm:p-6 lg:p-8"
+                :aria-busy="isNavigating"
+            >
+                <div
+                    v-if="isNavigating"
+                    class="flex w-full flex-col gap-6"
+                    aria-label="Memuat konten"
+                    role="status"
+                >
+                    <div class="flex flex-col gap-3">
+                        <Skeleton width="8rem" height="1.25rem" />
+                        <Skeleton width="min(24rem, 75%)" height="2.25rem" />
+                        <Skeleton width="min(32rem, 90%)" height="1rem" />
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        <Skeleton v-for="index in 4" :key="index" height="8rem" border-radius="1rem" />
+                    </div>
+
+                    <Skeleton height="16rem" border-radius="1rem" />
+                </div>
+
+                <slot v-else />
             </main>
         </div>
     </div>
