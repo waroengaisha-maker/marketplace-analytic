@@ -181,24 +181,34 @@ function toggleFullscreen() {
         <div v-if="!isFullscreen"><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
         <Card v-if="!isFullscreen">
             <template #content>
-                <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                    <div class="flex min-w-0 flex-col gap-3 sm:flex-row">
-                        <InputText v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Filter semua kolom..." class="w-full sm:w-64" />
-                        <DatePicker v-model="fromDate" date-format="yy-mm-dd" show-icon placeholder="Tanggal mulai" aria-label="Tanggal mulai" class="w-full sm:w-44" />
-                        <DatePicker v-model="toDate" date-format="yy-mm-dd" show-icon placeholder="Tanggal akhir" aria-label="Tanggal akhir" class="w-full sm:w-44" />
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="flex items-center gap-2">
+                            <i class="pi pi-filter text-color-secondary" aria-hidden="true"></i>
+                            <span class="text-sm font-semibold">Filter data</span>
+                        </div>
+                        <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit hasil rekonsiliasi</span>
+                    </div>
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_minmax(14rem,1.2fr)]">
+                        <InputText v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Cari semua kolom..." class="w-full" />
+                        <DatePicker v-model="fromDate" date-format="yy-mm-dd" show-icon placeholder="Tanggal mulai" aria-label="Tanggal mulai" class="w-full" />
+                        <DatePicker v-model="toDate" date-format="yy-mm-dd" show-icon placeholder="Tanggal akhir" aria-label="Tanggal akhir" class="w-full" />
                         <MultiSelect
                             v-model="selectedColumns"
                             :options="allColumns"
                             option-label="1"
                             placeholder="Tampilkan kolom"
                             display="chip"
-                            class="w-full sm:w-72"
+                            class="w-full"
                         />
                     </div>
-                    <div class="flex flex-col gap-2 sm:flex-row">
-                        <Button label="Export Excel" icon="pi pi-file-excel" severity="success" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportExcel" />
-                        <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportCsv" />
-                        <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="w-full sm:w-auto" @click="toggleFullscreen" />
+                    <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
+                        <span class="text-xs text-color-secondary">{{ filteredRows.length.toLocaleString('id-ID') }} baris tersedia</span>
+                        <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                            <Button label="Export Excel" icon="pi pi-file-excel" severity="success" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportExcel" />
+                            <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportCsv" />
+                            <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="w-full sm:w-auto" @click="toggleFullscreen" />
+                        </div>
                     </div>
                 </div>
             </template>
