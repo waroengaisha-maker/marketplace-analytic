@@ -113,12 +113,10 @@ function exportValue(row: Row, field: string) {
 function searchableValue(row: Row, field: string) {
     return String(exportValue(row, field) ?? '').toLocaleLowerCase('id-ID')
 }
-const filteredRows = computed(() => {
+const searchableFilteredRows = computed(() => {
     const globalValue = String(filters.value.global.value ?? '').trim().toLocaleLowerCase('id-ID')
 
     return dateFilteredRows.value.filter((row) => {
-        const orderStatus = orderCategory(row)
-        const matchesOrderStatus = selectedOrderStatuses.value.length === 0 || selectedOrderStatuses.value.includes(orderStatus)
         const matchesGlobal = !globalValue || allColumns.some(([field]) => searchableValue(row, field).includes(globalValue))
         const matchesColumns = allColumns.every(([field]) => {
             const value = String(filters.value[field]?.value ?? '').trim().toLocaleLowerCase('id-ID')
@@ -126,9 +124,12 @@ const filteredRows = computed(() => {
             return !value || searchableValue(row, field).includes(value)
         })
 
-        return matchesOrderStatus && matchesGlobal && matchesColumns
+        return matchesGlobal && matchesColumns
     })
 })
+const filteredRows = computed(() => searchableFilteredRows.value.filter((row) =>
+    selectedOrderStatuses.value.length === 0 || selectedOrderStatuses.value.includes(orderCategory(row)),
+))
 function numericValue(row: Row, field: string) {
     const value = Number(row[field] ?? 0)
 
@@ -137,37 +138,44 @@ function numericValue(row: Row, field: string) {
 function sumRows(rows: Row[], field: string) {
     return rows.reduce((total, row) => total + numericValue(row, field), 0)
 }
+const summaryMetrics = [
+    ['platform_fee', 'Total Biaya Administrasi'],
+    ['free_shipping_xtra_fee', 'Total Gratis Ongkir'],
+    ['promo_xtra_service_fee', 'Total Promo XTRA'],
+    ['fee_subtotal', 'Total Subtotal Biaya'],
+    ['order_processing_fee', 'Total Biaya Proses'],
+    ['total_fee', 'Total Biaya'],
+    ['tax', 'Total Pajak'],
+    ['hpp', 'Total HPP'],
+    ['laba', 'Total Laba'],
+] as const
+function buildSummaryCards(rows: Row[]) {
+    const subtotal = sumRows(rows, 'order_subtotal')
+
+    return summaryMetrics.map(([field, label]) => ({
+        field,
+        label,
+        value: sumRows(rows, field),
+        percentage: subtotal ? sumRows(rows, field) / subtotal * 100 : 0,
+    }))
+}
+const totalSummary = computed(() => ({
+    count: searchableFilteredRows.value.length,
+    cards: buildSummaryCards(searchableFilteredRows.value),
+}))
 const summaryGroups = computed(() => {
     const groups = [
         { label: 'Settled', severity: 'success', icon: 'pi pi-check-circle' },
         { label: 'Unsettled', severity: 'warn', icon: 'pi pi-clock' },
         { label: 'Batal / Tidak Valid', severity: 'danger', icon: 'pi pi-exclamation-triangle' },
     ]
-    const metrics = [
-        ['platform_fee', 'Total Biaya Administrasi'],
-        ['free_shipping_xtra_fee', 'Total Gratis Ongkir'],
-        ['promo_xtra_service_fee', 'Total Promo XTRA'],
-        ['fee_subtotal', 'Total Subtotal Biaya'],
-        ['order_processing_fee', 'Total Biaya Proses'],
-        ['total_fee', 'Total Biaya'],
-        ['tax', 'Total Pajak'],
-        ['hpp', 'Total HPP'],
-        ['laba', 'Total Laba'],
-    ] as const
-
     return groups.map((group) => {
         const rows = filteredRows.value.filter((row) => orderCategory(row) === group.label)
-        const subtotal = sumRows(rows, 'order_subtotal')
 
         return {
             ...group,
             count: rows.length,
-            cards: metrics.map(([field, label]) => ({
-                field,
-                label,
-                value: sumRows(rows, field),
-                percentage: subtotal ? sumRows(rows, field) / subtotal * 100 : 0,
-            })),
+            cards: buildSummaryCards(rows),
         }
     })
 })
@@ -260,6 +268,21 @@ function toggleFullscreen() {
     <div class="flex flex-col gap-6">
         <div v-if="!isFullscreen"><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
         <div v-if="!isFullscreen" class="flex flex-col gap-4">
+            <section class="flex flex-col gap-3">
+                <div class="flex items-center gap-2">
+                    <Tag severity="info" value="Total Semua Status" icon="pi pi-chart-bar" />
+                    <span class="text-sm text-color-secondary">{{ totalSummary.count.toLocaleString('id-ID') }} baris</span>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`">
+                        <template #content>
+                            <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
+                            <p class="mt-2 text-xl font-bold">{{ formatNominal(card.value) }}</p>
+                            <small class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
+                        </template>
+                    </Card>
+                </div>
+            </section>
             <section v-for="group in summaryGroups" :key="group.label" class="flex flex-col gap-3">
                 <div class="flex items-center gap-2">
                     <Tag :severity="group.severity" :value="group.label" :icon="group.icon" />
