@@ -115,6 +115,25 @@ function numericValue(row: Row, field: string) {
 
     return Number.isFinite(value) ? value : 0
 }
+function sumRows(rows: Row[], field: string) {
+    return rows.reduce((total, row) => total + numericValue(row, field), 0)
+}
+const summaryCards = computed(() => {
+    const rows = filteredRows.value
+    const settled = rows.filter((row) => ['Settled', 'Grouped Match'].includes(String(row.settlement_status))).length
+    const ambiguous = rows.filter((row) => row.settlement_status === 'Ambiguous').length
+
+    return [
+        { label: 'Total Baris', value: rows.length, type: 'count', icon: 'pi pi-list', severity: 'info' },
+        { label: 'Settled', value: settled, type: 'count', icon: 'pi pi-check-circle', severity: 'success' },
+        { label: 'Belum Settlement', value: rows.length - settled - ambiguous, type: 'count', icon: 'pi pi-clock', severity: 'warn' },
+        { label: 'Ambiguous', value: ambiguous, type: 'count', icon: 'pi pi-exclamation-triangle', severity: 'danger' },
+        { label: 'Subtotal', value: sumRows(rows, 'order_subtotal'), type: 'money', icon: 'pi pi-shopping-cart', severity: 'info' },
+        { label: 'Total Biaya', value: sumRows(rows, 'total_fee'), type: 'money', icon: 'pi pi-wallet', severity: 'warn' },
+        { label: 'Penghasilan', value: sumRows(rows, 'penghasilan'), type: 'money', icon: 'pi pi-chart-line', severity: 'success' },
+        { label: 'Laba', value: sumRows(rows, 'laba'), type: 'money', icon: 'pi pi-arrow-up-right', severity: 'success' },
+    ]
+})
 function buildProductSummary(rows: Row[]) {
     const summary = new Map<string, Row>()
 
@@ -203,6 +222,21 @@ function toggleFullscreen() {
     <Head title="Reconciliation" />
     <div class="flex flex-col gap-6">
         <div v-if="!isFullscreen"><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
+        <div v-if="!isFullscreen" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <Card v-for="card in summaryCards" :key="card.label">
+                <template #content>
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
+                            <p class="mt-2 text-2xl font-bold">
+                                {{ card.type === 'money' ? formatNominal(card.value) : Number(card.value).toLocaleString('id-ID') }}
+                            </p>
+                        </div>
+                        <Tag :severity="card.severity" :value="card.label" :icon="card.icon" />
+                    </div>
+                </template>
+            </Card>
+        </div>
         <Card v-if="!isFullscreen">
             <template #content>
                 <div class="flex flex-col gap-4">
