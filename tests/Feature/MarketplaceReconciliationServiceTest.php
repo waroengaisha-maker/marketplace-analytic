@@ -194,6 +194,60 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(['Grouped Match'], $rows->pluck('settlement_status')->unique()->values()->all());
     }
 
+    public function test_reconciliation_contract_ignores_untracked_orders_and_zero_income(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('i', 64);
+
+        DB::table('marketplace_orders')->insert([
+            $this->order($user->id, [
+                'order_number' => 'CONTRACT-ORDER',
+                'product_key' => $productKey,
+                'item_index' => 107,
+                'discounted_price' => 100,
+                'unit_price' => 100,
+                'quantity' => 1,
+                'tracking_number' => null,
+            ]),
+            $this->order($user->id, [
+                'order_number' => 'CONTRACT-ORDER',
+                'product_key' => $productKey,
+                'item_index' => 108,
+                'discounted_price' => 200,
+                'unit_price' => 200,
+                'quantity' => 1,
+                'tracking_number' => 'TRACKING',
+            ]),
+        ]);
+
+        DB::table('marketplace_income')->insert([
+            $this->income($user->id, [
+                'order_number' => 'CONTRACT-ORDER',
+                'product_key' => $productKey,
+                'item_index' => 107,
+                'product_price' => 100,
+                'total_income' => 50,
+            ]),
+            $this->income($user->id, [
+                'order_number' => 'CONTRACT-ORDER',
+                'product_key' => $productKey,
+                'item_index' => 108,
+                'product_price' => 200,
+                'total_income' => 0,
+            ]),
+        ]);
+
+        $rows = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id)
+            ->where('orders.order_number', 'CONTRACT-ORDER')
+            ->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(108, $rows->first()->item_index);
+        $this->assertNull($rows->first()->total_income);
+        $this->assertSame('Belum Settlement', $rows->first()->settlement_status);
+    }
+
     public function test_dashboard_excludes_orders_without_tracking_from_valid_totals(): void
     {
         $user = User::factory()->create();

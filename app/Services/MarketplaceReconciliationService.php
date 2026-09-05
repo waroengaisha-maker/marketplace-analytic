@@ -80,6 +80,15 @@ class MarketplaceReconciliationService
 
     public function joinedQuery(int $userId, bool $includeAll = false): Builder
     {
+        /*
+         * Reconciliation contract:
+         * - Ignore Order lines without a tracking number.
+         * - Ignore Income lines with NULL or zero total_income.
+         * - Match exact lines by order, product, variation, quantity, and discounted price.
+         * - Use item_index only as a fallback.
+         * - Accept grouped fallback only when valid Order and Income line counts and amounts match.
+         * Any change to these rules must update the corresponding feature tests first.
+         */
         $incomeExact = DB::table('marketplace_income')
             ->whereNotNull('total_income')
             ->where('total_income', '<>', 0)
