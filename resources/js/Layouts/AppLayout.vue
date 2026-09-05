@@ -5,6 +5,7 @@ import ToggleSwitch from 'primevue/toggleswitch'
 
 const page = usePage()
 const sidebarOpen = ref(false)
+const sidebarCollapsed = ref(false)
 const accountOpen = ref(false)
 const darkMode = ref(false)
 const logout = useForm({})
@@ -16,6 +17,10 @@ const applyDarkMode = (enabled: boolean) => {
 
 onMounted(() => {
     darkMode.value = localStorage.getItem('marketplace-dark-mode') === 'true'
+    sidebarCollapsed.value = localStorage.getItem('marketplace-sidebar-collapsed') === 'true'
+    if (window.innerWidth < 1024) {
+        sidebarCollapsed.value = false
+    }
     applyDarkMode(darkMode.value)
 })
 
@@ -23,58 +28,63 @@ watch(darkMode, (enabled) => {
     applyDarkMode(enabled)
 })
 
+const toggleSidebar = () => {
+    sidebarCollapsed.value = !sidebarCollapsed.value
+    localStorage.setItem('marketplace-sidebar-collapsed', sidebarCollapsed.value ? 'true' : 'false')
+}
+
 const navigation = [
     {
         label: 'MAIN',
         items: [
-            { name: 'Dashboard', href: '/', icon: '▦' },
+            { name: 'Dashboard', href: '/', icon: '▦', color: 'text-blue-500' },
         ],
     },
     {
         label: 'OPERATIONS',
         items: [
-            { name: 'Orders', href: '/orders', icon: '□' },
-            { name: 'Returns', href: '/returns', icon: '↩' },
-            { name: 'Customers', href: '/customers', icon: '♙' },
+            { name: 'Orders', href: '/orders', icon: '□', color: 'text-violet-500' },
+            { name: 'Returns', href: '/returns', icon: '↩', color: 'text-rose-500' },
+            { name: 'Customers', href: '/customers', icon: '♙', color: 'text-cyan-500' },
         ],
     },
     {
         label: 'FINANCE',
         items: [
-            { name: 'Income', href: '/finance/income', icon: 'Rp' },
-            { name: 'Reconciliation', href: '/finance/reconciliation', icon: '≡' },
-            { name: 'Profit', href: '/finance/profit', icon: '↗' },
+            { name: 'Income', href: '/finance/income', icon: 'Rp', color: 'text-emerald-500' },
+            { name: 'Reconciliation', href: '/finance/reconciliation', icon: '≡', color: 'text-amber-500' },
+            { name: 'Profit', href: '/finance/profit', icon: '↗', color: 'text-green-500' },
         ],
     },
     {
         label: 'PRODUCTS',
         items: [
-            { name: 'Products', href: '/products', icon: '◇' },
-            { name: 'HPP', href: '/products/hpp', icon: '◈' },
-            { name: 'HPP Mapping', href: '/products/hpp-mapping', icon: '⇄' },
+            { name: 'Products', href: '/products', icon: '◇', color: 'text-indigo-500' },
+            { name: 'HPP', href: '/products/hpp', icon: '◈', color: 'text-fuchsia-500' },
+            { name: 'HPP Mapping', href: '/products/hpp-mapping', icon: '⇄', color: 'text-orange-500' },
         ],
     },
     {
         label: 'IMPORTS',
         items: [
-            { name: 'Import History', href: '/imports', icon: '▤' },
-            { name: 'Upload Files', href: '/imports/upload', icon: '↑' },
+            { name: 'Import History', href: '/imports', icon: '▤', color: 'text-sky-500' },
+            { name: 'Upload Files', href: '/imports/upload', icon: '↑', color: 'text-lime-500' },
         ],
     },
     {
         label: 'ANALYTICS',
         items: [
-            { name: 'Sales', href: '/analytics/sales', icon: '▥' },
-            { name: 'Products', href: '/analytics/products', icon: '◫' },
-            { name: 'Customers', href: '/analytics/customers', icon: '♙' },
-            { name: 'Profitability', href: '/analytics/profitability', icon: '◎' },
+            { name: 'Sales', href: '/analytics/sales', icon: '▥', color: 'text-pink-500' },
+            { name: 'Products', href: '/analytics/products', icon: '◫', color: 'text-teal-500' },
+            { name: 'Customers', href: '/analytics/customers', icon: '♙', color: 'text-purple-500' },
+            { name: 'Profitability', href: '/analytics/profitability', icon: '◎', color: 'text-yellow-500' },
         ],
     },
     {
         label: 'SETTINGS',
         items: [
-            { name: 'Shop', href: '/settings/shop', icon: '⚙' },
-            { name: 'Users', href: '/settings/users', icon: '♙' },
+            { name: 'Shop', href: '/settings/shop', icon: '⚙', color: 'text-slate-500' },
+            { name: 'Users', href: '/settings/users', icon: '♙', color: 'text-blue-400' },
         ],
     },
 ]
@@ -100,7 +110,7 @@ const submitLogout = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-black dark:text-slate-100">
 
         <!-- Mobile overlay -->
         <div
@@ -111,21 +121,24 @@ const submitLogout = () => {
 
         <!-- Sidebar -->
         <aside
-            class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-200 dark:border-slate-800 dark:bg-slate-900 lg:translate-x-0"
-            :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
+            class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-[width,transform] duration-200 dark:border-slate-800 dark:bg-black lg:translate-x-0"
+            :class="[
+                sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+                sidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
+            ]"
         >
             <!-- Logo -->
-            <div class="flex h-16 shrink-0 items-center border-b border-slate-200 px-5">
+            <div class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-800">
                 <Link
                     href="/"
-                    class="flex items-center gap-3"
+                    class="flex min-w-0 items-center gap-3"
                     @click="closeSidebar"
                 >
                     <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white dark:bg-slate-700">
                         M
                     </div>
 
-                    <div>
+                    <div v-if="!sidebarCollapsed" class="min-w-0">
                         <div class="text-sm font-bold tracking-tight">
                             Marketplace
                         </div>
@@ -134,16 +147,29 @@ const submitLogout = () => {
                         </div>
                     </div>
                 </Link>
+
+                <button
+                    type="button"
+                    class="hidden shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white lg:block"
+                    :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+                    @click="toggleSidebar"
+                >
+                    <i
+                        class="pi text-sm"
+                        :class="sidebarCollapsed ? 'pi-angle-right' : 'pi-angle-left'"
+                        aria-hidden="true"
+                    />
+                </button>
             </div>
 
             <!-- Navigation -->
-            <nav class="flex-1 overflow-y-auto px-3 py-4">
+            <nav class="flex-1 overflow-y-auto px-2 py-4 sm:px-3">
                 <div
                     v-for="section in navigation"
                     :key="section.label"
                     class="mb-6"
                 >
-                    <div class="mb-2 px-3 text-[10px] font-bold tracking-widest text-slate-400">
+                    <div v-if="!sidebarCollapsed" class="mb-2 px-3 text-[10px] font-bold tracking-widest text-slate-400">
                         {{ section.label }}
                     </div>
 
@@ -152,25 +178,27 @@ const submitLogout = () => {
                             v-for="item in section.items"
                             :key="item.href"
                             :href="item.href"
-                            class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition"
-                            :class="isActive(item.href)
-                                ? 'bg-slate-100 text-slate-900'
-                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100'"
+                            v-tooltip.right="sidebarCollapsed ? item.name : null"
+                            class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition lg:justify-start"
+                            :class="[
+                                sidebarCollapsed ? 'lg:justify-center lg:px-2' : '',
+                                isActive(item.href)
+                                    ? 'bg-slate-100 text-slate-900'
+                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+                            ]"
                             @click="closeSidebar"
                         >
                             <span
                                 class="flex h-5 w-5 items-center justify-center text-xs"
-                                :class="isActive(item.href)
-                                    ? 'text-slate-900'
-                                    : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300'"
+                                :class="item.color"
                             >
                                 {{ item.icon }}
                             </span>
 
-                            <span>{{ item.name }}</span>
+                            <span v-if="!sidebarCollapsed">{{ item.name }}</span>
 
                             <span
-                                v-if="isActive(item.href)"
+                                v-if="isActive(item.href) && !sidebarCollapsed"
                                 class="ml-auto h-1.5 w-1.5 rounded-full bg-slate-900"
                             />
                         </Link>
@@ -178,32 +206,13 @@ const submitLogout = () => {
                 </div>
             </nav>
 
-            <!-- Sidebar footer -->
-            <div class="border-t border-slate-200 p-3">
-                <div class="rounded-lg bg-slate-50 p-3 dark:bg-slate-800">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                            {{ page.props.auth?.user?.name?.charAt(0)?.toUpperCase() || 'U' }}
-                        </div>
-
-                        <div class="min-w-0">
-                            <div class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                {{ page.props.auth?.user?.name || 'User' }}
-                            </div>
-                            <div class="truncate text-xs text-slate-400">
-                                {{ page.props.auth?.user?.email || '' }}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </aside>
 
         <!-- Main -->
-        <div class="lg:pl-64">
+        <div :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'">
 
             <!-- Topbar -->
-            <header class="sticky top-0 z-30 flex h-16 items-center border-b border-slate-200 bg-white/95 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:px-6">
+            <header class="sticky top-0 z-30 flex h-16 min-w-0 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur dark:border-slate-800 dark:bg-black/95 sm:px-6">
 
                 <button
                     type="button"
@@ -347,7 +356,7 @@ const submitLogout = () => {
             </header>
 
             <!-- Page content -->
-            <main class="mx-auto max-w-[1600px] p-4 sm:p-6 lg:p-8">
+            <main class="mx-auto min-h-[calc(100vh-4rem)] max-w-[1600px] bg-transparent p-4 sm:p-6 lg:p-8">
                 <slot />
             </main>
         </div>

@@ -5,6 +5,7 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import AppLayout from './Layouts/AppLayout.vue'
 import PrimeVue from 'primevue/config'
 import Aura from '@primevue/themes/aura'
+import Tooltip from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
 
 createInertiaApp({
@@ -36,6 +37,7 @@ createInertiaApp({
                     },
                 },
             })
+            .directive('tooltip', Tooltip)
             .mount(el)
     },
 })
