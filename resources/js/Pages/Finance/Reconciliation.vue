@@ -19,6 +19,7 @@ const dataTable = ref<DataTableInstance | null>(null)
 const isFullscreen = ref(false)
 const fromDate = ref<Date | null>(null)
 const toDate = ref<Date | null>(null)
+const clearButtonClass = 'absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color'
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
     net_quantity: 'Jumlah Bersih = Jumlah - Retur',
@@ -217,7 +218,7 @@ function toggleFullscreen() {
                             <label for="reconciliation-search" class="text-xs font-medium text-color-secondary">Pencarian</label>
                             <div class="relative">
                                 <InputText id="reconciliation-search" v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Cari semua kolom..." class="h-11 w-full pr-10" />
-                                <button v-if="filters.global.value" type="button" aria-label="Hapus pencarian" class="absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color" @click="filters.global.value = null">
+                                <button v-if="filters.global.value" type="button" aria-label="Hapus pencarian" :class="clearButtonClass" @click="filters.global.value = null">
                                     <i class="pi pi-times text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
@@ -301,7 +302,7 @@ function toggleFullscreen() {
                     <template #filter="{ filterModel }">
                         <div class="relative">
                             <InputText v-model="filters[field].value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full pr-8" />
-                            <button v-if="filterModel.value" type="button" :aria-label="`Hapus filter ${header}`" class="absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color" @click="clearColumnFilter(field)">
+                            <button v-if="filterModel.value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
                                 <i class="pi pi-times text-xs" aria-hidden="true"></i>
                             </button>
                         </div>
