@@ -246,7 +246,7 @@ class MarketplaceReconciliationService
         $net = $quantity - $returned;
         $feeSubtotal = $admin + $shipping + $promo;
         $totalFee = $feeSubtotal + $processing;
-        $earnings = $totalFee - $tax;
+        $earnings = $subtotal - ($totalFee + $tax);
         $hpp = 0.0;
 
         $row->net_quantity = $net;
@@ -254,6 +254,7 @@ class MarketplaceReconciliationService
         $row->free_shipping_xtra_fee_percent = $this->percent($shipping, $subtotal);
         $row->promo_xtra_fee_percent = $this->percent($promo, $subtotal);
         $row->fee_subtotal = $feeSubtotal;
+        $row->fee_subtotal_percent = $this->percent($feeSubtotal, $subtotal);
         $row->total_fee = $totalFee;
         $row->tax = $tax;
         $row->penghasilan = $earnings;

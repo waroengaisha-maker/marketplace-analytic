@@ -289,9 +289,9 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $this->assertSame(175.0, $result->fee_subtotal);
         $this->assertSame(185.0, $result->total_fee);
-        $this->assertSame(180.0, $result->penghasilan);
+        $this->assertSame(810.0, $result->penghasilan);
         $this->assertSame(0.0, $result->hpp);
-        $this->assertSame(180.0, $result->laba);
+        $this->assertSame(810.0, $result->laba);
     }
 
     private function order(int $userId, array $overrides = []): array
