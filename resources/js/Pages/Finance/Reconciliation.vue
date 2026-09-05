@@ -156,14 +156,14 @@ function buildSummaryCards(rows: Row[]) {
     const subtotal = sumRows(rows, 'order_subtotal')
 
     return [
-        { field: 'subtotal', label: 'Nilai Subtotal', value: subtotal, percentage: 100, type: 'money' },
-        { field: 'order_count', label: 'Jumlah Order', value: countOrders(rows), percentage: 0, type: 'count' },
+        { field: 'subtotal', label: 'Nilai Subtotal', value: subtotal, percentage: 100, type: 'money', orderCount: countOrders(rows) },
         ...summaryMetrics.map(([field, label]) => ({
             field,
             label,
             value: sumRows(rows, field),
             percentage: subtotal ? sumRows(rows, field) / subtotal * 100 : 0,
             type: 'money',
+            orderCount: countOrders(rows),
         })),
     ]
 }
@@ -275,42 +275,6 @@ function toggleFullscreen() {
     <Head title="Reconciliation" />
     <div class="flex flex-col gap-6">
         <div v-if="!isFullscreen"><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
-        <div v-if="!isFullscreen" class="flex flex-col gap-4">
-            <section class="flex flex-col gap-3">
-                <div class="flex items-center gap-2">
-                    <Tag severity="info" value="Total Semua Status" icon="pi pi-chart-bar" />
-                    <span class="text-sm text-color-secondary">{{ totalSummary.count.toLocaleString('id-ID') }} baris</span>
-                </div>
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`">
-                        <template #content>
-                            <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-2 text-xl font-bold">
-                                {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
-                            </p>
-                            <small v-if="card.type !== 'count'" class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
-                        </template>
-                    </Card>
-                </div>
-            </section>
-            <section v-for="group in summaryGroups" :key="group.label" class="flex flex-col gap-3">
-                <div class="flex items-center gap-2">
-                    <Tag :severity="group.severity" :value="group.label" :icon="group.icon" />
-                    <span class="text-sm text-color-secondary">{{ group.count.toLocaleString('id-ID') }} baris</span>
-                </div>
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`">
-                        <template #content>
-                            <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-2 text-xl font-bold">
-                                {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
-                            </p>
-                            <small v-if="card.type !== 'count'" class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
-                        </template>
-                    </Card>
-                </div>
-            </section>
-        </div>
         <Card v-if="!isFullscreen">
             <template #content>
                 <div class="flex flex-col gap-4">
@@ -341,29 +305,11 @@ function toggleFullscreen() {
                         </div>
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-columns" class="text-xs font-medium text-color-secondary">Kolom</label>
-                            <MultiSelect
-                                input-id="reconciliation-columns"
-                                v-model="selectedColumns"
-                                :options="allColumns"
-                                option-label="1"
-                                placeholder="Tampilkan kolom"
-                                display="chip"
-                                show-clear
-                                class="h-11 w-full"
-                            />
+                            <MultiSelect input-id="reconciliation-columns" v-model="selectedColumns" :options="allColumns" option-label="1" placeholder="Tampilkan kolom" display="chip" show-clear class="h-11 w-full" />
                         </div>
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-order-status" class="text-xs font-medium text-color-secondary">Status order</label>
-                            <MultiSelect
-                                input-id="reconciliation-order-status"
-                                v-model="selectedOrderStatuses"
-                                :options="orderStatusOptions"
-                                placeholder="Semua status"
-                                display="chip"
-                                filter
-                                show-clear
-                                class="h-11 w-full"
-                            />
+                            <MultiSelect input-id="reconciliation-order-status" v-model="selectedOrderStatuses" :options="orderStatusOptions" placeholder="Pilih status" display="chip" filter show-clear class="h-11 w-full" />
                         </div>
                     </div>
                     <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
@@ -377,6 +323,44 @@ function toggleFullscreen() {
                 </div>
             </template>
         </Card>
+        <div v-if="!isFullscreen" class="flex flex-col gap-4">
+            <section class="flex flex-col gap-3">
+                <div class="flex items-center gap-2">
+                    <Tag severity="info" value="Total Semua Status" icon="pi pi-chart-bar" />
+                    <span class="text-sm text-color-secondary">{{ totalSummary.count.toLocaleString('id-ID') }} baris</span>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`">
+                        <template #content>
+                            <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
+                            <p class="mt-2 text-xl font-bold">
+                                {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
+                            </p>
+                            <small v-if="card.field === 'subtotal'" class="text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
+                            <small v-if="card.type !== 'count'" class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
+                        </template>
+                    </Card>
+                </div>
+            </section>
+            <section v-for="group in summaryGroups" :key="group.label" class="flex flex-col gap-3">
+                <div class="flex items-center gap-2">
+                    <Tag :severity="group.severity" :value="group.label" :icon="group.icon" />
+                    <span class="text-sm text-color-secondary">{{ group.count.toLocaleString('id-ID') }} baris</span>
+                </div>
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`">
+                        <template #content>
+                            <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
+                            <p class="mt-2 text-xl font-bold">
+                                {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
+                            </p>
+                            <small v-if="card.field === 'subtotal'" class="text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
+                            <small v-if="card.type !== 'count'" class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
+                        </template>
+                    </Card>
+                </div>
+            </section>
+        </div>
         <div
             class="relative min-w-0"
             :class="isFullscreen ? 'fixed inset-0 z-50 overflow-hidden bg-white p-3 dark:bg-black sm:p-4' : ''"
