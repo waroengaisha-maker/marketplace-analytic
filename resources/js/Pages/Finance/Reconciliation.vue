@@ -190,17 +190,30 @@ function toggleFullscreen() {
                         <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit hasil rekonsiliasi</span>
                     </div>
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_minmax(14rem,1.2fr)]">
-                        <InputText v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Cari semua kolom..." class="w-full" />
-                        <DatePicker v-model="fromDate" date-format="yy-mm-dd" show-icon placeholder="Tanggal mulai" aria-label="Tanggal mulai" class="w-full" />
-                        <DatePicker v-model="toDate" date-format="yy-mm-dd" show-icon placeholder="Tanggal akhir" aria-label="Tanggal akhir" class="w-full" />
-                        <MultiSelect
-                            v-model="selectedColumns"
-                            :options="allColumns"
-                            option-label="1"
-                            placeholder="Tampilkan kolom"
-                            display="chip"
-                            class="w-full"
-                        />
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="reconciliation-search" class="text-xs font-medium text-color-secondary">Pencarian</label>
+                            <InputText id="reconciliation-search" v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Cari semua kolom..." class="h-11 w-full" />
+                        </div>
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="reconciliation-from" class="text-xs font-medium text-color-secondary">Tanggal mulai</label>
+                            <DatePicker id="reconciliation-from" v-model="fromDate" date-format="yy-mm-dd" show-icon placeholder="Pilih tanggal" aria-label="Tanggal mulai" fluid class="h-11" />
+                        </div>
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="reconciliation-to" class="text-xs font-medium text-color-secondary">Tanggal akhir</label>
+                            <DatePicker id="reconciliation-to" v-model="toDate" date-format="yy-mm-dd" show-icon placeholder="Pilih tanggal" aria-label="Tanggal akhir" fluid class="h-11" />
+                        </div>
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="reconciliation-columns" class="text-xs font-medium text-color-secondary">Kolom</label>
+                            <MultiSelect
+                                input-id="reconciliation-columns"
+                                v-model="selectedColumns"
+                                :options="allColumns"
+                                option-label="1"
+                                placeholder="Tampilkan kolom"
+                                display="chip"
+                                class="h-11 w-full"
+                            />
+                        </div>
                     </div>
                     <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
                         <span class="text-xs text-color-secondary">{{ filteredRows.length.toLocaleString('id-ID') }} baris tersedia</span>
@@ -215,17 +228,18 @@ function toggleFullscreen() {
         </Card>
         <div
             class="relative min-w-0"
-            :class="isFullscreen ? 'fixed inset-0 z-50 overflow-hidden bg-white p-2 dark:bg-black sm:p-4' : ''"
+            :class="isFullscreen ? 'fixed inset-0 z-50 overflow-hidden bg-white p-3 dark:bg-black sm:p-4' : ''"
         >
-            <Button
-                v-if="isFullscreen"
-                label="Keluar Fullscreen"
-                icon="pi pi-window-minimize"
-                severity="secondary"
-                outlined
-                class="absolute right-4 top-4 z-10 shadow-sm"
-                @click="toggleFullscreen"
-            />
+            <div v-if="isFullscreen" class="flex h-10 items-center justify-end border-b border-surface pb-2">
+                <Button
+                    label="Keluar Fullscreen"
+                    icon="pi pi-window-minimize"
+                    severity="secondary"
+                    outlined
+                    size="small"
+                    @click="toggleFullscreen"
+                />
+            </div>
             <DataTable
                 ref="dataTable"
                 :value="filteredRows"
