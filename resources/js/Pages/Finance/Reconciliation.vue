@@ -54,13 +54,23 @@ const filters = ref<Record<string, { value: string | null; matchMode: string }>>
 const visibleColumns = computed(() => selectedColumns.value)
 const filteredRows = computed(() => props.rows || [])
 function severity(status: string) { return status === 'Settled' || status === 'Grouped Match' ? 'success' : status === 'Ambiguous' ? 'warn' : 'danger' }
+function exportValue(row: Row, field: string) {
+    if (field === 'order_product_name') {
+        const productName = String(row[field] ?? '')
+        const variationName = String(row.order_variation_name ?? '').trim()
+
+        return variationName ? `${productName} - ${variationName}` : productName
+    }
+
+    return row[field] ?? ''
+}
 function exportCsv() { dataTable.value?.exportCSV() }
 async function exportExcel() {
     const XLSX = await import('xlsx')
     const visibleFields = visibleColumns.value
     const exportRows = dataTable.value?.filteredValue || filteredRows.value
     const data = exportRows.map((row) => Object.fromEntries(
-        visibleFields.map(([field, header]) => [header, row[field] ?? '']),
+        visibleFields.map(([field, header]) => [header, exportValue(row, field)]),
     ))
     const worksheet = XLSX.utils.json_to_sheet(data)
     const workbook = XLSX.utils.book_new()
@@ -74,12 +84,9 @@ function toggleFullscreen() {
 
 <template>
     <Head title="Reconciliation" />
-    <div
-        class="flex flex-col gap-6"
-        :class="isFullscreen ? 'fixed inset-0 z-50 overflow-auto bg-white p-4 dark:bg-black sm:p-6' : ''"
-    >
-        <div><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
-        <Card>
+    <div class="flex flex-col gap-6">
+        <div v-if="!isFullscreen"><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
+        <Card v-if="!isFullscreen">
             <template #content>
                 <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                     <div class="flex min-w-0 flex-col gap-3 sm:flex-row">
@@ -101,46 +108,60 @@ function toggleFullscreen() {
                 </div>
             </template>
         </Card>
-        <DataTable
-            ref="dataTable"
-            :value="filteredRows"
-            v-model:filters="filters"
-            filter-display="row"
-            :global-filter-fields="allColumns.map(([field]) => field)"
-            paginator
-            :rows="25"
-            :rows-per-page-options="[25, 50, 100]"
-            paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-            current-page-report-template="{first}–{last} dari {totalRecords}"
-            scrollable
-            :scroll-height="isFullscreen ? 'calc(100vh - 16rem)' : 'calc(100vh - 20rem)'"
-            resizable-columns
-            column-resize-mode="expand"
-            reorderable-columns
-            striped-rows
-            row-hover
-            show-gridlines
-            removable-sort
-            size="small"
-            table-style="min-width: 108rem"
-            class="w-full text-xs"
+        <div
+            class="relative min-w-0"
+            :class="isFullscreen ? 'fixed inset-0 z-50 overflow-hidden bg-white p-2 dark:bg-black sm:p-4' : ''"
         >
-            <template #empty>Belum ada data rekonsiliasi.</template>
-            <Column v-for="[field, header] in visibleColumns" :key="field" :field="field" sortable :show-filter-menu="false">
-                <template #header>
-                    <span v-tooltip.top="formulaTooltips[field] || undefined">{{ header }}</span>
-                </template>
-                <template #filter="{ filterModel }">
-                    <InputText v-model="filterModel.value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full" />
-                </template>
-                <template #body="{ data }">
-                    <Tag v-if="field === 'settlement_status'" :value="String(data[field] || '')" :severity="severity(String(data[field] || ''))" />
-                    <span v-else-if="field === 'order_product_name'">{{ data[field] }}<span v-if="data.order_variation_name"> - {{ data.order_variation_name }}</span></span>
-                    <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
-                    <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>
-                    <span v-else>{{ data[field] ?? 0 }}</span>
-                </template>
-            </Column>
-        </DataTable>
+            <Button
+                v-if="isFullscreen"
+                label="Keluar Fullscreen"
+                icon="pi pi-window-minimize"
+                severity="secondary"
+                outlined
+                class="absolute right-4 top-4 z-10 shadow-sm"
+                @click="toggleFullscreen"
+            />
+            <DataTable
+                ref="dataTable"
+                :value="filteredRows"
+                v-model:filters="filters"
+                filter-display="row"
+                :global-filter-fields="allColumns.map(([field]) => field)"
+                paginator
+                :rows="25"
+                :rows-per-page-options="[25, 50, 100]"
+                paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                current-page-report-template="{first}–{last} dari {totalRecords}"
+                scrollable
+                :scroll-height="isFullscreen ? 'calc(100vh - 8rem)' : 'calc(100vh - 20rem)'"
+                resizable-columns
+                column-resize-mode="expand"
+                reorderable-columns
+                striped-rows
+                row-hover
+                show-gridlines
+                removable-sort
+                size="small"
+                table-style="min-width: 108rem"
+                class="w-full text-xs"
+            >
+                <template #empty>Belum ada data rekonsiliasi.</template>
+                <Column v-for="[field, header] in visibleColumns" :key="field" :field="field" sortable :show-filter-menu="false">
+                    <template #header>
+                        <span v-tooltip.top="formulaTooltips[field] || undefined">{{ header }}</span>
+                    </template>
+                    <template #filter="{ filterModel }">
+                        <InputText v-model="filterModel.value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full" />
+                    </template>
+                    <template #body="{ data }">
+                        <Tag v-if="field === 'settlement_status'" :value="String(data[field] || '')" :severity="severity(String(data[field] || ''))" />
+                        <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
+                        <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
+                        <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>
+                        <span v-else>{{ data[field] ?? 0 }}</span>
+                    </template>
+                </Column>
+            </DataTable>
+        </div>
     </div>
 </template>
