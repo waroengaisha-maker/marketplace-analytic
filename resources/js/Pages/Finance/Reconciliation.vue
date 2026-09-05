@@ -149,6 +149,7 @@ const summaryMetrics = [
     ['order_processing_fee', 'Total Biaya Proses'],
     ['total_fee', 'Total Biaya'],
     ['tax', 'Total Pajak'],
+    ['penghasilan', 'Total Penghasilan'],
     ['hpp', 'Total HPP'],
     ['laba', 'Total Laba'],
 ] as const
@@ -329,15 +330,15 @@ function toggleFullscreen() {
                     <Tag severity="info" value="Total Semua Status" icon="pi pi-chart-bar" />
                     <span class="text-sm text-color-secondary">{{ totalSummary.count.toLocaleString('id-ID') }} baris</span>
                 </div>
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`">
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`" class="[&_.p-card-body]:p-3">
                         <template #content>
-                            <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-2 text-xl font-bold">
+                            <p class="truncate text-xs text-color-secondary">{{ card.label }}</p>
+                            <p class="mt-1 text-lg font-bold">
                                 {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
                             </p>
-                            <small v-if="card.field === 'subtotal'" class="text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
-                            <small v-if="card.type !== 'count'" class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
+                            <small v-if="card.field === 'subtotal'" class="text-xs text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
+                            <small v-if="card.type !== 'count'" class="text-xs text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
                         </template>
                     </Card>
                 </div>
@@ -347,15 +348,15 @@ function toggleFullscreen() {
                     <Tag :severity="group.severity" :value="group.label" :icon="group.icon" />
                     <span class="text-sm text-color-secondary">{{ group.count.toLocaleString('id-ID') }} baris</span>
                 </div>
-                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`">
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`" class="[&_.p-card-body]:p-3">
                         <template #content>
-                            <p class="truncate text-sm text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-2 text-xl font-bold">
+                            <p class="truncate text-xs text-color-secondary">{{ card.label }}</p>
+                            <p class="mt-1 text-lg font-bold">
                                 {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
                             </p>
-                            <small v-if="card.field === 'subtotal'" class="text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
-                            <small v-if="card.type !== 'count'" class="text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
+                            <small v-if="card.field === 'subtotal'" class="text-xs text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
+                            <small v-if="card.type !== 'count'" class="text-xs text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
                         </template>
                     </Card>
                 </div>
