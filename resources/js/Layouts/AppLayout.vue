@@ -2,7 +2,6 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import ToggleSwitch from 'primevue/toggleswitch'
-import Skeleton from 'primevue/skeleton'
 
 const page = usePage()
 const sidebarOpen = ref(false)
@@ -380,24 +379,30 @@ const submitLogout = () => {
             >
                 <div
                     v-if="isNavigating"
-                    class="flex w-full flex-col gap-6"
+                    class="fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden bg-transparent lg:left-20"
                     aria-label="Memuat konten"
                     role="status"
                 >
-                    <div class="flex flex-col gap-3">
-                        <Skeleton width="8rem" height="1.25rem" />
-                        <Skeleton width="min(24rem, 75%)" height="2.25rem" />
-                        <Skeleton width="min(32rem, 90%)" height="1rem" />
-                    </div>
-
-                    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                        <Skeleton v-for="index in 4" :key="index" height="8rem" border-radius="1rem" />
-                    </div>
-
-                    <Skeleton height="16rem" border-radius="1rem" />
+                    <div class="h-full w-1/3 animate-[loading-bar_1.2s_ease-in-out_infinite] rounded-full bg-blue-500" />
                 </div>
 
-                <slot v-else />
+                <div
+                    class="relative"
+                    :class="isNavigating ? 'pointer-events-none opacity-60 transition-opacity' : ''"
+                >
+                    <slot />
+
+                    <div
+                        v-if="isNavigating"
+                        class="absolute inset-0 z-10 flex items-start justify-center bg-white/20 pt-16 backdrop-blur-[1px] dark:bg-black/20"
+                        aria-hidden="true"
+                    >
+                        <div class="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                            <i class="pi pi-spin pi-spinner text-blue-500" />
+                            <span>Memuat...</span>
+                        </div>
+                    </div>
+                </div>
             </main>
         </div>
     </div>
