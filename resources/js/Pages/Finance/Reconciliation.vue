@@ -22,14 +22,14 @@ const filteredRows = computed(() => (props.rows || []).filter((row) =>
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
     net_quantity: 'Jumlah Bersih = Jumlah - Retur',
-    order_subtotal: 'Subtotal = Harga setelah diskon x Jumlah',
+    order_subtotal: 'Subtotal = Harga setelah diskon x (Jumlah - Retur)',
     admin_fee_percent: 'Admin (%) = Biaya Administrasi / Subtotal x 100',
     free_shipping_xtra_fee_percent: 'Gratis Ongkir (%) = Gratis Ongkir / Subtotal x 100',
     promo_xtra_fee_percent: 'Promo XTRA (%) = Promo XTRA / Subtotal x 100',
     fee_subtotal: 'Subtotal Biaya = Biaya Administrasi + Gratis Ongkir + Promo XTRA',
     fee_subtotal_percent: 'Subtotal Biaya (%) = Subtotal Biaya / Subtotal x 100',
     total_fee: 'Total Biaya = Subtotal Biaya + Biaya Proses',
-    penghasilan: 'Penghasilan = Subtotal - (Total Biaya + Pajak)',
+    penghasilan: 'Penghasilan = Subtotal + (Total Biaya + Pajak)',
     hpp: 'HPP saat ini = 0',
     laba: 'Laba = Penghasilan - HPP',
 }

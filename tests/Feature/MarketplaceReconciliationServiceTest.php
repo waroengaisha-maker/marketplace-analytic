@@ -277,6 +277,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $row = (object) [
             'quantity' => 2,
             'returned_quantity' => 0,
+            'discounted_price' => 500,
             'order_subtotal' => 1000,
             'platform_fee' => 100,
             'free_shipping_xtra_fee' => 50,
@@ -289,9 +290,9 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $this->assertSame(175.0, $result->fee_subtotal);
         $this->assertSame(185.0, $result->total_fee);
-        $this->assertSame(810.0, $result->penghasilan);
+        $this->assertSame(1190.0, $result->penghasilan);
         $this->assertSame(0.0, $result->hpp);
-        $this->assertSame(810.0, $result->laba);
+        $this->assertSame(1190.0, $result->laba);
     }
 
     private function order(int $userId, array $overrides = []): array
