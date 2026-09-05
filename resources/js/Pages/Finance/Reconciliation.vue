@@ -152,12 +152,10 @@ const summaryMetrics = [
     ['hpp', 'Total HPP'],
     ['laba', 'Total Laba'],
 ] as const
-function buildSummaryCards(rows: Row[]) {
+function buildSummaryCards(rows: Row[], subtotalOnly = false) {
     const subtotal = sumRows(rows, 'order_subtotal')
 
-    const isNonFinancialGroup = rows.length > 0 && rows.every((row) => ['Batal', 'Tidak Valid'].includes(orderCategory(row)))
-
-    if (isNonFinancialGroup) {
+    if (subtotalOnly) {
         return [
             { field: 'subtotal', label: 'Nilai Subtotal', value: subtotal, percentage: 100, type: 'money', orderCount: countOrders(rows) },
         ]
@@ -198,7 +196,7 @@ const summaryGroups = computed(() => {
         return {
             ...group,
             count: rows.length,
-            cards: buildSummaryCards(rows),
+            cards: buildSummaryCards(rows, ['Batal', 'Tidak Valid'].includes(group.label)),
         }
     })
 })
