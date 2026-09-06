@@ -57,12 +57,29 @@ const cards = [
         </div>
         <Card>
             <template #content>
-                <div class="flex flex-wrap items-end gap-4">
-                    <div class="flex flex-col gap-2"><label for="from">Tanggal Mulai</label><DatePicker id="from" v-model="from" date-format="yy-mm-dd" show-icon :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined" :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined" /></div>
-                    <div class="flex flex-col gap-2"><label for="to">Tanggal Akhir</label><DatePicker id="to" v-model="to" date-format="yy-mm-dd" show-icon :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined" :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined" /></div>
-                    <Button label="Terapkan" icon="pi pi-filter" @click="applyDateFilter" />
+                <div class="flex flex-col gap-4">
+                <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="pi pi-filter text-color-secondary" aria-hidden="true"></i>
+                        <span class="text-sm font-semibold">Filter data</span>
+                    </div>
+                    <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit ringkasan dashboard</span>
                 </div>
-                <small class="text-color-secondary block mt-3">Periode berdasarkan tanggal order dibuat.</small>
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)]">
+                    <div class="flex min-w-0 flex-col gap-1">
+                        <label for="dashboard-from" class="text-xs font-medium text-color-secondary">Tanggal mulai</label>
+                        <DatePicker id="dashboard-from" v-model="from" date-format="yy-mm-dd" show-icon show-clear placeholder="Pilih tanggal" aria-label="Tanggal mulai" fluid class="h-11 w-full" :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined" :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined" />
+                    </div>
+                    <div class="flex min-w-0 flex-col gap-1">
+                        <label for="dashboard-to" class="text-xs font-medium text-color-secondary">Tanggal akhir</label>
+                        <DatePicker id="dashboard-to" v-model="to" date-format="yy-mm-dd" show-icon show-clear placeholder="Pilih tanggal" aria-label="Tanggal akhir" fluid class="h-11 w-full" :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined" :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined" />
+                    </div>
+                </div>
+                <div class="flex justify-start">
+                    <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
+                </div>
+                <small class="text-xs text-color-secondary">Periode berdasarkan tanggal order dibuat.</small>
+                </div>
             </template>
         </Card>
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

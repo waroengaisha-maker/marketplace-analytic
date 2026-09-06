@@ -19,6 +19,8 @@ const dataTable = ref<DataTableInstance | null>(null)
 const isFullscreen = ref(false)
 const fromDate = ref<Date | null>(null)
 const toDate = ref<Date | null>(null)
+const appliedFromDate = ref<Date | null>(null)
+const appliedToDate = ref<Date | null>(null)
 const selectedOrderStatuses = ref<string[]>(['Settled', 'Unsettled'])
 const clearButtonClass = 'absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color'
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
@@ -61,6 +63,10 @@ const tableFilters = Object.fromEntries(
 )
 const visibleColumns = computed(() => selectedColumns.value)
 const orderStatusOptions = ['Settled', 'Unsettled', 'Batal', 'Tidak Valid']
+function applyDateFilter() {
+    appliedFromDate.value = fromDate.value
+    appliedToDate.value = toDate.value
+}
 function localDateKey(date: Date) {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -72,8 +78,8 @@ function localTimestamp(date: Date) {
     return `${localDateKey(date)}_${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`
 }
 const dateFilteredRows = computed(() => {
-    const from = fromDate.value ? localDateKey(fromDate.value) : null
-    const to = toDate.value ? localDateKey(toDate.value) : null
+    const from = appliedFromDate.value ? localDateKey(appliedFromDate.value) : null
+    const to = appliedToDate.value ? localDateKey(appliedToDate.value) : null
 
     return (props.rows || []).filter((row) => {
         const rowDate = String(row.order_created_at ?? '').slice(0, 10)
@@ -273,8 +279,8 @@ async function exportExcel() {
     }))
     const summaryWorksheet = XLSX.utils.json_to_sheet(summaryRows)
     XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Rekapan Produk')
-    const fromLabel = fromDate.value ? localDateKey(fromDate.value) : 'awal'
-    const toLabel = toDate.value ? localDateKey(toDate.value) : 'akhir'
+    const fromLabel = appliedFromDate.value ? localDateKey(appliedFromDate.value) : 'awal'
+    const toLabel = appliedToDate.value ? localDateKey(appliedToDate.value) : 'akhir'
     const timestamp = localTimestamp(new Date())
 
     XLSX.writeFile(workbook, `reconciliation_${fromLabel}_sampai_${toLabel}_${timestamp}.xlsx`)
@@ -324,6 +330,9 @@ function toggleFullscreen() {
                             <label for="reconciliation-order-status" class="text-xs font-medium text-color-secondary">Status order</label>
                             <MultiSelect input-id="reconciliation-order-status" v-model="selectedOrderStatuses" :options="orderStatusOptions" placeholder="Pilih status" display="chip" filter show-clear class="h-11 w-full" />
                         </div>
+                    </div>
+                    <div class="flex justify-start">
+                        <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
                     </div>
                     <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
                         <span class="text-xs text-color-secondary">{{ filteredRows.length.toLocaleString('id-ID') }} baris tersedia</span>
