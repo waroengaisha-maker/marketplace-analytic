@@ -435,7 +435,7 @@ function toggleFullscreen() {
                 filter-display="row"
                 :global-filter-fields="allColumns.map(([field]) => field)"
                 paginator
-                :rows="25"
+                :rows="100"
                 :rows-per-page-options="[25, 50, 100]"
                 paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                 current-page-report-template="{first}–{last} dari {totalRecords}"
@@ -448,7 +448,7 @@ function toggleFullscreen() {
                 row-hover
                 show-gridlines
                 removable-sort
-                size="small"
+                size="big"
                 table-style="min-width: 108rem"
                 class="w-full text-xs"
             >

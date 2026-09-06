@@ -98,65 +98,65 @@ watch(sidebarOpen, (open) => {
 
 const navigation = computed(() => [
     ...(!isPrivileged.value ? [{
-        label: 'MAIN',
+        label: 'Main',
         items: [
-            { name: 'Dashboard', href: '/', icon: '▦', color: 'text-blue-500' },
+            { name: 'Dashboard', href: '/', icon: 'pi pi-home', color: 'text-slate-400' },
         ],
     }] : []),
     ...(isPrivileged.value ? [] : [{
-        label: 'OPERATIONS',
+        label: 'Operations',
         items: [
-            { name: 'Orders', href: '/orders', icon: '□', color: 'text-violet-500' },
-            { name: 'Returns', href: '/returns', icon: '↩', color: 'text-rose-500' },
-            { name: 'Customers', href: '/customers', icon: '♙', color: 'text-cyan-500' },
+            { name: 'Orders', href: '/orders', icon: 'pi pi-shopping-cart', color: 'text-slate-400' },
+            { name: 'Returns', href: '/returns', icon: 'pi pi-replay', color: 'text-slate-400' },
+            { name: 'Customers', href: '/customers', icon: 'pi pi-users', color: 'text-slate-400' },
         ],
     },
     {
-        label: 'FINANCE',
+        label: 'Finance',
         items: [
-            { name: 'Income', href: '/finance/income', icon: 'Rp', color: 'text-emerald-500' },
-            { name: 'Reconciliation', href: '/finance/reconciliation', icon: '≡', color: 'text-amber-500' },
-            { name: 'Profit', href: '/finance/profit', icon: '↗', color: 'text-green-500' },
+            { name: 'Income', href: '/finance/income', icon: 'pi pi-wallet', color: 'text-slate-400' },
+            { name: 'Reconciliation', href: '/finance/reconciliation', icon: 'pi pi-sync', color: 'text-slate-400' },
+            { name: 'Profit', href: '/finance/profit', icon: 'pi pi-chart-line', color: 'text-slate-400' },
         ],
     },
     {
-        label: 'PRODUCTS',
+        label: 'Products',
         items: [
-            { name: 'Products', href: '/products', icon: '◇', color: 'text-indigo-500' },
-            { name: 'HPP', href: '/products/hpp', icon: '◈', color: 'text-fuchsia-500' },
-            { name: 'HPP Mapping', href: '/products/hpp-mapping', icon: '⇄', color: 'text-orange-500' },
+            { name: 'Products', href: '/products', icon: 'pi pi-box', color: 'text-slate-400' },
+            { name: 'HPP', href: '/products/hpp', icon: 'pi pi-tags', color: 'text-slate-400' },
+            { name: 'HPP Mapping', href: '/products/hpp-mapping', icon: 'pi pi-share-alt', color: 'text-slate-400' },
         ],
     },
     {
-        label: 'IMPORTS',
+        label: 'Imports',
         items: [
-            { name: 'Import History', href: '/imports', icon: '▤', color: 'text-sky-500' },
-            { name: 'Upload Files', href: '/imports/upload', icon: '↑', color: 'text-lime-500' },
+            { name: 'Import History', href: '/imports', icon: 'pi pi-history', color: 'text-slate-400' },
+            { name: 'Upload Files', href: '/imports/upload', icon: 'pi pi-upload', color: 'text-slate-400' },
         ],
     },
     {
-        label: 'ANALYTICS',
+        label: 'Analytics',
         items: [
-            { name: 'Sales', href: '/analytics/sales', icon: '▥', color: 'text-pink-500' },
-            { name: 'Products', href: '/analytics/products', icon: '◫', color: 'text-teal-500' },
-            { name: 'Customers', href: '/analytics/customers', icon: '♙', color: 'text-purple-500' },
-            { name: 'Profitability', href: '/analytics/profitability', icon: '◎', color: 'text-yellow-500' },
+            { name: 'Sales', href: '/analytics/sales', icon: 'pi pi-chart-bar', color: 'text-slate-400' },
+            { name: 'Products', href: '/analytics/products', icon: 'pi pi-box', color: 'text-slate-400' },
+            { name: 'Customers', href: '/analytics/customers', icon: 'pi pi-users', color: 'text-slate-400' },
+            { name: 'Profitability', href: '/analytics/profitability', icon: 'pi pi-percentage', color: 'text-slate-400' },
         ],
     }]),
     ...(isPrivileged.value ? [{
-        label: 'ACCESS CONTROL',
+        label: 'Access Control',
         items: [
             ...(page.props.auth?.user?.role === 'super_admin' ? [
-                { name: 'Kelola Admin', href: '/admin/admins', icon: '◆', color: 'text-red-500' },
+                { name: 'Kelola Admin', href: '/admin/admins', icon: 'pi pi-shield', color: 'text-slate-400' },
             ] : []),
-            { name: 'Kelola Akses User', href: '/admin/users', icon: '◇', color: 'text-orange-500' },
+            { name: 'Kelola Akses User', href: '/admin/users', icon: 'pi pi-user-edit', color: 'text-slate-400' },
         ],
     }] : []),
     ...(isPrivileged.value ? [] : [{
-        label: 'SETTINGS',
+        label: 'Settings',
         items: [
-            { name: 'Shop', href: '/settings/shop', icon: '⚙', color: 'text-slate-500' },
-            { name: 'Akun & Langganan', href: '/account/subscription', icon: '◉', color: 'text-blue-500' },
+            { name: 'Shop', href: '/settings/shop', icon: 'pi pi-cog', color: 'text-slate-400' },
+            { name: 'Akun & Langganan', href: '/account/subscription', icon: 'pi pi-credit-card', color: 'text-slate-400' },
         ],
     }]),
 ])
@@ -186,13 +186,13 @@ const submitLogout = () => {
 </script>
 
 <template>
-    <div class="h-screen overflow-hidden bg-slate-50 p-0 text-slate-900 dark:bg-black dark:text-slate-100 lg:p-6">
-        <SidebarLayout class="h-full min-h-0 overflow-hidden border-0 border-slate-200 bg-white lg:rounded-lg lg:border dark:border-slate-800 dark:bg-black">
+    <div class="h-screen w-full overflow-hidden bg-slate-50 p-0 text-slate-900 dark:bg-black dark:text-slate-100">
+        <SidebarLayout class="h-full min-h-0 w-full overflow-hidden border-0 bg-white dark:bg-black">
             <SidebarBackdrop v-if="isMobile && sidebarOpen" class="fixed!" />
         <Sidebar
             id="main-sidebar"
             v-model:open="sidebarOpen"
-            :variant="isMobile ? 'floating' : 'inset'"
+            :variant="isMobile ? 'floating' : 'sidebar'"
             :collapsible="isMobile ? 'offcanvas' : 'icon'"
             :overlay="isMobile"
             width="16rem"
@@ -202,13 +202,13 @@ const submitLogout = () => {
             <SidebarSpacer />
             <SidebarAside>
                 <SidebarPanel>
-                    <SidebarHeader class="border-b border-slate-200 px-4 dark:border-slate-800">
+                    <SidebarHeader class="border-b border-slate-200 px-4 py-4 dark:border-slate-800">
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton as-child class="px-1">
                                     <template #default="{ class: buttonClass = '', a11yAttrs = {} }">
                                         <Link v-bind="a11yAttrs" href="/" :class="[buttonClass, 'no-underline']" @click="closeSidebar">
-                                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white dark:bg-slate-700">M</span>
+                                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold leading-none text-white shadow-sm">M</span>
                                             <span class="sidebar-brand-text min-w-0">
                                                 <span class="block text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">Marketplace</span>
                                                 <span class="block text-[10px] font-medium uppercase tracking-wider text-slate-400">Analytics</span>
@@ -219,9 +219,9 @@ const submitLogout = () => {
                             </SidebarMenuItem>
                         </SidebarMenu>
                     </SidebarHeader>
-                    <SidebarContent class="overflow-y-auto px-2 py-4 sm:px-3">
-                        <SidebarGroup v-for="section in navigation" :key="section.label" class="mb-5">
-                            <SidebarGroupLabel class="px-3 text-[10px] font-bold tracking-widest text-slate-400">{{ section.label }}</SidebarGroupLabel>
+                    <SidebarContent class="overflow-y-auto px-3 py-5">
+                        <SidebarGroup v-for="section in navigation" :key="section.label" class="mb-6">
+                            <SidebarGroupLabel class="px-3 pb-2 text-[10px] font-medium tracking-normal text-slate-400 dark:text-slate-500">{{ section.label }}</SidebarGroupLabel>
                             <SidebarGroupContent>
                                 <SidebarMenu>
                                     <SidebarMenuItem v-for="item in section.items" :key="item.href">
@@ -230,10 +230,10 @@ const submitLogout = () => {
                                                 <Link
                                                     v-bind="a11yAttrs"
                                                     :href="item.href"
-                                                    :class="[buttonClass, 'no-underline']"
+                                                    :class="[buttonClass, 'h-8 rounded-md px-3 text-xs font-normal text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white']"
                                                     @click="closeSidebar"
                                                 >
-                                                    <span class="text-xs" :class="item.color">{{ item.icon }}</span>
+                                                    <i :class="[item.icon, item.color, 'text-[11px]']" aria-hidden="true" />
                                                     <span class="sidebar-menu-label">{{ item.name }}</span>
                                                 </Link>
                                             </template>
@@ -243,11 +243,11 @@ const submitLogout = () => {
                             </SidebarGroupContent>
                         </SidebarGroup>
                     </SidebarContent>
-                    <SidebarFooter class="border-t border-slate-200 p-3 dark:border-slate-800">
+                    <!-- <SidebarFooter class="border-t border-slate-200 p-3 dark:border-slate-800">
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton class="p-1">
-                                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
                                         {{ page.props.auth?.user?.name?.charAt(0)?.toUpperCase() || 'U' }}
                                     </span>
                                     <span class="sidebar-footer-label truncate text-xs text-slate-500 dark:text-slate-400">
@@ -256,7 +256,7 @@ const submitLogout = () => {
                                 </SidebarMenuButton>
                             </SidebarMenuItem>
                         </SidebarMenu>
-                    </SidebarFooter>
+                    </SidebarFooter> -->
                 </SidebarPanel>
             </SidebarAside>
         </Sidebar>
