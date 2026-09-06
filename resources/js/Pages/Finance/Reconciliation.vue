@@ -10,6 +10,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
+import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
 import { FilterMatchMode } from '@primevue/core/api'
 
 type Row = Record<string, unknown>
@@ -73,9 +74,6 @@ function localDateKey(date: Date) {
     const day = String(date.getDate()).padStart(2, '0')
 
     return `${year}-${month}-${day}`
-}
-function localTimestamp(date: Date) {
-    return `${localDateKey(date)}_${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`
 }
 const dateFilteredRows = computed(() => {
     const from = appliedFromDate.value ? localDateKey(appliedFromDate.value) : null
@@ -252,7 +250,10 @@ function exportCsv() { dataTable.value?.exportCSV() }
 async function exportExcel() {
     const XLSX = await import('xlsx')
     const visibleFields = visibleColumns.value
-    const exportRows = filteredRows.value
+    const exportRows = [...filteredRows.value].sort((first, second) =>
+        String(exportValue(first, 'order_product_name')).localeCompare(String(exportValue(second, 'order_product_name')), 'id', { sensitivity: 'base' }) ||
+        numericValue(first, 'discounted_price') - numericValue(second, 'discounted_price'),
+    )
     const data = exportRows.map((row) => Object.fromEntries(
         visibleFields.map(([field, header]) => [header, exportValue(row, field)]),
     ))
@@ -281,9 +282,7 @@ async function exportExcel() {
     XLSX.utils.book_append_sheet(workbook, summaryWorksheet, 'Rekapan Produk')
     const fromLabel = appliedFromDate.value ? localDateKey(appliedFromDate.value) : 'awal'
     const toLabel = appliedToDate.value ? localDateKey(appliedToDate.value) : 'akhir'
-    const timestamp = localTimestamp(new Date())
-
-    XLSX.writeFile(workbook, `reconciliation_${fromLabel}_sampai_${toLabel}_${timestamp}.xlsx`)
+    XLSX.writeFile(workbook, buildAnalyticsExportFilename(fromLabel, toLabel))
 }
 function toggleFullscreen() {
     isFullscreen.value = !isFullscreen.value

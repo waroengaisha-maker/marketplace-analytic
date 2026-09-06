@@ -6,6 +6,7 @@ import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
+import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
 
 type User = { name: string; email: string }
 type PageProps = {
@@ -76,7 +77,10 @@ function buildProductSummary(rows: Record<string, unknown>[]) {
 }
 async function exportExcel() {
     const XLSX = await import('xlsx')
-    const rows = page.props.rows
+    const rows = [...page.props.rows].sort((first, second) =>
+        String(exportValue(first, 'order_product_name')).localeCompare(String(exportValue(second, 'order_product_name')), 'id', { sensitivity: 'base' }) ||
+        numericValue(first, 'discounted_price') - numericValue(second, 'discounted_price'),
+    )
     const data = rows.map((row) => Object.fromEntries(exportColumns.map(([field, header]) => [header, exportValue(row, field)])))
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(Object.entries(page.props.stats).map(([key, value]) => ({ Metrik: key, Nilai: value }))), 'Dashboard')
@@ -90,7 +94,7 @@ async function exportExcel() {
         'Penghasilan': row.penghasilan, 'HPP': row.hpp, 'Laba': row.laba,
     }))
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryRows), 'Rekonsiliasi Rekap Produk')
-    XLSX.writeFile(workbook, `dashboard_${page.props.filters.from ?? 'awal'}_sampai_${page.props.filters.to ?? 'akhir'}.xlsx`)
+    XLSX.writeFile(workbook, buildAnalyticsExportFilename(page.props.filters.from, page.props.filters.to))
 }
 const cards = [
     ['Total Penjualan / Gross Sales', 'gross_sales', 'gross_order_count', 'info'],
