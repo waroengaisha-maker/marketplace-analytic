@@ -121,7 +121,9 @@ const cards = [
     <Head title="Dashboard" />
     <div class="flex flex-col gap-6">
         <div class="flex flex-wrap items-end justify-between gap-4">
-            <div><Tag value="OVERVIEW" severity="secondary" /><h1 class="mt-2 text-3xl font-bold">Dashboard</h1><p class="mt-2 text-color-secondary">Selamat datang<span v-if="page.props.auth?.user?.name">, {{ page.props.auth.user.name }}</span>.</p></div>
+            <div>
+                <!-- <Tag value="OVERVIEW" severity="secondary" /> -->
+                <h1 class="mt-2 text-3xl font-bold">Dashboard</h1><p class="mt-2 text-color-secondary">Selamat datang<span v-if="page.props.auth?.user?.name">, {{ page.props.auth.user.name }}</span>.</p></div>
             <!-- <Link href="/finance/reconciliation" class="no-underline">
                 <Button label="Lihat Detail Rekonsiliasi" icon="pi pi-list-check" outlined />
             </Link> -->
