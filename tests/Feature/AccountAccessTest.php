@@ -62,6 +62,8 @@ class AccountAccessTest extends TestCase
 
         $user->refresh();
         $this->assertSame(AccountStatus::Active, $user->account_status);
+        $this->assertSame('trialing', $user->subscription_status->value);
+        $this->assertSame('not_required', $user->payment_status->value);
         $this->assertTrue($user->trial_ends_at->isFuture());
         $this->assertDatabaseHas('account_audit_logs', [
             'user_id' => $user->id,

@@ -2,6 +2,7 @@
 import { Head, router, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import Message from 'primevue/message'
+import { confirmAction } from '../../../utils/confirmAction'
 
 type User = {
     id: number
@@ -9,6 +10,8 @@ type User = {
     email: string
     role: string
     status: string
+    subscription_status: string
+    payment_status: string
     trial_ends_at: string | null
     username: string
     phone: string | null
@@ -16,9 +19,21 @@ type User = {
 
 const props = defineProps<{ users: { data: User[] }; trialDays: number }>()
 
-const activate = (id: number) => router.post(`/admin/users/${id}/activate`, { trial_days: props.trialDays })
-const suspend = (id: number) => router.post(`/admin/users/${id}/suspend`)
-const setTrial = (id: number) => router.post(`/admin/users/${id}/trial`, { trial_days: props.trialDays })
+const activate = (id: number) => {
+    if (confirmAction('Aktifkan akun user ini?')) {
+        router.post(`/admin/users/${id}/activate`, { trial_days: props.trialDays })
+    }
+}
+const suspend = (id: number) => {
+    if (confirmAction('Suspend akun user ini?')) {
+        router.post(`/admin/users/${id}/suspend`)
+    }
+}
+const setTrial = (id: number) => {
+    if (confirmAction(`Atur trial user menjadi ${props.trialDays} hari?`)) {
+        router.post(`/admin/users/${id}/trial`, { trial_days: props.trialDays })
+    }
+}
 const editingId = ref<number | null>(null)
 const form = useForm({ name: '', username: '', email: '', phone: '', password: '', password_confirmation: '', role: 'user' })
 const startEdit = (user: User) => {
@@ -29,12 +44,20 @@ const startEdit = (user: User) => {
 const cancelEdit = () => { editingId.value = null; form.reset() }
 const submit = () => {
     if (editingId.value) {
-        form.put(`/admin/users/${editingId.value}`, { onSuccess: cancelEdit })
+        if (confirmAction('Simpan perubahan akun user ini?')) {
+            form.put(`/admin/users/${editingId.value}`, { onSuccess: cancelEdit })
+        }
         return
     }
-    form.post('/admin/users', { onSuccess: () => form.reset('name', 'username', 'email', 'phone', 'password', 'password_confirmation') })
+    if (confirmAction('Tambah akun user baru?')) {
+        form.post('/admin/users', { onSuccess: () => form.reset('name', 'username', 'email', 'phone', 'password', 'password_confirmation') })
+    }
 }
-const remove = (id: number) => router.delete(`/admin/users/${id}`)
+const remove = (id: number) => {
+    if (confirmAction('Hapus akun user ini? Tindakan ini tidak dapat dibatalkan.')) {
+        router.delete(`/admin/users/${id}`)
+    }
+}
 const validationError = () => Object.values(form.errors)[0] || ''
 </script>
 
@@ -62,6 +85,8 @@ const validationError = () => Object.values(form.errors)[0] || ''
                     <tr class="border-b bg-slate-50">
                         <th class="p-3">Akun</th>
                         <th class="p-3">Status Akses</th>
+                        <th class="p-3">Subscription</th>
+                        <th class="p-3">Pembayaran</th>
                         <th class="p-3">Trial Berakhir</th>
                         <th class="p-3">Aksi</th>
                     </tr>
@@ -73,13 +98,15 @@ const validationError = () => Object.values(form.errors)[0] || ''
                             <div class="text-sm text-slate-500">{{ user.email }}</div>
                         </td>
                         <td class="p-3">{{ user.status }}</td>
+                        <td class="p-3">{{ user.subscription_status }}</td>
+                        <td class="p-3">{{ user.payment_status }}</td>
                         <td class="p-3">{{ user.trial_ends_at ?? '—' }}</td>
                         <td class="flex flex-wrap gap-2 p-3">
                             <button class="rounded bg-slate-700 px-3 py-1 text-white" @click="startEdit(user)">Edit</button>
                             <button class="rounded bg-red-600 px-3 py-1 text-white" @click="remove(user.id)">Hapus</button>
-                            <button class="rounded bg-green-600 px-3 py-1 text-white" @click="activate(user.id)">Aktifkan</button>
-                            <button class="rounded bg-amber-600 px-3 py-1 text-white" @click="setTrial(user.id)">Atur Trial</button>
-                            <button class="rounded bg-red-600 px-3 py-1 text-white" @click="suspend(user.id)">Suspend</button>
+                            <button v-if="user.status === 'pending'" class="rounded bg-green-600 px-3 py-1 text-white" @click="activate(user.id)">Aktifkan</button>
+                            <button v-if="user.status === 'active'" class="rounded bg-amber-600 px-3 py-1 text-white" @click="setTrial(user.id)">Atur Trial</button>
+                            <button v-if="user.status === 'active'" class="rounded bg-red-600 px-3 py-1 text-white" @click="suspend(user.id)">Suspend</button>
                         </td>
                     </tr>
                 </tbody>

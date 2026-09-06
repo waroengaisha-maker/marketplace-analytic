@@ -50,3 +50,15 @@ The application has three roles:
 Privileged users cannot manage their own account through admin actions. New
 users are created as regular users and require activation according to the
 existing account-access rules.
+
+Account access and billing state are separate:
+
+- Account status: `pending`, `active`, or `suspended`.
+- Subscription status: `none`, `trialing`, `active`, `past_due`, `expired`, or
+  `canceled`.
+- Payment status: `not_required`, `pending`, `paid`, `failed`, or `refunded`.
+
+Activating a pending account starts its configured trial and sets the
+subscription status to `trialing`. Trial changes are only allowed for active
+accounts. Payment gateway integration is not part of the current application
+behavior.

@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import ToggleSwitch from 'primevue/toggleswitch'
+import { confirmAction } from '../utils/confirmAction'
 
 const page = usePage()
 const sidebarOpen = ref(false)
@@ -128,7 +129,9 @@ const closeSidebar = () => {
 }
 
 const submitLogout = () => {
-    logout.post('/logout')
+    if (confirmAction('Apakah Anda yakin ingin logout?')) {
+        logout.post('/logout')
+    }
 }
 </script>
 

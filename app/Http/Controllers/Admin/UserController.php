@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Enums\AccountStatus;
+use App\Enums\PaymentStatus;
+use App\Enums\SubscriptionStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Models\AccountAuditLog;
@@ -49,6 +51,8 @@ class UserController extends Controller
                     'phone' => $user->phone,
                     'role' => $user->role->value,
                     'status' => $user->account_status->value,
+                    'subscription_status' => $user->subscription_status->value,
+                    'payment_status' => $user->payment_status->value,
                     'trial_ends_at' => $user->trial_ends_at?->toIso8601String(),
                     'subscription_ends_at' => $user->subscription_ends_at?->toIso8601String(),
                     'is_admin' => $user->isAdmin(),
@@ -77,6 +81,8 @@ class UserController extends Controller
             ...$data,
             'role' => $role,
             'account_status' => AccountStatus::Pending,
+            'subscription_status' => SubscriptionStatus::None,
+            'payment_status' => PaymentStatus::NotRequired,
         ]);
         $this->audit($request, $user, 'created', ['role' => $role->value]);
 
@@ -123,6 +129,8 @@ class UserController extends Controller
 
         $user->forceFill([
             'account_status' => AccountStatus::Active,
+            'subscription_status' => SubscriptionStatus::Trialing,
+            'payment_status' => PaymentStatus::NotRequired,
             'trial_started_at' => $now,
             'trial_ends_at' => $days > 0 ? $now->copy()->addDays($days) : null,
             'activated_at' => $now,
@@ -136,7 +144,11 @@ class UserController extends Controller
     public function suspend(Request $request, User $user): RedirectResponse
     {
         Gate::authorize('manageAccount', $user);
-        $user->forceFill(['account_status' => AccountStatus::Suspended, 'suspended_at' => now()])->save();
+        $user->forceFill([
+            'account_status' => AccountStatus::Suspended,
+            'subscription_status' => SubscriptionStatus::Canceled,
+            'suspended_at' => now(),
+        ])->save();
         $this->audit($request, $user, 'suspended');
 
         return back()->with('success', 'User suspended.');
@@ -157,12 +169,15 @@ class UserController extends Controller
     public function trial(Request $request, User $user): RedirectResponse
     {
         Gate::authorize('manageAccount', $user);
+        abort_unless($user->account_status === AccountStatus::Active, 422, 'Only active accounts can receive trial changes.');
         $data = $request->validate([
             'trial_days' => ['required', 'integer', 'min:0', 'max:3650'],
         ]);
         $now = now();
         $user->forceFill([
             'account_status' => AccountStatus::Active,
+            'subscription_status' => SubscriptionStatus::Trialing,
+            'payment_status' => PaymentStatus::NotRequired,
             'trial_started_at' => $now,
             'trial_ends_at' => $data['trial_days'] > 0 ? $now->copy()->addDays($data['trial_days']) : null,
             'activated_at' => $user->activated_at ?? $now,

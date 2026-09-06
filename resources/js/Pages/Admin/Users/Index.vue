@@ -2,6 +2,7 @@
 import { Head, router, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import Message from 'primevue/message'
+import { confirmAction } from '../../../utils/confirmAction'
 
 type User = {
     id: number
@@ -17,7 +18,13 @@ type User = {
 
 const props = defineProps<{ users: { data: User[] }; trialDays: number; canManageRoles: boolean }>()
 
-const updateRole = (id: number, role: string) => router.post(`/admin/users/${id}/role`, { role })
+const updateRole = (id: number, role: string) => {
+    const action = role === 'admin' ? 'Jadikan admin' : 'Hapus akses admin'
+
+    if (confirmAction(`${action} untuk akun ini?`)) {
+        router.post(`/admin/users/${id}/role`, { role })
+    }
+}
 const editingId = ref<number | null>(null)
 const form = useForm({ name: '', username: '', email: '', phone: '', password: '', password_confirmation: '', role: 'admin' })
 const startEdit = (user: User) => {
@@ -28,12 +35,20 @@ const startEdit = (user: User) => {
 const cancelEdit = () => { editingId.value = null; form.reset() }
 const submit = () => {
     if (editingId.value) {
-        form.put(`/admin/users/${editingId.value}`, { onSuccess: cancelEdit })
+        if (confirmAction('Simpan perubahan akun admin ini?')) {
+            form.put(`/admin/users/${editingId.value}`, { onSuccess: cancelEdit })
+        }
         return
     }
-    form.post('/admin/users', { onSuccess: () => form.reset('name', 'username', 'email', 'phone', 'password', 'password_confirmation') })
+    if (confirmAction('Tambah akun admin baru?')) {
+        form.post('/admin/users', { onSuccess: () => form.reset('name', 'username', 'email', 'phone', 'password', 'password_confirmation') })
+    }
 }
-const remove = (id: number) => router.delete(`/admin/users/${id}`)
+const remove = (id: number) => {
+    if (confirmAction('Hapus akun ini? Tindakan ini tidak dapat dibatalkan.')) {
+        router.delete(`/admin/users/${id}`)
+    }
+}
 const validationError = () => Object.values(form.errors)[0] || ''
 </script>
 
