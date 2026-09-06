@@ -5,6 +5,7 @@ import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Divider from 'primevue/divider'
+import Toolbar from 'primevue/toolbar'
 import { formatNominal } from '@/utils/formatters'
 import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
 import DateRangeFilter from '@/Components/DateRangeFilter.vue'
@@ -139,23 +140,28 @@ const cards = [
                     </div>
                     <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit ringkasan dashboard</span>
                 </div>
-                <DateRangeFilter
-                    v-model:from="from"
-                    v-model:to="to"
-                    id-prefix="dashboard"
-                    :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined"
-                    :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined"
-                />
-                <div class="flex flex-wrap justify-start gap-2">
-                    <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
-                    <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
-                </div>
-                <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <Toolbar class="flex-col items-stretch gap-3 border-0 bg-transparent p-0 lg:flex-row lg:items-end">
+                    <template #start>
+                        <DateRangeFilter
+                            v-model:from="from"
+                            v-model:to="to"
+                            id-prefix="dashboard"
+                            :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined"
+                            :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined"
+                            class="w-full lg:flex-1"
+                        />
+                    </template>
+                    <template #end>
+                        <div class="flex flex-wrap gap-2">
+                            <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
+                            <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
+                            <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" outlined class="h-11 w-full sm:w-auto" :disabled="page.props.rows.length === 0" @click="exportExcel" />
+                        </div>
+                    </template>
+                </Toolbar>
+                <!-- <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <small class="text-xs text-color-secondary">Periode berdasarkan tanggal order dibuat.</small>
-                    <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-                        <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" outlined class="w-full sm:w-auto" :disabled="page.props.rows.length === 0" @click="exportExcel" />
-                    </div>
-                </div>
+                </div> -->
                 </div>
             </template>
         </Card>
