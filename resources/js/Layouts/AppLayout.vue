@@ -109,6 +109,7 @@ const navigation = computed(() => [
         label: 'SETTINGS',
         items: [
             { name: 'Shop', href: '/settings/shop', icon: '⚙', color: 'text-slate-500' },
+            { name: 'Akun & Langganan', href: '/account/subscription', icon: '◉', color: 'text-blue-500' },
         ],
     }]),
 ])
