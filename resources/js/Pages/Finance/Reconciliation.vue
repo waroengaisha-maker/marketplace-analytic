@@ -5,7 +5,10 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import MultiSelect from 'primevue/multiselect'
+import Select from 'primevue/select'
 import Toolbar from 'primevue/toolbar'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -424,15 +427,18 @@ function onFilter() {
             <Toolbar class="mb-3 flex-wrap gap-3">
                 <template #start>
                     <div class="relative w-full sm:w-[20rem] lg:w-[22rem]">
-                        <i class="pi pi-search absolute left-3 top-1/2 z-10 -translate-y-1/2 text-color-secondary" aria-hidden="true"></i>
-                        <InputText
-                            id="reconciliation-global-filter"
-                            v-model="filters.global.value"
-                            aria-label="Filter semua kolom"
-                            placeholder="Cari semua kolom..."
-                            class="h-11 w-full pl-10 pr-10"
-                            @keyup.enter="onFilter"
-                        />
+                        <IconField icon-position="left">
+                            <InputIcon class="pi pi-search text-color-secondary" />
+                            <InputText
+                                id="reconciliation-global-filter"
+                                v-model="filters.global.value"
+                                aria-label="Filter semua kolom"
+                                placeholder="Cari semua kolom..."
+                                class="h-11 w-full pl-10 pr-10"
+                                @input="onFilter"
+                                @keyup.enter="onFilter"
+                            />
+                        </IconField>
                         <button
                             v-if="filters.global.value"
                             type="button"
@@ -508,8 +514,28 @@ function onFilter() {
                         </template>
                         <template #filter="{ filterModel }">
                             <div class="relative">
-                                <InputText v-model="filters[field].value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full pr-8" />
-                                <button v-if="filterModel.value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
+                                <Select
+                                    v-if="field === 'settlement_status'"
+                                    v-model="filters[field].value"
+                                    :options="orderStatusOptions"
+                                    :aria-label="`Filter ${header}`"
+                                    placeholder="Pilih status"
+                                    class="w-full"
+                                    show-clear
+                                    @change="onFilter"
+                                />
+                                <IconField v-else icon-position="left" class="w-full">
+                                    <InputIcon class="pi pi-search text-color-secondary" />
+                                    <InputText
+                                        v-model="filters[field].value"
+                                        :aria-label="`Filter ${header}`"
+                                        placeholder="Cari..."
+                                        class="w-full pl-8 pr-8"
+                                        @input="onFilter"
+                                        @keyup.enter="onFilter"
+                                    />
+                                </IconField>
+                                <button v-if="filterModel.value || filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
                                     <i class="pi pi-times text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
