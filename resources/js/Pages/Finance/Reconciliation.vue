@@ -5,6 +5,7 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import MultiSelect from 'primevue/multiselect'
+import Toolbar from 'primevue/toolbar'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
@@ -333,10 +334,6 @@ function toggleFullscreen() {
                             class="md:col-span-2 xl:col-span-2"
                         />
                         <div class="flex min-w-0 flex-col gap-1">
-                            <label for="reconciliation-columns" class="text-xs font-medium text-color-secondary">Kolom</label>
-                            <MultiSelect input-id="reconciliation-columns" v-model="selectedColumns" :options="allColumns" option-label="1" placeholder="Tampilkan kolom" display="chip" show-clear class="h-11 w-full" />
-                        </div>
-                        <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-order-status" class="text-xs font-medium text-color-secondary">Status order</label>
                             <MultiSelect input-id="reconciliation-order-status" v-model="selectedOrderStatuses" :options="orderStatusOptions" placeholder="Pilih status" display="chip" filter show-clear class="h-11 w-full" />
                         </div>
@@ -428,6 +425,28 @@ function toggleFullscreen() {
                     @click="toggleFullscreen"
                 />
             </div>
+            <Toolbar class="mb-3">
+                <template #start>
+                    <!-- <div class="flex items-center gap-2">
+                        <i class="pi pi-table text-color-secondary" aria-hidden="true"></i>
+                        <span class="text-sm font-semibold">Kolom tabel</span>
+                    </div> -->
+                </template>
+                <template #end>
+                    <MultiSelect
+                        input-id="reconciliation-columns"
+                        v-model="selectedColumns"
+                        :options="allColumns"
+                        option-label="1"
+                        placeholder="Pilih kolom"
+                        display="chip"
+                        filter
+                        :max-selected-labels="2"
+                        selected-items-label="{0} kolom dipilih"
+                        class="w-full sm:w-80"
+                    />
+                </template>
+            </Toolbar>
             <DataTable
                 ref="dataTable"
                 :value="filteredRows"
