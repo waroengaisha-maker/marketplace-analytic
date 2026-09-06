@@ -15,6 +15,7 @@ type PageProps = {
     dateRange: { min: string | null; max: string | null }
     filters: { from: string | null; to: string | null }
     rows: Record<string, unknown>[]
+    hasAppliedFilter: boolean
 }
 const page = usePage<PageProps>()
 const from = ref(page.props.filters.from ? new Date(`${page.props.filters.from}T00:00:00`) : null)
@@ -32,6 +33,11 @@ const dateValue = (date: Date | null) => {
 }
 function applyDateFilter() {
     router.get('/', { from: dateValue(from.value), to: dateValue(to.value) }, { preserveState: true, preserveScroll: true })
+}
+function resetDateFilter() {
+    from.value = null
+    to.value = null
+    router.get('/', {}, { preserveState: true, preserveScroll: true })
 }
 const exportColumns = [
     ['settlement_status', 'Status'], ['order_number', 'No. Pesanan'], ['order_product_name', 'Nama Produk'],
@@ -137,8 +143,9 @@ const cards = [
                     :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined"
                     :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined"
                 />
-                <div class="flex justify-start">
+                <div class="flex flex-wrap justify-start gap-2">
                     <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
+                    <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
                 </div>
                 <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <small class="text-xs text-color-secondary">Periode berdasarkan tanggal order dibuat.</small>
@@ -149,7 +156,7 @@ const cards = [
                 </div>
             </template>
         </Card>
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div v-if="page.props.hasAppliedFilter" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Card v-for="([label, value, count]) in cards" :key="value" class="[&_.p-card-body]:p-3">
                 <template #content>
                     <p class="text-xs font-semibold text-color-secondary">{{ label }}</p>
@@ -158,5 +165,12 @@ const cards = [
                 </template>
             </Card>
         </div>
+        <Card v-else>
+            <template #content>
+                <div class="py-8 text-center text-color-secondary">
+                    Pilih periode tanggal, lalu klik <strong>Terapkan</strong> untuk menampilkan data dashboard.
+                </div>
+            </template>
+        </Card>
     </div>
 </template>

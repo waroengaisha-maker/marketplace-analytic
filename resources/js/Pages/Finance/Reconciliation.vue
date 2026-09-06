@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
@@ -15,7 +15,8 @@ import { FilterMatchMode } from '@primevue/core/api'
 
 type Row = Record<string, unknown>
 type DataTableInstance = { exportCSV: () => void; filteredValue?: Row[] }
-const props = defineProps<{ rows: Row[] }>()
+const props = defineProps<{ rows: Row[]; hasAppliedFilter: boolean }>()
+const hasAppliedFilter = ref(props.hasAppliedFilter)
 const dataTable = ref<DataTableInstance | null>(null)
 const isFullscreen = ref(false)
 const fromDate = ref<Date | null>(null)
@@ -67,6 +68,18 @@ const orderStatusOptions = ['Settled', 'Unsettled', 'Batal', 'Tidak Valid']
 function applyDateFilter() {
     appliedFromDate.value = fromDate.value
     appliedToDate.value = toDate.value
+    router.get('/finance/reconciliation', {
+        from: fromDate.value ? localDateKey(fromDate.value) : undefined,
+        to: toDate.value ? localDateKey(toDate.value) : undefined,
+    }, { preserveScroll: true })
+}
+function resetDateFilter() {
+    fromDate.value = null
+    toDate.value = null
+    appliedFromDate.value = null
+    appliedToDate.value = null
+    hasAppliedFilter.value = false
+    router.get('/finance/reconciliation', {}, { preserveScroll: true })
 }
 function localDateKey(date: Date) {
     const year = date.getFullYear()
@@ -136,7 +149,7 @@ const searchableFilteredRows = computed(() => {
     })
 })
 const filteredRows = computed(() => searchableFilteredRows.value.filter((row) =>
-    selectedOrderStatuses.value.length === 0 || selectedOrderStatuses.value.includes(orderCategory(row)),
+    hasAppliedFilter.value && (selectedOrderStatuses.value.length === 0 || selectedOrderStatuses.value.includes(orderCategory(row))),
 ))
 function numericValue(row: Row, field: string) {
     const value = Number(row[field] ?? 0)
@@ -328,8 +341,9 @@ function toggleFullscreen() {
                             <MultiSelect input-id="reconciliation-order-status" v-model="selectedOrderStatuses" :options="orderStatusOptions" placeholder="Pilih status" display="chip" filter show-clear class="h-11 w-full" />
                         </div>
                     </div>
-                    <div class="flex justify-start">
+                    <div class="flex flex-wrap justify-start gap-2">
                         <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
+                        <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
                     </div>
                     <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
                         <span class="text-xs text-color-secondary">{{ filteredRows.length.toLocaleString('id-ID') }} baris tersedia</span>
@@ -342,7 +356,7 @@ function toggleFullscreen() {
                 </div>
             </template>
         </Card>
-        <div v-if="!isFullscreen" class="flex flex-col gap-4">
+        <div v-if="!isFullscreen && hasAppliedFilter" class="flex flex-col gap-4">
             <section class="flex flex-col gap-3">
                 <div class="flex items-center gap-2">
                     <Tag severity="info" value="Total Semua Status" icon="pi pi-chart-bar" />
@@ -392,7 +406,15 @@ function toggleFullscreen() {
                 </div>
             </section>
         </div>
+        <Card v-else-if="!isFullscreen">
+            <template #content>
+                <div class="py-8 text-center text-color-secondary">
+                    Pilih periode tanggal, lalu klik <strong>Terapkan</strong> untuk menampilkan data rekonsiliasi.
+                </div>
+            </template>
+        </Card>
         <div
+            v-if="hasAppliedFilter"
             class="relative min-w-0"
             :class="isFullscreen ? 'fixed inset-0 z-50 overflow-hidden bg-white p-3 dark:bg-black sm:p-4' : ''"
         >
