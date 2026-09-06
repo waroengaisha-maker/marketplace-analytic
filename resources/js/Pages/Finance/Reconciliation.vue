@@ -5,12 +5,12 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import MultiSelect from 'primevue/multiselect'
-import DatePicker from 'primevue/datepicker'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
 import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
+import DateRangeFilter from '@/Components/DateRangeFilter.vue'
 import { FilterMatchMode } from '@primevue/core/api'
 
 type Row = Record<string, unknown>
@@ -313,14 +313,12 @@ function toggleFullscreen() {
                                 </button>
                             </div>
                         </div>
-                        <div class="flex min-w-0 flex-col gap-1">
-                            <label for="reconciliation-from" class="text-xs font-medium text-color-secondary">Tanggal mulai</label>
-                            <DatePicker id="reconciliation-from" v-model="fromDate" date-format="yy-mm-dd" show-icon show-clear placeholder="Pilih tanggal" aria-label="Tanggal mulai" fluid class="h-11" />
-                        </div>
-                        <div class="flex min-w-0 flex-col gap-1">
-                            <label for="reconciliation-to" class="text-xs font-medium text-color-secondary">Tanggal akhir</label>
-                            <DatePicker id="reconciliation-to" v-model="toDate" date-format="yy-mm-dd" show-icon show-clear placeholder="Pilih tanggal" aria-label="Tanggal akhir" fluid class="h-11" />
-                        </div>
+                        <DateRangeFilter
+                            v-model:from="fromDate"
+                            v-model:to="toDate"
+                            id-prefix="reconciliation"
+                            class="md:col-span-2 xl:col-span-2"
+                        />
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-columns" class="text-xs font-medium text-color-secondary">Kolom</label>
                             <MultiSelect input-id="reconciliation-columns" v-model="selectedColumns" :options="allColumns" option-label="1" placeholder="Tampilkan kolom" display="chip" show-clear class="h-11 w-full" />

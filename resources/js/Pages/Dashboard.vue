@@ -2,11 +2,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import Card from 'primevue/card'
-import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import { formatNominal } from '@/utils/formatters'
 import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
+import DateRangeFilter from '@/Components/DateRangeFilter.vue'
 
 type User = { name: string; email: string }
 type PageProps = {
@@ -130,16 +130,13 @@ const cards = [
                     </div>
                     <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit ringkasan dashboard</span>
                 </div>
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)]">
-                    <div class="flex min-w-0 flex-col gap-1">
-                        <label for="dashboard-from" class="text-xs font-medium text-color-secondary">Tanggal mulai</label>
-                        <DatePicker id="dashboard-from" v-model="from" date-format="yy-mm-dd" show-icon show-clear placeholder="Pilih tanggal" aria-label="Tanggal mulai" fluid class="h-11 w-full" :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined" :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined" />
-                    </div>
-                    <div class="flex min-w-0 flex-col gap-1">
-                        <label for="dashboard-to" class="text-xs font-medium text-color-secondary">Tanggal akhir</label>
-                        <DatePicker id="dashboard-to" v-model="to" date-format="yy-mm-dd" show-icon show-clear placeholder="Pilih tanggal" aria-label="Tanggal akhir" fluid class="h-11 w-full" :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined" :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined" />
-                    </div>
-                </div>
+                <DateRangeFilter
+                    v-model:from="from"
+                    v-model:to="to"
+                    id-prefix="dashboard"
+                    :min-date="page.props.dateRange.min ? new Date(`${page.props.dateRange.min}T00:00:00`) : undefined"
+                    :max-date="page.props.dateRange.max ? new Date(`${page.props.dateRange.max}T00:00:00`) : undefined"
+                />
                 <div class="flex justify-start">
                     <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
                 </div>
