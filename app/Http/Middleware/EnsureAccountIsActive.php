@@ -12,7 +12,7 @@ class EnsureAccountIsActive
     {
         $user = $request->user();
 
-        if ($user === null || $user->canAccessApplication()) {
+        if ($user === null || $user->isAdmin() || $user->canAccessApplication()) {
             return $next($request);
         }
 

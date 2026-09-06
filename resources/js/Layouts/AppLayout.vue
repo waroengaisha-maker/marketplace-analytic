@@ -10,6 +10,7 @@ const accountOpen = ref(false)
 const darkMode = ref(false)
 const isNavigating = ref(false)
 const logout = useForm({})
+const isPrivileged = computed(() => ['admin', 'super_admin'].includes(page.props.auth?.user?.role))
 
 const removeNavigationStartListener = router.on('start', () => {
     isNavigating.value = true
@@ -48,13 +49,13 @@ const toggleSidebar = () => {
 }
 
 const navigation = computed(() => [
-    {
+    ...(!isPrivileged.value ? [{
         label: 'MAIN',
         items: [
             { name: 'Dashboard', href: '/', icon: '▦', color: 'text-blue-500' },
         ],
-    },
-    {
+    }] : []),
+    ...(isPrivileged.value ? [] : [{
         label: 'OPERATIONS',
         items: [
             { name: 'Orders', href: '/orders', icon: '□', color: 'text-violet-500' },
@@ -93,20 +94,22 @@ const navigation = computed(() => [
             { name: 'Customers', href: '/analytics/customers', icon: '♙', color: 'text-purple-500' },
             { name: 'Profitability', href: '/analytics/profitability', icon: '◎', color: 'text-yellow-500' },
         ],
-    },
-    ...(page.props.auth?.user?.role === 'admin' ? [{
-        label: 'ADMIN',
+    }]),
+    ...(isPrivileged.value ? [{
+        label: 'ACCESS CONTROL',
         items: [
-            { name: 'Kelola Pengguna', href: '/admin/users', icon: '♙', color: 'text-red-500' },
+            ...(page.props.auth?.user?.role === 'super_admin' ? [
+                { name: 'Kelola Admin', href: '/admin/admins', icon: '◆', color: 'text-red-500' },
+            ] : []),
+            { name: 'Kelola Akses User', href: '/admin/users', icon: '◇', color: 'text-orange-500' },
         ],
     }] : []),
-    {
+    ...(isPrivileged.value ? [] : [{
         label: 'SETTINGS',
         items: [
             { name: 'Shop', href: '/settings/shop', icon: '⚙', color: 'text-slate-500' },
-            { name: 'Users', href: '/settings/users', icon: '♙', color: 'text-blue-400' },
         ],
-    },
+    }]),
 ])
 
 const currentUrl = computed(() => page.url)

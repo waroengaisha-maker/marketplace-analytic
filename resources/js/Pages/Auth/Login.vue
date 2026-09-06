@@ -8,7 +8,7 @@ import Button from 'primevue/button'
 import Message from 'primevue/message'
 import Divider from 'primevue/divider'
 
-const form = useForm({ email: '', password: '', remember: false })
+const form = useForm({ login: '', password: '', remember: false })
 function submit() { form.post('/login') }
 </script>
 
@@ -20,10 +20,10 @@ function submit() { form.post('/login') }
             <template #subtitle>Sign in to your account</template>
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
-                    <Message v-if="form.errors.email" severity="error">{{ form.errors.email }}</Message>
+                    <Message v-if="form.errors.login" severity="error">{{ form.errors.login }}</Message>
                     <div class="flex flex-col gap-2">
-                        <label for="email">Email</label>
-                        <InputText id="email" v-model="form.email" type="email" autocomplete="email" required />
+                        <label for="login">Email, username, atau nomor handphone</label>
+                        <InputText id="login" v-model="form.login" autocomplete="username" required />
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="password">Password</label>

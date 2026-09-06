@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
 
-#[Fillable(['name', 'email', 'password', 'role', 'account_status', 'trial_started_at', 'trial_ends_at', 'subscription_ends_at', 'activated_at', 'suspended_at'])]
+#[Fillable(['name', 'username', 'email', 'phone', 'password', 'role', 'account_status', 'trial_started_at', 'trial_ends_at', 'subscription_ends_at', 'activated_at', 'suspended_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -48,7 +48,12 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::Admin;
+        return in_array($this->role, [UserRole::Admin, UserRole::SuperAdmin], true);
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === UserRole::SuperAdmin;
     }
 
     public function canAccessApplication(?Carbon $now = null): bool

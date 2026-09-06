@@ -17,7 +17,7 @@ createInertiaApp({
             import.meta.glob('./Pages/**/*.vue'),
         )
 
-        if (name !== 'Auth/Login' && name !== 'Auth/Register') {
+        if (!name.startsWith('Auth/') && name !== 'Account/Status') {
             page.default.layout = page.default.layout || AppLayout
         }
 
