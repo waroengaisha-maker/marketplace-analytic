@@ -295,6 +295,58 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(1190.0, $result->laba);
     }
 
+    public function test_unsettled_orders_reuse_settled_sku_fee_percentages_and_constant_processing_fee(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('j', 64);
+
+        DB::table('marketplace_orders')->insert([
+            $this->order($user->id, [
+                'order_number' => 'UNSETTLED-REUSE',
+                'product_key' => $productKey,
+                'item_index' => 110,
+                'discounted_price' => 200,
+                'unit_price' => 200,
+                'quantity' => 2,
+                'tracking_number' => 'TRACKING-A',
+            ]),
+            $this->order($user->id, [
+                'order_number' => 'SETTLED-REUSE',
+                'product_key' => $productKey,
+                'item_index' => 111,
+                'discounted_price' => 200,
+                'unit_price' => 200,
+                'quantity' => 2,
+                'tracking_number' => 'TRACKING-B',
+            ]),
+        ]);
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'SETTLED-REUSE',
+            'product_key' => $productKey,
+            'item_index' => 111,
+            'product_price' => 200,
+            'quantity' => 2,
+            'total_income' => 500,
+            'platform_fee' => 150,
+            'free_shipping_xtra_fee' => 30,
+            'promo_xtra_service_fee' => 20,
+            'order_processing_fee' => 1000,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'UNSETTLED-REUSE')
+            ->first();
+
+        $this->assertSame(400.0, (float) ($row->order_subtotal ?? 0));
+        $this->assertSame(150.0, (float) $row->platform_fee);
+        $this->assertSame(30.0, (float) $row->free_shipping_xtra_fee);
+        $this->assertSame(20.0, (float) $row->promo_xtra_service_fee);
+        $this->assertSame(1250.0, (float) $row->order_processing_fee);
+        $this->assertSame('Belum Settlement', $row->settlement_status);
+    }
+
     private function order(int $userId, array $overrides = []): array
     {
         return array_merge([

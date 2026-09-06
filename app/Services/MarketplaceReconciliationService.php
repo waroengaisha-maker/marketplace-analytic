@@ -289,6 +289,28 @@ class MarketplaceReconciliationService
 
         $netQuantitySql = 'CASE WHEN quantity - COALESCE(returned_quantity, 0) > 0 THEN quantity - COALESCE(returned_quantity, 0) ELSE 0 END';
 
+        $settledSkuFee = DB::table('marketplace_income')
+            ->where('user_id', $userId)
+            ->whereNotNull('total_income')
+            ->where('total_income', '<>', 0)
+            ->selectRaw('
+                user_id,
+                product_key,
+                AVG(CASE
+                    WHEN COALESCE(product_price, 0) * COALESCE(quantity, 0) <> 0 THEN COALESCE(platform_fee, 0) / (COALESCE(product_price, 0) * COALESCE(quantity, 0))
+                    ELSE 0
+                END) AS avg_platform_fee_rate,
+                AVG(CASE
+                    WHEN COALESCE(product_price, 0) * COALESCE(quantity, 0) <> 0 THEN COALESCE(free_shipping_xtra_fee, 0) / (COALESCE(product_price, 0) * COALESCE(quantity, 0))
+                    ELSE 0
+                END) AS avg_free_shipping_xtra_fee_rate,
+                AVG(CASE
+                    WHEN COALESCE(product_price, 0) * COALESCE(quantity, 0) <> 0 THEN COALESCE(promo_xtra_service_fee, 0) / (COALESCE(product_price, 0) * COALESCE(quantity, 0))
+                    ELSE 0
+                END) AS avg_promo_xtra_service_fee_rate
+            ')
+            ->groupBy('user_id', 'product_key');
+
         $orderGroups = DB::table('marketplace_orders')
             ->where('user_id', $userId)
             ->whereNotNull('tracking_number')
@@ -351,6 +373,10 @@ class MarketplaceReconciliationService
                     ->on('income_fallback.item_index', '=', 'orders.item_index')
                     ->whereNull('income_exact.user_id');
             })
+            ->leftJoinSub($settledSkuFee, 'settled_sku_fee', function ($join): void {
+                $join->on('settled_sku_fee.user_id', '=', 'orders.user_id')
+                    ->on('settled_sku_fee.product_key', '=', 'orders.product_key');
+            })
             ->leftJoinSub($orderGroups, 'order_group', function ($join): void {
                 $join->on('order_group.user_id', '=', 'orders.user_id')
                     ->on('order_group.order_number', '=', 'orders.order_number')
@@ -367,11 +393,11 @@ class MarketplaceReconciliationService
                 'orders.product_name as order_product_name',
                 'orders.variation_name as order_variation_name',
                 DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.total_income WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.total_income_sum / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.total_income_sum END AS total_income'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.order_processing_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.processing_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.processing_total END AS order_processing_fee'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.platform_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.platform_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.platform_total END AS platform_fee'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.order_processing_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.processing_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.processing_total WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL THEN 1250 ELSE 0 END AS order_processing_fee'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.platform_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.platform_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.platform_total WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL THEN (COALESCE(orders.discounted_price, 0) * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END) * COALESCE(settled_sku_fee.avg_platform_fee_rate, 0) ELSE 0 END AS platform_fee'),
                 DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.refund_to_buyer WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.refund_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.refund_total END AS refund_to_buyer'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.free_shipping_xtra_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.shipping_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.shipping_total END AS free_shipping_xtra_fee'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.promo_xtra_service_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.promo_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.promo_total END AS promo_xtra_service_fee'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.free_shipping_xtra_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.shipping_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.shipping_total WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL THEN (COALESCE(orders.discounted_price, 0) * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END) * COALESCE(settled_sku_fee.avg_free_shipping_xtra_fee_rate, 0) ELSE 0 END AS free_shipping_xtra_fee'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.promo_xtra_service_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.promo_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.promo_total WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL THEN (COALESCE(orders.discounted_price, 0) * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END) * COALESCE(settled_sku_fee.avg_promo_xtra_service_fee_rate, 0) ELSE 0 END AS promo_xtra_service_fee'),
                 DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.pph22 WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.tax_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.tax_total END AS pph22'),
                 DB::raw("CASE WHEN income_exact.candidate_count > 1 OR (income_exact.candidate_count IS NULL AND income_fallback.candidate_count > 1 AND (income_fallback.candidate_count <> order_group.order_line_count OR income_fallback.income_amount <> order_group.order_amount)) THEN 'Ambiguous' WHEN income_exact.candidate_count = 1 THEN 'Settled' WHEN income_fallback.candidate_count = 1 OR (income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount) THEN CASE WHEN income_fallback.candidate_count > 1 THEN 'Grouped Match' ELSE 'Settled' END ELSE 'Belum Settlement' END AS settlement_status"),
             ]);
