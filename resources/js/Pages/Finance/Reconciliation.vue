@@ -357,14 +357,9 @@ function onFilter() {
                         <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
                         <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
                     </div>
-                    <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <!-- <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
                         <span class="text-xs text-color-secondary">{{ (pagination?.total ?? 0).toLocaleString('id-ID') }} baris tersedia</span>
-                        <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
-                            <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportExcel" />
-                            <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportCsv" />
-                            <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="w-full sm:w-auto" @click="toggleFullscreen" />
-                        </div>
-                    </div>
+                    </div> -->
                 </div>
             </template>
         </Card>
@@ -442,50 +437,58 @@ function onFilter() {
             </div>
             <Toolbar class="mb-3 flex-wrap gap-3">
                 <template #start>
-                    <div class="relative w-full sm:w-[20rem] lg:w-[22rem]">
-                        <IconField icon-position="left" class="w-full">
-                            <InputIcon class="pi pi-search text-sm text-color-secondary" />
-                            <InputText
-                                id="reconciliation-global-filter"
-                                v-model="filters.global.value"
-                                aria-label="Filter semua kolom"
-                                placeholder="Cari semua kolom..."
-                                class="h-11 w-full pl-10 pr-10 text-sm"
-                                @input="onFilter"
-                                @keyup.enter="onFilter"
+                    <div class="flex w-full items-center gap-2 sm:w-auto">
+                        <div class="relative w-full min-w-0 sm:w-[20rem] lg:w-[22rem]">
+                            <IconField icon-position="left" class="w-full">
+                                <InputIcon class="pi pi-search text-sm text-color-secondary" />
+                                <InputText
+                                    id="reconciliation-global-filter"
+                                    v-model="filters.global.value"
+                                    aria-label="Filter semua kolom"
+                                    placeholder="Cari semua kolom..."
+                                    class="h-11 w-full pl-10 pr-10 text-sm"
+                                    @input="onFilter"
+                                    @keyup.enter="onFilter"
+                                />
+                            </IconField>
+                            <button
+                                v-if="filters.global.value"
+                                type="button"
+                                aria-label="Hapus pencarian"
+                                :class="clearButtonClass"
+                                @click="filters.global.value = null; onFilter()"
+                            >
+                                <i class="pi pi-times text-xs" aria-hidden="true"></i>
+                            </button>
+                        </div>
+                        <div class="w-full sm:w-[18rem] lg:w-[20rem]">
+                            <MultiSelect
+                                input-id="reconciliation-columns"
+                                v-model="selectedColumns"
+                                :options="allColumns"
+                                option-label="1"
+                                placeholder="Pilih kolom"
+                                display="chip"
+                                filter
+                                :max-selected-labels="2"
+                                selected-items-label="{0} kolom dipilih"
+                                class="h-11 w-full text-sm"
+                                :pt="{
+                                    root: { class: 'h-11 rounded-md shadow-none' },
+                                    trigger: { class: 'rounded-md border-surface-300 bg-surface-0 dark:bg-surface-950' },
+                                    panel: { class: 'text-sm' },
+                                    item: { class: 'py-2' },
+                                    header: { class: 'px-3 py-2' },
+                                }"
                             />
-                        </IconField>
-                        <button
-                            v-if="filters.global.value"
-                            type="button"
-                            aria-label="Hapus pencarian"
-                            :class="clearButtonClass"
-                            @click="filters.global.value = null; onFilter()"
-                        >
-                            <i class="pi pi-times text-xs" aria-hidden="true"></i>
-                        </button>
+                        </div>
                     </div>
                 </template>
                 <template #end>
-                    <div class="w-full sm:ml-auto sm:w-[20rem] lg:w-[22rem]">
-                        <MultiSelect
-                            input-id="reconciliation-columns"
-                            v-model="selectedColumns"
-                            :options="allColumns"
-                            option-label="1"
-                            placeholder="Pilih kolom"
-                            display="chip"
-                            filter
-                            :max-selected-labels="2"
-                            selected-items-label="{0} kolom dipilih"
-                            class="h-11 w-full text-sm"
-                            :pt="{
-                                root: { class: 'h-11 rounded-md' },
-                                trigger: { class: 'rounded-md' },
-                                panel: { class: 'text-sm' },
-                                item: { class: 'py-2' },
-                            }"
-                        />
+                    <div class="ml-auto flex w-full max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
+                        <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" outlined class="h-11" :disabled="filteredRows.length === 0" @click="exportExcel" />
+                        <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="h-11" :disabled="filteredRows.length === 0" @click="exportCsv" />
+                        <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="h-11" @click="toggleFullscreen" />
                     </div>
                 </template>
             </Toolbar>
