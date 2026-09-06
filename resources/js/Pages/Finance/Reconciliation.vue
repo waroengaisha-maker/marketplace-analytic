@@ -632,15 +632,15 @@ function onFilter() {
                                 <IconField v-else icon-position="left" class="w-full">
                                     <InputIcon class="pi pi-search text-sm text-color-secondary" />
                                     <InputText
-                                        v-model="filterModel.value"
+                                        :model-value="filters[field].value"
                                         :aria-label="`Filter ${header}`"
                                         placeholder="Cari..."
                                         class="h-9 w-full pl-8 pr-8 text-sm"
-                                        @input="onFilter"
+                                        @update:model-value="(value) => { filters[field].value = value; onFilter() }"
                                         @keyup.enter="onFilter"
                                     />
                                 </IconField>
-                                <button v-if="field !== 'settlement_status' && (filterModel.value || filters[field].value)" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="filterModel.value = null; filters[field].value = null; onFilter()">
+                                <button v-if="field !== 'settlement_status' && filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="filters[field].value = null; onFilter()">
                                     <i class="pi pi-times text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
