@@ -12,6 +12,7 @@ import InputIcon from 'primevue/inputicon'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import Popover from 'primevue/popover'
 import { formatNominal } from '@/utils/formatters'
 import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
 import DateRangeFilter from '@/Components/DateRangeFilter.vue'
@@ -32,7 +33,8 @@ const appliedToDate = ref<Date | null>(parseDate(props.appliedTo))
 const selectedOrderStatuses = ref<string[]>(['Settled', 'Unsettled'])
 const selectedRows = ref<Row[]>([])
 const multiSortMeta = ref<{ field: string; order: number }[]>([])
-const clearButtonClass = 'absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary transition-colors hover:bg-surface-200 hover:text-color'
+const totalFeePopoverRefs = ref<Record<string, { toggle: (event: Event) => void } | null>>({})
+const clearButtonClass = 'absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary transition-colors hover:bg-surface-200 hover:text-color dark:hover:bg-surface-700'
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
     net_quantity: 'Jumlah Bersih = Jumlah - Retur',
@@ -65,11 +67,17 @@ const selectedColumns = ref([...allColumns])
 const filters = ref<Record<string, { value: string | null; matchMode: string }>>(
     {
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-        ...Object.fromEntries(allColumns.map(([field]) => [field, { value: null, matchMode: FilterMatchMode.CONTAINS }])),
+        ...Object.fromEntries(allColumns.map(([field]) => [field, {
+            value: null,
+            matchMode: field === 'settlement_status' ? FilterMatchMode.EQUALS : FilterMatchMode.CONTAINS,
+        }])),
     },
 )
 const tableFilters = Object.fromEntries(
-    allColumns.map(([field]) => [field, { value: null, matchMode: FilterMatchMode.CONTAINS }]),
+    allColumns.map(([field]) => [field, {
+        value: null,
+        matchMode: field === 'settlement_status' ? FilterMatchMode.EQUALS : FilterMatchMode.CONTAINS,
+    }]),
 )
 const visibleColumns = computed(() => selectedColumns.value)
 const orderStatusOptions = ['Settled', 'Unsettled', 'Batal', 'Tidak Valid']
@@ -284,6 +292,12 @@ async function exportExcel() {
 function toggleFullscreen() {
     isFullscreen.value = !isFullscreen.value
 }
+function setTotalFeePopoverRef(ref: { toggle: (event: Event) => void } | null, key: string) {
+    totalFeePopoverRefs.value[key] = ref
+}
+function toggleTotalFeePopover(event: Event, key: string) {
+    totalFeePopoverRefs.value[key]?.toggle(event)
+}
 function loadData(overrides: Record<string, unknown> = {}) {
     if (!fromDate.value && !toDate.value && !hasAppliedFilter.value) {
         return
@@ -323,7 +337,7 @@ function onFilter() {
                             <i class="pi pi-filter text-color-secondary" aria-hidden="true"></i>
                             <span class="text-sm font-semibold">Filter data</span>
                         </div>
-                        <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit hasil rekonsiliasi</span>
+                        <!-- <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit hasil rekonsiliasi</span> -->
                     </div>
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_minmax(14rem,1.2fr)_minmax(12rem,1fr)]">
                         <DateRangeFilter
@@ -339,9 +353,8 @@ function onFilter() {
                                 v-model="selectedOrderStatuses"
                                 :options="orderStatusOptions"
                                 placeholder="Pilih status"
-                                display="chip"
+                                display="comma"
                                 filter
-                                show-clear
                                 class="h-11 w-full text-sm"
                                 :pt="{
                                     root: { class: 'h-11 rounded-md' },
@@ -370,14 +383,27 @@ function onFilter() {
                     <span class="text-sm text-color-secondary">{{ totalSummary.count.toLocaleString('id-ID') }} baris</span>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`" :class="card.field === 'total_fee' ? 'xl:col-span-2 [&_.p-card-body]:p-4' : '[&_.p-card-body]:p-3'">
+                    <Card v-for="card in totalSummary.cards" :key="`total-${card.field}`" :class="card.field === 'total_fee' ? '[&_.p-card-body]:!p-3 [&_.p-card-content]:!p-0' : '[&_.p-card-body]:!p-3 [&_.p-card-content]:!p-0'">
                         <template #content>
-                            <p class="text-xs font-semibold text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-1 text-lg font-bold">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="text-xs font-semibold text-color-secondary">{{ card.label }}</p>
+                                <Button
+                                    v-if="card.field === 'total_fee'"
+                                    type="button"
+                                    icon="pi pi-info-circle"
+                                    severity="secondary"
+                                    text
+                                    rounded
+                                    size="small"
+                                    aria-label="Lihat rincian total biaya"
+                                    @click="toggleTotalFeePopover($event, `total-${card.field}`)"
+                                />
+                            </div>
+                            <p class="mt-1 text-lg font-bold leading-tight">
                                 {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
                             </p>
                             <small v-if="card.field === 'subtotal'" class="text-xs text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
-                            <div v-if="card.breakdown" class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-surface pt-3 text-xs text-color-secondary sm:grid-cols-4">
+                            <div v-if="card.breakdown && card.field !== 'total_fee'" class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-surface pt-3 text-xs text-color-secondary sm:grid-cols-4">
                                 <span v-for="[label, value] in card.breakdown" :key="label" class="flex min-w-0 flex-col gap-0.5">
                                     <span class="font-medium">{{ label }}</span>
                                     <span class="whitespace-nowrap font-semibold text-color">{{ formatNominal(value) }}</span>
@@ -386,6 +412,21 @@ function onFilter() {
                             <small v-if="card.type !== 'count'" class="text-xs text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
                         </template>
                     </Card>
+                    <Popover
+                        v-if="totalSummary.cards.some((card) => card.field === 'total_fee')"
+                        :ref="(el) => setTotalFeePopoverRef(el as { toggle: (event: Event) => void } | null, 'total-total_fee')"
+                        class="max-w-sm"
+                    >
+                        <div class="space-y-2 p-1">
+                            <div class="text-sm font-semibold text-color">Rincian Total Biaya</div>
+                            <div class="grid gap-2 text-sm">
+                                <div v-for="[label, value] in totalSummary.cards.find((card) => card.field === 'total_fee')?.breakdown ?? []" :key="label" class="flex items-center justify-between gap-4">
+                                    <span class="text-color-secondary">{{ label }}</span>
+                                    <span class="font-medium text-color">{{ formatNominal(value) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </Popover>
                 </div>
             </section>
             <section v-for="group in summaryGroups" :key="group.label" class="flex flex-col gap-3">
@@ -394,14 +435,27 @@ function onFilter() {
                     <span class="text-sm text-color-secondary">{{ group.count.toLocaleString('id-ID') }} baris</span>
                 </div>
                 <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`" :class="card.field === 'total_fee' ? 'xl:col-span-2 [&_.p-card-body]:p-4' : '[&_.p-card-body]:p-3'">
+                    <Card v-for="card in group.cards" :key="`${group.label}-${card.field}`" :class="card.field === 'total_fee' ? '[&_.p-card-body]:!p-3 [&_.p-card-content]:!p-0' : '[&_.p-card-body]:!p-3 [&_.p-card-content]:!p-0'">
                         <template #content>
-                            <p class="text-xs font-semibold text-color-secondary">{{ card.label }}</p>
-                            <p class="mt-1 text-lg font-bold">
+                            <div class="flex items-start justify-between gap-2">
+                                <p class="text-xs font-semibold text-color-secondary">{{ card.label }}</p>
+                                <Button
+                                    v-if="card.field === 'total_fee'"
+                                    type="button"
+                                    icon="pi pi-info-circle"
+                                    severity="secondary"
+                                    text
+                                    rounded
+                                    size="small"
+                                    aria-label="Lihat rincian total biaya"
+                                    @click="toggleTotalFeePopover($event, `${group.label}-${card.field}`)"
+                                />
+                            </div>
+                            <p class="mt-1 text-lg font-bold leading-tight">
                                 {{ card.type === 'count' ? Number(card.value).toLocaleString('id-ID') : formatNominal(card.value) }}
                             </p>
                             <small v-if="card.field === 'subtotal'" class="text-xs text-color-secondary">{{ card.orderCount.toLocaleString('id-ID') }} order</small>
-                            <div v-if="card.breakdown" class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-surface pt-3 text-xs text-color-secondary sm:grid-cols-4">
+                            <div v-if="card.breakdown && card.field !== 'total_fee'" class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t border-surface pt-3 text-xs text-color-secondary sm:grid-cols-4">
                                 <span v-for="[label, value] in card.breakdown" :key="label" class="flex min-w-0 flex-col gap-0.5">
                                     <span class="font-medium">{{ label }}</span>
                                     <span class="whitespace-nowrap font-semibold text-color">{{ formatNominal(value) }}</span>
@@ -410,6 +464,22 @@ function onFilter() {
                             <small v-if="card.type !== 'count'" class="text-xs text-color-secondary">{{ card.percentage.toFixed(2) }}% dari subtotal</small>
                         </template>
                     </Card>
+                    <Popover
+                        v-for="group in summaryGroups"
+                        :key="`popover-${group.label}`"
+                        :ref="(el) => setTotalFeePopoverRef(el as { toggle: (event: Event) => void } | null, `${group.label}-total_fee`)"
+                        class="max-w-sm"
+                    >
+                        <div class="space-y-2 p-1">
+                            <div class="text-sm font-semibold text-color">Rincian Total Biaya - {{ group.label }}</div>
+                            <div class="grid gap-2 text-sm">
+                                <div v-for="[label, value] in group.cards.find((card) => card.field === 'total_fee')?.breakdown ?? []" :key="label" class="flex items-center justify-between gap-4">
+                                    <span class="text-color-secondary">{{ label }}</span>
+                                    <span class="font-medium text-color">{{ formatNominal(value) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </Popover>
                 </div>
             </section>
         </div>
@@ -422,10 +492,14 @@ function onFilter() {
         </Card>
         <div
             v-if="hasAppliedFilter"
-            class="relative min-w-0"
-            :class="isFullscreen ? 'fixed inset-0 z-50 overflow-hidden bg-white p-3 dark:bg-black sm:p-4' : ''"
+            class="min-w-0"
+            :class="isFullscreen ? 'fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-0 p-3 shadow-2xl dark:bg-surface-950 sm:p-4' : 'relative'"
         >
-            <div v-if="isFullscreen" class="flex h-10 items-center justify-end border-b border-surface pb-2">
+            <div v-if="isFullscreen" class="mb-3 flex h-12 shrink-0 items-center justify-between rounded-lg border border-surface-200 bg-surface-0 px-3 dark:border-surface-700 dark:bg-surface-950">
+                <div class="flex items-center gap-2">
+                    <i class="pi pi-window-maximize text-sm text-color-secondary" aria-hidden="true"></i>
+                    <span class="text-sm font-semibold text-color">Fullscreen Rekonsiliasi</span>
+                </div>
                 <Button
                     label="Keluar Fullscreen"
                     icon="pi pi-window-minimize"
@@ -435,9 +509,9 @@ function onFilter() {
                     @click="toggleFullscreen"
                 />
             </div>
-            <Toolbar class="mb-3 flex-wrap gap-3">
+            <Toolbar class="mb-3 shrink-0 flex-wrap gap-3 rounded-xl border border-surface-200 bg-surface-0 px-3 py-2 shadow-sm dark:border-surface-700 dark:bg-surface-950">
                 <template #start>
-                    <div class="flex w-full items-center gap-2 sm:w-auto">
+                    <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
                         <div class="relative w-full min-w-0 sm:w-[20rem] lg:w-[22rem]">
                             <IconField icon-position="left" class="w-full">
                                 <InputIcon class="pi pi-search text-sm text-color-secondary" />
@@ -468,14 +542,14 @@ function onFilter() {
                                 :options="allColumns"
                                 option-label="1"
                                 placeholder="Pilih kolom"
-                                display="chip"
+                                display="comma"
                                 filter
                                 :max-selected-labels="2"
                                 selected-items-label="{0} kolom dipilih"
                                 class="h-11 w-full text-sm"
                                 :pt="{
                                     root: { class: 'h-11 rounded-md shadow-none' },
-                                    trigger: { class: 'rounded-md border-surface-300 bg-surface-0 dark:bg-surface-950' },
+                                    trigger: { class: 'rounded-md border-surface-300 bg-surface-0 transition-colors hover:border-primary dark:bg-surface-950' },
                                     panel: { class: 'text-sm' },
                                     item: { class: 'py-2' },
                                     header: { class: 'px-3 py-2' },
@@ -486,15 +560,15 @@ function onFilter() {
                 </template>
                 <template #end>
                     <div class="ml-auto flex w-full max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
-                        <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" outlined class="h-11" :disabled="filteredRows.length === 0" @click="exportExcel" />
-                        <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="h-11" :disabled="filteredRows.length === 0" @click="exportCsv" />
-                        <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="h-11" @click="toggleFullscreen" />
+                        <Button label="Export Excel" icon="pi pi-download" severity="secondary" outlined class="h-11 px-3" :disabled="filteredRows.length === 0" @click="exportExcel" />
+                        <!-- <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="h-11 px-3" :disabled="filteredRows.length === 0" @click="exportCsv" /> -->
+                        <!-- <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="h-11 px-3" @click="toggleFullscreen" /> -->
                     </div>
                 </template>
             </Toolbar>
             <div
-                class="flex min-h-0 flex-1 flex-col"
-                :style="{ height: isFullscreen ? 'calc(100vh - 8rem)' : 'min(70vh, 48rem)' }"
+                class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg  border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-950"
+                :style="{ height: isFullscreen ? '100%' : 'min(70vh, 48rem)' }"
             >
                 <DataTable
                     ref="dataTable"
@@ -541,7 +615,7 @@ function onFilter() {
                             <div class="relative">
                                 <Select
                                     v-if="field === 'settlement_status'"
-                                    v-model="filters[field].value"
+                                    :model-value="filters[field].value"
                                     :options="orderStatusOptions"
                                     :aria-label="`Filter ${header}`"
                                     placeholder="Pilih status"
@@ -553,12 +627,12 @@ function onFilter() {
                                         panel: { class: 'text-sm' },
                                         item: { class: 'py-2' },
                                     }"
-                                    @change="onFilter"
+                                    @update:model-value="(value) => { filters[field].value = value; onFilter() }"
                                 />
                                 <IconField v-else icon-position="left" class="w-full">
                                     <InputIcon class="pi pi-search text-sm text-color-secondary" />
                                     <InputText
-                                        v-model="filters[field].value"
+                                        v-model="filterModel.value"
                                         :aria-label="`Filter ${header}`"
                                         placeholder="Cari..."
                                         class="h-9 w-full pl-8 pr-8 text-sm"
@@ -566,7 +640,7 @@ function onFilter() {
                                         @keyup.enter="onFilter"
                                     />
                                 </IconField>
-                                <button v-if="filterModel.value || filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
+                                <button v-if="field !== 'settlement_status' && (filterModel.value || filters[field].value)" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="filterModel.value = null; filters[field].value = null; onFilter()">
                                     <i class="pi pi-times text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
