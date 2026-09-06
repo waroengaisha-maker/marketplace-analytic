@@ -47,7 +47,7 @@ const toggleSidebar = () => {
     localStorage.setItem('marketplace-sidebar-collapsed', sidebarCollapsed.value ? 'true' : 'false')
 }
 
-const navigation = [
+const navigation = computed(() => [
     {
         label: 'MAIN',
         items: [
@@ -94,6 +94,12 @@ const navigation = [
             { name: 'Profitability', href: '/analytics/profitability', icon: '◎', color: 'text-yellow-500' },
         ],
     },
+    ...(page.props.auth?.user?.role === 'admin' ? [{
+        label: 'ADMIN',
+        items: [
+            { name: 'Kelola Pengguna', href: '/admin/users', icon: '♙', color: 'text-red-500' },
+        ],
+    }] : []),
     {
         label: 'SETTINGS',
         items: [
@@ -101,7 +107,7 @@ const navigation = [
             { name: 'Users', href: '/settings/users', icon: '♙', color: 'text-blue-400' },
         ],
     },
-]
+])
 
 const currentUrl = computed(() => page.url)
 

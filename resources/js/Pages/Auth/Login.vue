@@ -35,6 +35,7 @@ function submit() { form.post('/login') }
                         <label for="remember">Remember me</label>
                     </div>
                     <Button type="submit" :label="form.processing ? 'Signing in...' : 'Sign in'" :loading="form.processing" />
+                    <Link href="/forgot-password" class="text-center text-sm text-primary font-medium">Forgot password?</Link>
                 </form>
                 <Divider />
                 <p class="text-center text-sm">Don't have an account? <Link href="/register" class="text-primary font-medium">Register</Link></p>
