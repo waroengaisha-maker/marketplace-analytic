@@ -24,6 +24,8 @@ class MarketplaceReconciliationService
             ->selectRaw("
                 COALESCE(SUM({$sales}), 0) AS gross_sales,
                 COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS net_sales,
+                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN COALESCE(rows.platform_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.order_processing_fee, 0) ELSE 0 END), 0) AS total_fee,
+                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN COALESCE(rows.pph22, 0) ELSE 0 END), 0) AS total_tax,
                 COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) > 0 THEN {$sales} ELSE 0 END), 0) AS settled_sales,
                 COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) <= 0 THEN {$sales} ELSE 0 END), 0) AS pending_sales,
                 COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) > 0 THEN {$profit} ELSE 0 END), 0) AS settled_profit,
@@ -40,9 +42,19 @@ class MarketplaceReconciliationService
             ")
             ->first();
 
+        $netSales = (float) $aggregate->net_sales;
+        $totalFee = (float) $aggregate->total_fee;
+        $totalTax = (float) $aggregate->total_tax;
+        $grossProfit = $netSales - $totalFee - $totalTax;
+
         return [
             'gross_sales' => (float) $aggregate->gross_sales,
             'net_sales' => (float) $aggregate->net_sales,
+            'total_fee' => $totalFee,
+            'total_tax' => $totalTax,
+            'total_hpp' => 0.0,
+            'gross_profit' => $grossProfit,
+            'net_profit' => $grossProfit,
             'settled_sales' => (float) $aggregate->settled_sales,
             'pending_sales' => (float) $aggregate->pending_sales,
             'settled_profit' => (float) $aggregate->settled_profit,

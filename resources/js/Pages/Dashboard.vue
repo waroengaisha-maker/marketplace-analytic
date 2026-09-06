@@ -36,7 +36,11 @@ const cards = [
     ['Pesanan Settled', 'settled_sales', 'settled_order_count', 'success'],
     ['Pesanan Unsettled', 'pending_sales', 'pending_order_count', 'warn'],
     ['Penjualan Valid', 'net_sales', 'net_order_count', 'info'],
-    ['Total Laba', 'total_profit', null, 'success'],
+    ['Total Biaya', 'total_fee', null, 'info'],
+    ['Total Pajak', 'total_tax', null, 'info'],
+    ['Total Laba Kotor', 'gross_profit', null, 'success'],
+    ['Total HPP', 'total_hpp', null, 'secondary'],
+    ['Laba Bersih', 'net_profit', null, 'success'],
     ['Batal', 'cancelled_sales', 'cancelled_order_count', 'danger'],
     ['Tidak Valid', 'valid_without_tracking_sales', 'valid_without_tracking', 'secondary'],
 ] as const
