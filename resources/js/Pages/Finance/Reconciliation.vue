@@ -16,15 +16,19 @@ import { FilterMatchMode } from '@primevue/core/api'
 
 type Row = Record<string, unknown>
 type DataTableInstance = { exportCSV: () => void; filteredValue?: Row[] }
-const props = defineProps<{ rows: Row[]; hasAppliedFilter: boolean }>()
+type Pagination = { current_page: number; per_page: number; total: number; last_page: number } | null
+const props = defineProps<{ rows: Row[]; summaryRows: Row[]; pagination: Pagination; hasAppliedFilter: boolean; appliedFrom?: string | null; appliedTo?: string | null }>()
 const hasAppliedFilter = ref(props.hasAppliedFilter)
 const dataTable = ref<DataTableInstance | null>(null)
 const isFullscreen = ref(false)
-const fromDate = ref<Date | null>(null)
-const toDate = ref<Date | null>(null)
-const appliedFromDate = ref<Date | null>(null)
-const appliedToDate = ref<Date | null>(null)
+const parseDate = (value?: string | null) => value ? new Date(`${value}T00:00:00`) : null
+const fromDate = ref<Date | null>(parseDate(props.appliedFrom))
+const toDate = ref<Date | null>(parseDate(props.appliedTo))
+const appliedFromDate = ref<Date | null>(parseDate(props.appliedFrom))
+const appliedToDate = ref<Date | null>(parseDate(props.appliedTo))
 const selectedOrderStatuses = ref<string[]>(['Settled', 'Unsettled'])
+const selectedRows = ref<Row[]>([])
+const multiSortMeta = ref<{ field: string; order: number }[]>([])
 const clearButtonClass = 'absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color'
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
@@ -69,10 +73,8 @@ const orderStatusOptions = ['Settled', 'Unsettled', 'Batal', 'Tidak Valid']
 function applyDateFilter() {
     appliedFromDate.value = fromDate.value
     appliedToDate.value = toDate.value
-    router.get('/finance/reconciliation', {
-        from: fromDate.value ? localDateKey(fromDate.value) : undefined,
-        to: toDate.value ? localDateKey(toDate.value) : undefined,
-    }, { preserveScroll: true })
+    hasAppliedFilter.value = true
+    loadData({ page: 1 })
 }
 function resetDateFilter() {
     fromDate.value = null
@@ -89,16 +91,6 @@ function localDateKey(date: Date) {
 
     return `${year}-${month}-${day}`
 }
-const dateFilteredRows = computed(() => {
-    const from = appliedFromDate.value ? localDateKey(appliedFromDate.value) : null
-    const to = appliedToDate.value ? localDateKey(appliedToDate.value) : null
-
-    return (props.rows || []).filter((row) => {
-        const rowDate = String(row.order_created_at ?? '').slice(0, 10)
-
-        return (!from || rowDate >= from) && (!to || rowDate <= to)
-    })
-})
 function severity(status: string) { return status === 'Settled' ? 'success' : status === 'Unsettled' ? 'warn' : 'danger' }
 function orderCategory(row: Row) {
     const rawStatus = String(row.order_status ?? '').trim().toLowerCase()
@@ -117,6 +109,7 @@ function orderCategory(row: Row) {
 }
 function clearColumnFilter(field: string) {
     filters.value[field].value = null
+    onFilter()
 }
 function exportValue(row: Row, field: string) {
     if (field === 'settlement_status') {
@@ -135,22 +128,9 @@ function exportValue(row: Row, field: string) {
 function searchableValue(row: Row, field: string) {
     return String(exportValue(row, field) ?? '').toLocaleLowerCase('id-ID')
 }
-const searchableFilteredRows = computed(() => {
-    const globalValue = String(filters.value.global.value ?? '').trim().toLocaleLowerCase('id-ID')
-
-    return dateFilteredRows.value.filter((row) => {
-        const matchesGlobal = !globalValue || allColumns.some(([field]) => searchableValue(row, field).includes(globalValue))
-        const matchesColumns = allColumns.every(([field]) => {
-            const value = String(filters.value[field]?.value ?? '').trim().toLocaleLowerCase('id-ID')
-
-            return !value || searchableValue(row, field).includes(value)
-        })
-
-        return matchesGlobal && matchesColumns
-    })
-})
-const filteredRows = computed(() => searchableFilteredRows.value.filter((row) =>
-    hasAppliedFilter.value && (selectedOrderStatuses.value.length === 0 || selectedOrderStatuses.value.includes(orderCategory(row))),
+const filteredRows = computed(() => props.rows || [])
+const summaryFilteredRows = computed(() => (props.summaryRows || []).filter((row) =>
+    selectedOrderStatuses.value.length === 0 || selectedOrderStatuses.value.includes(orderCategory(row)),
 ))
 function numericValue(row: Row, field: string) {
     const value = Number(row[field] ?? 0)
@@ -198,8 +178,8 @@ function buildSummaryCards(rows: Row[], subtotalOnly = false) {
     ]
 }
 const totalSummary = computed(() => ({
-    count: searchableFilteredRows.value.length,
-    cards: buildSummaryCards(searchableFilteredRows.value),
+    count: summaryFilteredRows.value.length,
+    cards: buildSummaryCards(summaryFilteredRows.value),
 }))
 const summaryGroups = computed(() => {
     const groups = [
@@ -209,7 +189,7 @@ const summaryGroups = computed(() => {
         { label: 'Tidak Valid', severity: 'secondary', icon: 'pi pi-ban' },
     ]
     return groups.map((group) => {
-        const rows = filteredRows.value.filter((row) => orderCategory(row) === group.label)
+        const rows = summaryFilteredRows.value.filter((row) => orderCategory(row) === group.label)
 
         return {
             ...group,
@@ -264,7 +244,7 @@ function exportCsv() { dataTable.value?.exportCSV() }
 async function exportExcel() {
     const XLSX = await import('xlsx')
     const visibleFields = visibleColumns.value
-    const exportRows = [...filteredRows.value].sort((first, second) =>
+    const exportRows = [...summaryFilteredRows.value].sort((first, second) =>
         String(exportValue(first, 'order_product_name')).localeCompare(String(exportValue(second, 'order_product_name')), 'id', { sensitivity: 'base' }) ||
         numericValue(first, 'discounted_price') - numericValue(second, 'discounted_price'),
     )
@@ -301,6 +281,31 @@ async function exportExcel() {
 function toggleFullscreen() {
     isFullscreen.value = !isFullscreen.value
 }
+function loadData(overrides: Record<string, unknown> = {}) {
+    if (!fromDate.value && !toDate.value && !hasAppliedFilter.value) {
+        return
+    }
+
+    router.get('/finance/reconciliation', {
+        from: fromDate.value ? localDateKey(fromDate.value) : undefined,
+        to: toDate.value ? localDateKey(toDate.value) : undefined,
+        search: filters.value.global.value || undefined,
+        statuses: selectedOrderStatuses.value,
+        column_filters: JSON.stringify(Object.fromEntries(
+            allColumns.map(([field]) => [field, filters.value[field]?.value || null]),
+        )),
+        ...overrides,
+    }, { preserveScroll: true, preserveState: true })
+}
+function onPage(event: { first: number; rows: number }) {
+    loadData({ page: Math.floor(event.first / event.rows) + 1, per_page: event.rows })
+}
+function onSort(event: { sortField?: string; sortOrder?: number }) {
+    loadData({ page: 1, multi_sort_meta: JSON.stringify(multiSortMeta.value) })
+}
+function onFilter() {
+    loadData({ page: 1 })
+}
 </script>
 
 <template>
@@ -318,15 +323,6 @@ function toggleFullscreen() {
                         <span class="text-xs text-color-secondary">Gunakan filter untuk mempersempit hasil rekonsiliasi</span>
                     </div>
                     <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_minmax(14rem,1.2fr)_minmax(12rem,1fr)]">
-                        <div class="flex min-w-0 flex-col gap-1">
-                            <label for="reconciliation-search" class="text-xs font-medium text-color-secondary">Pencarian</label>
-                            <div class="relative">
-                                <InputText id="reconciliation-search" v-model="filters.global.value" aria-label="Filter semua kolom" placeholder="Cari semua kolom..." class="h-11 w-full pr-10" />
-                                <button v-if="filters.global.value" type="button" aria-label="Hapus pencarian" :class="clearButtonClass" @click="filters.global.value = null">
-                                    <i class="pi pi-times text-xs" aria-hidden="true"></i>
-                                </button>
-                            </div>
-                        </div>
                         <DateRangeFilter
                             v-model:from="fromDate"
                             v-model:to="toDate"
@@ -335,7 +331,7 @@ function toggleFullscreen() {
                         />
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-order-status" class="text-xs font-medium text-color-secondary">Status order</label>
-                            <MultiSelect input-id="reconciliation-order-status" v-model="selectedOrderStatuses" :options="orderStatusOptions" placeholder="Pilih status" display="chip" filter show-clear class="h-11 w-full" />
+                            <MultiSelect input-id="reconciliation-order-status" v-model="selectedOrderStatuses" :options="orderStatusOptions" placeholder="Pilih status" display="chip" filter show-clear class="h-11 w-full" @change="onFilter" />
                         </div>
                     </div>
                     <div class="flex flex-wrap justify-start gap-2">
@@ -343,7 +339,7 @@ function toggleFullscreen() {
                         <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
                     </div>
                     <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
-                        <span class="text-xs text-color-secondary">{{ filteredRows.length.toLocaleString('id-ID') }} baris tersedia</span>
+                        <span class="text-xs text-color-secondary">{{ (pagination?.total ?? 0).toLocaleString('id-ID') }} baris tersedia</span>
                         <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
                             <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportExcel" />
                             <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="w-full sm:w-auto" :disabled="filteredRows.length === 0" @click="exportCsv" />
@@ -425,74 +421,109 @@ function toggleFullscreen() {
                     @click="toggleFullscreen"
                 />
             </div>
-            <Toolbar class="mb-3">
+            <Toolbar class="mb-3 flex-wrap gap-3">
                 <template #start>
-                    <!-- <div class="flex items-center gap-2">
-                        <i class="pi pi-table text-color-secondary" aria-hidden="true"></i>
-                        <span class="text-sm font-semibold">Kolom tabel</span>
-                    </div> -->
+                    <div class="relative w-full sm:w-[20rem] lg:w-[22rem]">
+                        <i class="pi pi-search absolute left-3 top-1/2 z-10 -translate-y-1/2 text-color-secondary" aria-hidden="true"></i>
+                        <InputText
+                            id="reconciliation-global-filter"
+                            v-model="filters.global.value"
+                            aria-label="Filter semua kolom"
+                            placeholder="Cari semua kolom..."
+                            class="h-11 w-full pl-10 pr-10"
+                            @keyup.enter="onFilter"
+                        />
+                        <button
+                            v-if="filters.global.value"
+                            type="button"
+                            aria-label="Hapus pencarian"
+                            :class="clearButtonClass"
+                            @click="filters.global.value = null; onFilter()"
+                        >
+                            <i class="pi pi-times text-xs" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </template>
                 <template #end>
-                    <MultiSelect
-                        input-id="reconciliation-columns"
-                        v-model="selectedColumns"
-                        :options="allColumns"
-                        option-label="1"
-                        placeholder="Pilih kolom"
-                        display="chip"
-                        filter
-                        :max-selected-labels="2"
-                        selected-items-label="{0} kolom dipilih"
-                        class="w-full sm:w-80"
-                    />
+                    <div class="w-full sm:ml-auto sm:w-[20rem] lg:w-[22rem]">
+                        <MultiSelect
+                            input-id="reconciliation-columns"
+                            v-model="selectedColumns"
+                            :options="allColumns"
+                            option-label="1"
+                            placeholder="Pilih kolom"
+                            display="chip"
+                            filter
+                            :max-selected-labels="2"
+                            selected-items-label="{0} kolom dipilih"
+                            class="h-11 w-full"
+                        />
+                    </div>
                 </template>
             </Toolbar>
-            <DataTable
-                ref="dataTable"
-                :value="filteredRows"
-                :filters="tableFilters"
-                filter-display="row"
-                :global-filter-fields="allColumns.map(([field]) => field)"
-                paginator
-                :rows="100"
-                :rows-per-page-options="[25, 50, 100]"
-                paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-                current-page-report-template="{first}–{last} dari {totalRecords}"
-                scrollable
-                :scroll-height="isFullscreen ? 'calc(100vh - 8rem)' : 'calc(100vh - 20rem)'"
-                resizable-columns
-                column-resize-mode="expand"
-                reorderable-columns
-                striped-rows
-                row-hover
-                show-gridlines
-                removable-sort
-                size="big"
-                table-style="min-width: 108rem"
-                class="w-full text-xs"
+            <div
+                class="flex min-h-0 flex-1 flex-col"
+                :style="{ height: isFullscreen ? 'calc(100vh - 8rem)' : 'min(70vh, 48rem)' }"
             >
-                <template #empty>Belum ada data rekonsiliasi.</template>
-                <Column v-for="[field, header] in visibleColumns" :key="field" :field="field" sortable :show-filter-menu="false">
-                    <template #header>
-                        <span v-tooltip.top="formulaTooltips[field] || undefined">{{ header }}</span>
-                    </template>
-                    <template #filter="{ filterModel }">
-                        <div class="relative">
-                            <InputText v-model="filters[field].value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full pr-8" />
-                            <button v-if="filterModel.value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
-                                <i class="pi pi-times text-xs" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </template>
-                    <template #body="{ data }">
-                        <Tag v-if="field === 'settlement_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
-                        <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
-                        <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
-                        <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>
-                        <span v-else>{{ data[field] ?? 0 }}</span>
-                    </template>
-                </Column>
-            </DataTable>
+                <DataTable
+                    ref="dataTable"
+                    v-model:selection="selectedRows"
+                    :value="filteredRows"
+                    v-model:filters="filters"
+                    filter-display="row"
+                    :global-filter-fields="allColumns.map(([field]) => field)"
+                    v-model:multi-sort-meta="multiSortMeta"
+                    sort-mode="multiple"
+                    lazy
+                    :total-records="pagination?.total ?? 0"
+                    :first="((pagination?.current_page ?? 1) - 1) * (pagination?.per_page ?? 100)"
+                    data-key="id"
+                    selection-mode="multiple"
+                    meta-key-selection
+                    @page="onPage"
+                    @sort="onSort"
+                    @filter="onFilter"
+                    paginator
+                    :rows="pagination?.per_page ?? 100"
+                    :rows-per-page-options="[25, 50, 100]"
+                    paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                    current-page-report-template="{first}–{last} dari {totalRecords}"
+                    scrollable
+                    scroll-height="flex"
+                    resizable-columns
+                    column-resize-mode="expand"
+                    reorderable-columns
+                    striped-rows
+                    row-hover
+                    show-gridlines
+                    removable-sort
+                    size="large"
+                    table-style="min-width: 108rem"
+                    class="min-h-0 flex-1 text-xs"
+                >
+                    <template #empty>Belum ada data rekonsiliasi.</template>
+                    <Column v-for="[field, header] in visibleColumns" :key="field" :field="field" sortable :show-filter-menu="false">
+                        <template #header>
+                            <span v-tooltip.top="formulaTooltips[field] || undefined">{{ header }}</span>
+                        </template>
+                        <template #filter="{ filterModel }">
+                            <div class="relative">
+                                <InputText v-model="filters[field].value" :aria-label="`Filter ${header}`" placeholder="Cari..." class="w-full pr-8" />
+                                <button v-if="filterModel.value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
+                                    <i class="pi pi-times text-xs" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </template>
+                        <template #body="{ data }">
+                            <Tag v-if="field === 'settlement_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
+                            <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
+                            <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
+                            <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>
+                            <span v-else>{{ data[field] ?? 0 }}</span>
+                        </template>
+                    </Column>
+                </DataTable>
+            </div>
         </div>
     </div>
 </template>

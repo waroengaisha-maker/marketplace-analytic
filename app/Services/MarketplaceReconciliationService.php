@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -19,6 +20,121 @@ class MarketplaceReconciliationService
             ->map(fn (object $row): object => $this->calculateFinancials($row))
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
+    public function reconciliationPage(int $userId, ?string $from, ?string $to, array $parameters): LengthAwarePaginator
+    {
+        $query = $this->reconciliationQuery($userId, $from, $to, $parameters);
+        $perPage = min(max((int) ($parameters['per_page'] ?? 100), 25), 500);
+
+        $page = $query->paginate($perPage)->withQueryString();
+        $page->setCollection($page->getCollection()->map(fn (object $row): object => $this->calculateFinancials($row)));
+
+        return $page;
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     * @return array<int, object>
+     */
+    public function reconciliationSummaryRows(int $userId, ?string $from, ?string $to, array $parameters): array
+    {
+        return $this->reconciliationQuery($userId, $from, $to, $parameters)
+            ->get()
+            ->map(fn (object $row): object => $this->calculateFinancials($row))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $parameters
+     */
+    private function reconciliationQuery(int $userId, ?string $from, ?string $to, array $parameters): Builder
+    {
+        $base = $this->joinedQuery($userId, true)
+            ->when($from, fn (Builder $query) => $query->where('orders.order_created_at', '>=', CarbonImmutable::parse($from)->startOfDay()))
+            ->when($to, fn (Builder $query) => $query->where('orders.order_created_at', '<', CarbonImmutable::parse($to)->addDay()->startOfDay()));
+
+        $query = DB::query()->fromSub($base, 'rows');
+        $search = trim((string) ($parameters['search'] ?? ''));
+        $statuses = array_values(array_filter((array) ($parameters['statuses'] ?? [])));
+        $columnFilters = json_decode((string) ($parameters['column_filters'] ?? '{}'), true);
+        $columnFilters = is_array($columnFilters) ? $columnFilters : [];
+        $statusExpression = "CASE WHEN LOWER(TRIM(COALESCE(rows.order_status, ''))) = 'batal' THEN 'Batal' WHEN rows.tracking_number IS NULL OR TRIM(rows.tracking_number) = '' THEN 'Tidak Valid' WHEN COALESCE(rows.total_income, 0) > 0 THEN 'Settled' ELSE 'Unsettled' END";
+
+        if ($search !== '') {
+            $like = '%'.addcslashes($search, '%_\\').'%';
+            $query->where(function (Builder $query) use ($like, $statusExpression): void {
+                foreach (['order_number', 'order_product_name', 'variation_name', 'tracking_number'] as $field) {
+                    $query->orWhere("rows.{$field}", 'like', $like);
+                }
+
+                $query->orWhereRaw("{$statusExpression} LIKE ?", [$like]);
+            });
+        }
+
+        if ($statuses !== []) {
+            $query->whereIn(DB::raw($statusExpression), $statuses);
+        }
+
+        $netQuantityExpression = 'CASE WHEN rows.quantity - COALESCE(rows.returned_quantity, 0) > 0 THEN rows.quantity - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
+        $filterExpressions = [
+            'settlement_status' => $statusExpression,
+            'order_number' => 'rows.order_number',
+            'order_product_name' => 'rows.order_product_name',
+            'quantity' => 'rows.quantity',
+            'discounted_price' => 'rows.discounted_price',
+            'returned_quantity' => 'rows.returned_quantity',
+            'net_quantity' => $netQuantityExpression,
+            'order_subtotal' => '(rows.discounted_price * '.$netQuantityExpression.')',
+            'platform_fee' => 'COALESCE(rows.platform_fee, 0)',
+            'free_shipping_xtra_fee' => 'COALESCE(rows.free_shipping_xtra_fee, 0)',
+            'promo_xtra_service_fee' => 'COALESCE(rows.promo_xtra_service_fee, 0)',
+            'order_processing_fee' => 'COALESCE(rows.order_processing_fee, 0)',
+            'tax' => 'COALESCE(rows.pph22, 0)',
+        ];
+
+        foreach ($filterExpressions as $field => $expression) {
+            $value = trim((string) ($columnFilters[$field] ?? ''));
+
+            if ($value === '') {
+                continue;
+            }
+
+            $query->whereRaw("CAST({$expression} AS CHAR) LIKE ?", ['%'.addcslashes($value, '%_\\').'%']);
+        }
+
+        $sortFields = [
+            'settlement_status' => DB::raw($statusExpression),
+            'order_number' => 'rows.order_number',
+            'order_product_name' => 'rows.order_product_name',
+            'quantity' => 'rows.quantity',
+            'discounted_price' => 'rows.discounted_price',
+            'order_created_at' => 'rows.order_created_at',
+        ];
+        $multiSortMeta = json_decode((string) ($parameters['multi_sort_meta'] ?? '[]'), true);
+
+        if (is_array($multiSortMeta) && $multiSortMeta !== []) {
+            foreach ($multiSortMeta as $sort) {
+                $sortField = (string) ($sort['field'] ?? '');
+                $sortOrder = (int) ($sort['order'] ?? 1) === -1 ? 'desc' : 'asc';
+
+                if (isset($sortFields[$sortField])) {
+                    $query->orderBy($sortFields[$sortField], $sortOrder);
+                }
+            }
+        } else {
+            $sortField = (string) ($parameters['sort_field'] ?? 'order_number');
+            $sortOrder = strtolower((string) ($parameters['sort_order'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
+            $query->orderBy($sortFields[$sortField] ?? $sortFields['order_number'], $sortOrder);
+        }
+
+        $query->orderBy('rows.item_index');
+
+        return $query;
     }
 
     public function dashboardStats(int $userId, ?string $from = null, ?string $to = null): array
@@ -120,8 +236,10 @@ class MarketplaceReconciliationService
             ->selectRaw('
                 user_id,
                 order_number,
+                product_name,
                 product_key,
                 variation_key,
+                COALESCE(unit_price, product_price) AS unit_price,
                 product_price,
                 quantity,
                 COUNT(*) AS candidate_count,
@@ -136,8 +254,10 @@ class MarketplaceReconciliationService
             ->groupBy(
                 'user_id',
                 'order_number',
+                'product_name',
                 'product_key',
                 'variation_key',
+                'unit_price',
                 'product_price',
                 'quantity'
             );
@@ -167,6 +287,8 @@ class MarketplaceReconciliationService
                 'item_index'
             );
 
+        $netQuantitySql = 'CASE WHEN quantity - COALESCE(returned_quantity, 0) > 0 THEN quantity - COALESCE(returned_quantity, 0) ELSE 0 END';
+
         $orderGroups = DB::table('marketplace_orders')
             ->where('user_id', $userId)
             ->whereNotNull('tracking_number')
@@ -177,7 +299,7 @@ class MarketplaceReconciliationService
                 product_key,
                 item_index,
                 COUNT(*) AS order_line_count,
-                SUM(discounted_price * GREATEST(quantity - COALESCE(returned_quantity, 0), 0)) AS order_amount
+                SUM(discounted_price * '.$netQuantitySql.') AS order_amount
             ')
             ->groupBy('user_id', 'order_number', 'product_key', 'item_index');
 
@@ -215,8 +337,12 @@ class MarketplaceReconciliationService
                     ->on('income_exact.order_number', '=', 'orders.order_number')
                     ->on('income_exact.product_key', '=', 'orders.product_key')
                     ->on('income_exact.quantity', '=', 'orders.quantity')
-                    ->whereRaw('income_exact.variation_key <=> orders.variation_key')
-                    ->whereRaw('income_exact.product_price = orders.discounted_price * GREATEST(orders.quantity - COALESCE(orders.returned_quantity, 0), 0)');
+                    ->whereRaw('LOWER(COALESCE(income_exact.product_name, \'\')) = LOWER(COALESCE(orders.product_name, \'\'))')
+                    ->whereRaw('COALESCE(income_exact.variation_key, \'\') = COALESCE(orders.variation_key, \'\')')
+                    ->whereRaw('(
+                        COALESCE(income_exact.unit_price, income_exact.product_price) = COALESCE(orders.unit_price, orders.discounted_price)
+                        OR income_exact.product_price = orders.discounted_price * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END
+                    )');
             })
             ->leftJoinSub($incomeFallback, 'income_fallback', function ($join): void {
                 $join->on('income_fallback.user_id', '=', 'orders.user_id')
@@ -240,13 +366,13 @@ class MarketplaceReconciliationService
                 ...$orderColumns,
                 'orders.product_name as order_product_name',
                 'orders.variation_name as order_variation_name',
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.total_income WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount                 THEN income_fallback.total_income_sum / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.total_income_sum END AS total_income'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.order_processing_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount                 THEN income_fallback.processing_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.processing_total END AS order_processing_fee'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.platform_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount                 THEN income_fallback.platform_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.platform_total END AS platform_fee'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.refund_to_buyer WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount                 THEN income_fallback.refund_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.refund_total END AS refund_to_buyer'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.free_shipping_xtra_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount                 THEN income_fallback.shipping_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.shipping_total END AS free_shipping_xtra_fee'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.promo_xtra_service_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount                 THEN income_fallback.promo_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.promo_total END AS promo_xtra_service_fee'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.pph22 WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount                 THEN income_fallback.tax_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.tax_total END AS pph22'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.total_income WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.total_income_sum / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.total_income_sum END AS total_income'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.order_processing_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.processing_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.processing_total END AS order_processing_fee'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.platform_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.platform_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.platform_total END AS platform_fee'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.refund_to_buyer WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.refund_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.refund_total END AS refund_to_buyer'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.free_shipping_xtra_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.shipping_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.shipping_total END AS free_shipping_xtra_fee'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.promo_xtra_service_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.promo_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.promo_total END AS promo_xtra_service_fee'),
+                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.pph22 WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.tax_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.tax_total END AS pph22'),
                 DB::raw("CASE WHEN income_exact.candidate_count > 1 OR (income_exact.candidate_count IS NULL AND income_fallback.candidate_count > 1 AND (income_fallback.candidate_count <> order_group.order_line_count OR income_fallback.income_amount <> order_group.order_amount)) THEN 'Ambiguous' WHEN income_exact.candidate_count = 1 THEN 'Settled' WHEN income_fallback.candidate_count = 1 OR (income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount) THEN CASE WHEN income_fallback.candidate_count > 1 THEN 'Grouped Match' ELSE 'Settled' END ELSE 'Belum Settlement' END AS settlement_status"),
             ]);
     }
