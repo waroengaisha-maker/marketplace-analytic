@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import Message from 'primevue/message'
 
 type User = {
     id: number
@@ -34,6 +35,7 @@ const submit = () => {
     form.post('/admin/users', { onSuccess: () => form.reset('name', 'username', 'email', 'phone', 'password', 'password_confirmation') })
 }
 const remove = (id: number) => router.delete(`/admin/users/${id}`)
+const validationError = () => Object.values(form.errors)[0] || ''
 </script>
 
 <template>
@@ -41,6 +43,7 @@ const remove = (id: number) => router.delete(`/admin/users/${id}`)
         <Head title="Kelola Akses User" />
         <h1 class="mb-6 text-2xl font-semibold">Kelola Akses User Aplikasi</h1>
         <p class="mb-6 text-sm text-slate-500">Aktifkan, atur trial, atau suspend akun pengguna aplikasi.</p>
+        <Message v-if="validationError()" class="mb-4" severity="error">{{ validationError() }}</Message>
         <form class="mb-6 grid gap-3 rounded border p-4 md:grid-cols-4" @submit.prevent="submit">
             <input v-model="form.name" class="rounded border p-2" placeholder="Nama" required>
             <input v-model="form.username" class="rounded border p-2" placeholder="Username" required>

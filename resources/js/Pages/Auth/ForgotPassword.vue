@@ -4,11 +4,15 @@ import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { ref } from 'vue'
 
 const page = usePage<{ status?: string }>()
 const form = useForm({ email: '' })
+const clientError = ref('')
 
 function submit() {
+    clientError.value = !form.email.trim() ? 'Masukkan email.' : ''
+    if (clientError.value) return
     form.post('/forgot-password')
 }
 </script>
@@ -22,7 +26,7 @@ function submit() {
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
                     <Message v-if="page.props.status" severity="success">{{ page.props.status }}</Message>
-                    <Message v-if="form.errors.email" severity="error">{{ form.errors.email }}</Message>
+                    <Message v-if="clientError || form.errors.email" severity="error">{{ clientError || form.errors.email }}</Message>
                     <div class="flex flex-col gap-2">
                         <label for="email">Email</label>
                         <InputText id="email" v-model="form.email" type="email" autocomplete="email" required />

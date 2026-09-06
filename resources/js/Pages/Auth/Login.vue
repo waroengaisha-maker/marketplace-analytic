@@ -6,10 +6,16 @@ import Password from 'primevue/password'
 import Checkbox from 'primevue/checkbox'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { ref } from 'vue'
 import Divider from 'primevue/divider'
 
 const form = useForm({ login: '', password: '', remember: false })
-function submit() { form.post('/login') }
+const clientError = ref('')
+function submit() {
+    clientError.value = !form.login.trim() ? 'Masukkan email, username, atau nomor handphone.' : !form.password ? 'Masukkan password.' : ''
+    if (clientError.value) return
+    form.post('/login')
+}
 </script>
 
 <template>
@@ -20,7 +26,7 @@ function submit() { form.post('/login') }
             <template #subtitle>Sign in to your account</template>
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
-                    <Message v-if="form.errors.login" severity="error">{{ form.errors.login }}</Message>
+                    <Message v-if="clientError || form.errors.login || form.errors.password" severity="error">{{ clientError || form.errors.login || form.errors.password }}</Message>
                     <div class="flex flex-col gap-2">
                         <label for="login">Email, username, atau nomor handphone</label>
                         <InputText id="login" v-model="form.login" autocomplete="username" required />
