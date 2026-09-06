@@ -32,7 +32,7 @@ const appliedToDate = ref<Date | null>(parseDate(props.appliedTo))
 const selectedOrderStatuses = ref<string[]>(['Settled', 'Unsettled'])
 const selectedRows = ref<Row[]>([])
 const multiSortMeta = ref<{ field: string; order: number }[]>([])
-const clearButtonClass = 'absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary hover:bg-emphasis hover:text-color'
+const clearButtonClass = 'absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary transition-colors hover:bg-surface-200 hover:text-color'
 const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
     net_quantity: 'Jumlah Bersih = Jumlah - Retur',
@@ -334,7 +334,23 @@ function onFilter() {
                         />
                         <div class="flex min-w-0 flex-col gap-1">
                             <label for="reconciliation-order-status" class="text-xs font-medium text-color-secondary">Status order</label>
-                            <MultiSelect input-id="reconciliation-order-status" v-model="selectedOrderStatuses" :options="orderStatusOptions" placeholder="Pilih status" display="chip" filter show-clear class="h-11 w-full" @change="onFilter" />
+                            <MultiSelect
+                                input-id="reconciliation-order-status"
+                                v-model="selectedOrderStatuses"
+                                :options="orderStatusOptions"
+                                placeholder="Pilih status"
+                                display="chip"
+                                filter
+                                show-clear
+                                class="h-11 w-full text-sm"
+                                :pt="{
+                                    root: { class: 'h-11 rounded-md' },
+                                    trigger: { class: 'rounded-md' },
+                                    panel: { class: 'text-sm' },
+                                    item: { class: 'py-2' },
+                                }"
+                                @change="onFilter"
+                            />
                         </div>
                     </div>
                     <div class="flex flex-wrap justify-start gap-2">
@@ -427,14 +443,14 @@ function onFilter() {
             <Toolbar class="mb-3 flex-wrap gap-3">
                 <template #start>
                     <div class="relative w-full sm:w-[20rem] lg:w-[22rem]">
-                        <IconField icon-position="left">
-                            <InputIcon class="pi pi-search text-color-secondary" />
+                        <IconField icon-position="left" class="w-full">
+                            <InputIcon class="pi pi-search text-sm text-color-secondary" />
                             <InputText
                                 id="reconciliation-global-filter"
                                 v-model="filters.global.value"
                                 aria-label="Filter semua kolom"
                                 placeholder="Cari semua kolom..."
-                                class="h-11 w-full pl-10 pr-10"
+                                class="h-11 w-full pl-10 pr-10 text-sm"
                                 @input="onFilter"
                                 @keyup.enter="onFilter"
                             />
@@ -462,7 +478,13 @@ function onFilter() {
                             filter
                             :max-selected-labels="2"
                             selected-items-label="{0} kolom dipilih"
-                            class="h-11 w-full"
+                            class="h-11 w-full text-sm"
+                            :pt="{
+                                root: { class: 'h-11 rounded-md' },
+                                trigger: { class: 'rounded-md' },
+                                panel: { class: 'text-sm' },
+                                item: { class: 'py-2' },
+                            }"
                         />
                     </div>
                 </template>
@@ -522,15 +544,21 @@ function onFilter() {
                                     placeholder="Pilih status"
                                     class="w-full"
                                     show-clear
+                                    :pt="{
+                                        root: { class: 'h-9 text-sm' },
+                                        trigger: { class: 'rounded-md border-surface-300' },
+                                        panel: { class: 'text-sm' },
+                                        item: { class: 'py-2' },
+                                    }"
                                     @change="onFilter"
                                 />
                                 <IconField v-else icon-position="left" class="w-full">
-                                    <InputIcon class="pi pi-search text-color-secondary" />
+                                    <InputIcon class="pi pi-search text-sm text-color-secondary" />
                                     <InputText
                                         v-model="filters[field].value"
                                         :aria-label="`Filter ${header}`"
                                         placeholder="Cari..."
-                                        class="w-full pl-8 pr-8"
+                                        class="h-9 w-full pl-8 pr-8 text-sm"
                                         @input="onFilter"
                                         @keyup.enter="onFilter"
                                     />
