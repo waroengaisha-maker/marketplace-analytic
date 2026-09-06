@@ -8,6 +8,19 @@ use Illuminate\Support\Facades\DB;
 
 class MarketplaceReconciliationService
 {
+    public function reconciliationRows(int $userId, ?string $from = null, ?string $to = null): array
+    {
+        return $this->joinedQuery($userId, true)
+            ->when($from, fn (Builder $query) => $query->where('orders.order_created_at', '>=', CarbonImmutable::parse($from)->startOfDay()))
+            ->when($to, fn (Builder $query) => $query->where('orders.order_created_at', '<', CarbonImmutable::parse($to)->addDay()->startOfDay()))
+            ->orderBy('orders.order_number')
+            ->orderBy('orders.item_index')
+            ->get()
+            ->map(fn (object $row): object => $this->calculateFinancials($row))
+            ->values()
+            ->all();
+    }
+
     public function dashboardStats(int $userId, ?string $from = null, ?string $to = null): array
     {
         $orders = $this->joinedQuery($userId, true)

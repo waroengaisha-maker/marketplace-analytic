@@ -13,6 +13,7 @@ type PageProps = {
     stats: Record<string, number>
     dateRange: { min: string | null; max: string | null }
     filters: { from: string | null; to: string | null }
+    rows: Record<string, unknown>[]
 }
 const page = usePage<PageProps>()
 const from = ref(page.props.filters.from ? new Date(`${page.props.filters.from}T00:00:00`) : null)
@@ -30,6 +31,66 @@ const dateValue = (date: Date | null) => {
 }
 function applyDateFilter() {
     router.get('/', { from: dateValue(from.value), to: dateValue(to.value) }, { preserveState: true, preserveScroll: true })
+}
+const exportColumns = [
+    ['settlement_status', 'Status'], ['order_number', 'No. Pesanan'], ['order_product_name', 'Nama Produk'],
+    ['net_quantity', 'Jumlah Bersih'], ['discounted_price', 'Harga (@)'], ['quantity', 'Jumlah'], ['returned_quantity', 'Retur'],
+    ['order_subtotal', 'Subtotal'], ['platform_fee', 'Biaya Administrasi'], ['admin_fee_percent', 'Admin (%)'],
+    ['free_shipping_xtra_fee', 'Gratis Ongkir'], ['free_shipping_xtra_fee_percent', 'Gratis Ongkir (%)'],
+    ['promo_xtra_service_fee', 'Promo XTRA'], ['promo_xtra_fee_percent', 'Promo XTRA (%)'],
+    ['fee_subtotal', 'Subtotal Biaya'], ['fee_subtotal_percent', 'Subtotal Biaya (%)'],
+    ['order_processing_fee', 'Biaya Proses'], ['total_fee', 'Total Biaya'], ['tax', 'Pajak'],
+    ['penghasilan', 'Penghasilan'], ['hpp', 'HPP'], ['laba', 'Laba'],
+] as const
+function numericValue(row: Record<string, unknown>, field: string) {
+    const value = Number(row[field] ?? 0)
+    return Number.isFinite(value) ? value : 0
+}
+function orderCategory(row: Record<string, unknown>) {
+    if (String(row.order_status ?? '').trim().toLowerCase() === 'batal') return 'Batal'
+    if (String(row.tracking_number ?? '').trim() === '') return 'Tidak Valid'
+    return numericValue(row, 'total_income') > 0 ? 'Settled' : 'Unsettled'
+}
+function exportValue(row: Record<string, unknown>, field: string) {
+    if (field === 'settlement_status') return orderCategory(row)
+    if (field === 'order_product_name') {
+        const name = String(row[field] ?? '')
+        const variation = String(row.order_variation_name ?? '').trim()
+        return variation ? `${name} - ${variation}` : name
+    }
+    return row[field] ?? ''
+}
+function buildProductSummary(rows: Record<string, unknown>[]) {
+    const summary = new Map<string, Record<string, number | string>>()
+    rows.forEach((row) => {
+        const productName = String(exportValue(row, 'order_product_name'))
+        const unitPrice = numericValue(row, 'discounted_price')
+        const key = `${productName}\u0000${unitPrice}`
+        const current = summary.get(key) ?? { product_name: productName, unit_price: unitPrice }
+        ;['quantity', 'returned_quantity', 'net_quantity', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba'].forEach((field) => {
+            current[field] = Number(current[field] ?? 0) + numericValue(row, field)
+        })
+        summary.set(key, current)
+    })
+    return Array.from(summary.values())
+}
+async function exportExcel() {
+    const XLSX = await import('xlsx')
+    const rows = page.props.rows
+    const data = rows.map((row) => Object.fromEntries(exportColumns.map(([field, header]) => [header, exportValue(row, field)])))
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(Object.entries(page.props.stats).map(([key, value]) => ({ Metrik: key, Nilai: value }))), 'Dashboard')
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(data), 'Rekonsiliasi')
+    const summaryRows = buildProductSummary(rows).map((row) => ({
+        'Nama Produk': row.product_name, 'Jumlah Bersih': row.net_quantity, 'Harga (@)': row.unit_price,
+        'Jumlah': row.quantity, 'Retur': row.returned_quantity, 'Subtotal': row.order_subtotal,
+        'Biaya Administrasi': row.platform_fee, 'Gratis Ongkir': row.free_shipping_xtra_fee,
+        'Promo XTRA': row.promo_xtra_service_fee, 'Subtotal Biaya': row.fee_subtotal,
+        'Biaya Proses': row.order_processing_fee, 'Total Biaya': row.total_fee, 'Pajak': row.tax,
+        'Penghasilan': row.penghasilan, 'HPP': row.hpp, 'Laba': row.laba,
+    }))
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(summaryRows), 'Rekonsiliasi Rekap Produk')
+    XLSX.writeFile(workbook, `dashboard_${page.props.filters.from ?? 'awal'}_sampai_${page.props.filters.to ?? 'akhir'}.xlsx`)
 }
 const cards = [
     ['Total Penjualan / Gross Sales', 'gross_sales', 'gross_order_count', 'info'],
@@ -78,7 +139,12 @@ const cards = [
                 <div class="flex justify-start">
                     <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
                 </div>
-                <small class="text-xs text-color-secondary">Periode berdasarkan tanggal order dibuat.</small>
+                <div class="flex flex-col gap-2 border-t border-surface pt-4 sm:flex-row sm:items-center sm:justify-between">
+                    <small class="text-xs text-color-secondary">Periode berdasarkan tanggal order dibuat.</small>
+                    <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+                        <Button label="Export Excel" icon="pi pi-file-excel" severity="secondary" outlined class="w-full sm:w-auto" :disabled="page.props.rows.length === 0" @click="exportExcel" />
+                    </div>
+                </div>
                 </div>
             </template>
         </Card>

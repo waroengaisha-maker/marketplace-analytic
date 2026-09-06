@@ -1,10 +1,10 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
-use App\Http\Controllers\UploadReportsController;
 use App\Http\Controllers\ReconciliationController;
+use App\Http\Controllers\UploadReportsController;
 use App\Services\MarketplaceReconciliationService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function (Request $request, MarketplaceReconciliationService $service) {
@@ -16,6 +16,7 @@ Route::get('/', function (Request $request, MarketplaceReconciliationService $se
 
     return Inertia::render('Dashboard', [
         'stats' => $service->dashboardStats($request->user()->id, $validated['from'] ?? null, $validated['to'] ?? null),
+        'rows' => $service->reconciliationRows($request->user()->id, $validated['from'] ?? null, $validated['to'] ?? null),
         'dateRange' => $range,
         'filters' => [
             'from' => $validated['from'] ?? $range['min'],

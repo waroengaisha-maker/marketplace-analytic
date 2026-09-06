@@ -10,14 +10,8 @@ class ReconciliationController extends Controller
 {
     public function index(Request $request, MarketplaceReconciliationService $service)
     {
-        $rows = $service->joinedQuery($request->user()->id, true)
-            ->orderBy('orders.order_number')
-            ->orderBy('orders.item_index')
-            ->get()
-            ->map(fn (object $row): object => $service->calculateFinancials($row))
-            ->values()
-            ->all();
-
-        return Inertia::render('Finance/Reconciliation', ['rows' => $rows]);
+        return Inertia::render('Finance/Reconciliation', [
+            'rows' => $service->reconciliationRows($request->user()->id),
+        ]);
     }
 }
