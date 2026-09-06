@@ -4,7 +4,7 @@ import { createInertiaApp } from '@inertiajs/vue3'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import AppLayout from './Layouts/AppLayout.vue'
 import PrimeVue from 'primevue/config'
-import Aura from '@primevue/themes/aura'
+import Aura from '@primeuix/themes/aura'
 import Tooltip from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
 
@@ -30,6 +30,7 @@ createInertiaApp({
         })
             .use(plugin)
             .use(PrimeVue, {
+                license: import.meta.env.VITE_PRIMEVUE_LICENSE_KEY,
                 theme: {
                     preset: Aura,
                     options: {

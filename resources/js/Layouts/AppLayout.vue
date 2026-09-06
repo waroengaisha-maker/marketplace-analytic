@@ -2,16 +2,46 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Sidebar from 'primevue/sidebar'
+import SidebarAside from 'primevue/sidebaraside'
+import SidebarBackdrop from 'primevue/sidebarbackdrop'
+import SidebarContent from 'primevue/sidebarcontent'
+import SidebarFooter from 'primevue/sidebarfooter'
+import SidebarGroup from 'primevue/sidebargroup'
+import SidebarGroupContent from 'primevue/sidebargroupcontent'
+import SidebarGroupLabel from 'primevue/sidebargrouplabel'
+import SidebarHeader from 'primevue/sidebarheader'
+import SidebarLayout from 'primevue/sidebarlayout'
+import SidebarMain from 'primevue/sidebarmain'
+import SidebarMenu from 'primevue/sidebarmenu'
+import SidebarMenuButton from 'primevue/sidebarmenubutton'
+import SidebarMenuItem from 'primevue/sidebarmenuitem'
+import SidebarPanel from 'primevue/sidebarpanel'
+import SidebarSpacer from 'primevue/sidebarspacer'
+import SidebarTrigger from 'primevue/sidebartrigger'
 import { confirmAction } from '../utils/confirmAction'
 
-const page = usePage()
-const sidebarOpen = ref(false)
+type AuthUser = {
+    role?: string
+    name?: string
+    email?: string
+}
+
+type AppPageProps = {
+    auth?: {
+        user?: AuthUser
+    }
+}
+
+const page = usePage<AppPageProps>()
+const sidebarOpen = ref(true)
 const sidebarCollapsed = ref(false)
+const isMobile = ref(false)
 const accountOpen = ref(false)
 const darkMode = ref(false)
 const isNavigating = ref(false)
 const logout = useForm({})
-const isPrivileged = computed(() => ['admin', 'super_admin'].includes(page.props.auth?.user?.role))
+const isPrivileged = computed(() => ['admin', 'super_admin'].includes(page.props.auth?.user?.role ?? ''))
 
 const removeNavigationStartListener = router.on('start', () => {
     isNavigating.value = true
@@ -26,28 +56,45 @@ const applyDarkMode = (enabled: boolean) => {
     localStorage.setItem('marketplace-dark-mode', enabled ? 'true' : 'false')
 }
 
+const updateViewport = () => {
+    const wasMobile = isMobile.value
+    isMobile.value = window.matchMedia('(max-width: 1023px)').matches
+
+    if (isMobile.value && !wasMobile) {
+        sidebarOpen.value = false
+    } else if (!isMobile.value && wasMobile) {
+        sidebarOpen.value = !sidebarCollapsed.value
+    }
+}
+
 onMounted(() => {
     darkMode.value = localStorage.getItem('marketplace-dark-mode') === 'true'
     sidebarCollapsed.value = localStorage.getItem('marketplace-sidebar-collapsed') === 'true'
     if (window.innerWidth < 1024) {
         sidebarCollapsed.value = false
     }
+    updateViewport()
+    sidebarOpen.value = isMobile.value ? false : !sidebarCollapsed.value
+    window.addEventListener('resize', updateViewport)
     applyDarkMode(darkMode.value)
 })
 
 onUnmounted(() => {
     removeNavigationStartListener()
     removeNavigationFinishListener()
+    window.removeEventListener('resize', updateViewport)
 })
 
 watch(darkMode, (enabled) => {
     applyDarkMode(enabled)
 })
 
-const toggleSidebar = () => {
-    sidebarCollapsed.value = !sidebarCollapsed.value
-    localStorage.setItem('marketplace-sidebar-collapsed', sidebarCollapsed.value ? 'true' : 'false')
-}
+watch(sidebarOpen, (open) => {
+    if (!isMobile.value) {
+        sidebarCollapsed.value = !open
+        localStorage.setItem('marketplace-sidebar-collapsed', open ? 'false' : 'true')
+    }
+})
 
 const navigation = computed(() => [
     ...(!isPrivileged.value ? [{
@@ -126,7 +173,9 @@ const isActive = (href: string) => {
 }
 
 const closeSidebar = () => {
-    sidebarOpen.value = false
+    if (isMobile.value) {
+        sidebarOpen.value = false
+    }
 }
 
 const submitLogout = () => {
@@ -137,133 +186,95 @@ const submitLogout = () => {
 </script>
 
 <template>
-    <div class="min-h-screen bg-slate-50 text-slate-900 dark:bg-black dark:text-slate-100">
-
-        <!-- Mobile overlay -->
-        <div
-            v-if="sidebarOpen"
-            class="fixed inset-0 z-40 bg-slate-900/40 dark:bg-black/60 lg:hidden"
-            @click="closeSidebar"
-        />
-
-        <!-- Sidebar -->
-        <aside
-            class="fixed inset-y-0 left-0 z-50 flex w-64 flex-col border-r border-slate-200 bg-white transition-[width,transform] duration-200 dark:border-slate-800 dark:bg-black lg:translate-x-0"
-            :class="[
-                sidebarOpen ? 'translate-x-0' : '-translate-x-full',
-                sidebarCollapsed ? 'lg:w-20' : 'lg:w-64',
-            ]"
+    <div class="h-screen overflow-hidden bg-slate-50 p-0 text-slate-900 dark:bg-black dark:text-slate-100 lg:p-6">
+        <SidebarLayout class="h-full min-h-0 overflow-hidden border-0 border-slate-200 bg-white lg:rounded-lg lg:border dark:border-slate-800 dark:bg-black">
+            <SidebarBackdrop v-if="isMobile && sidebarOpen" class="fixed!" />
+        <Sidebar
+            id="main-sidebar"
+            v-model:open="sidebarOpen"
+            :variant="isMobile ? 'floating' : 'inset'"
+            :collapsible="isMobile ? 'offcanvas' : 'icon'"
+            :overlay="isMobile"
+            width="16rem"
+            icon-width="5rem"
+            class="border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-black"
         >
-            <!-- Logo -->
-            <div class="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-800">
-                <Link
-                    href="/"
-                    class="flex min-w-0 items-center gap-3"
-                    @click="closeSidebar"
-                >
-                    <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white dark:bg-slate-700">
-                        M
-                    </div>
+            <SidebarSpacer />
+            <SidebarAside>
+                <SidebarPanel>
+                    <SidebarHeader class="border-b border-slate-200 px-4 dark:border-slate-800">
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton as-child class="px-1">
+                                    <template #default="{ class: buttonClass = '', a11yAttrs = {} }">
+                                        <Link v-bind="a11yAttrs" href="/" :class="[buttonClass, 'no-underline']" @click="closeSidebar">
+                                            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white dark:bg-slate-700">M</span>
+                                            <span class="sidebar-brand-text min-w-0">
+                                                <span class="block text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">Marketplace</span>
+                                                <span class="block text-[10px] font-medium uppercase tracking-wider text-slate-400">Analytics</span>
+                                            </span>
+                                        </Link>
+                                    </template>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarHeader>
+                    <SidebarContent class="overflow-y-auto px-2 py-4 sm:px-3">
+                        <SidebarGroup v-for="section in navigation" :key="section.label" class="mb-5">
+                            <SidebarGroupLabel class="px-3 text-[10px] font-bold tracking-widest text-slate-400">{{ section.label }}</SidebarGroupLabel>
+                            <SidebarGroupContent>
+                                <SidebarMenu>
+                                    <SidebarMenuItem v-for="item in section.items" :key="item.href">
+                                        <SidebarMenuButton as-child :is-active="isActive(item.href)">
+                                            <template #default="{ class: buttonClass = '', a11yAttrs = {} }">
+                                                <Link
+                                                    v-bind="a11yAttrs"
+                                                    :href="item.href"
+                                                    :class="[buttonClass, 'no-underline']"
+                                                    @click="closeSidebar"
+                                                >
+                                                    <span class="text-xs" :class="item.color">{{ item.icon }}</span>
+                                                    <span class="sidebar-menu-label">{{ item.name }}</span>
+                                                </Link>
+                                            </template>
+                                        </SidebarMenuButton>
+                                    </SidebarMenuItem>
+                                </SidebarMenu>
+                            </SidebarGroupContent>
+                        </SidebarGroup>
+                    </SidebarContent>
+                    <SidebarFooter class="border-t border-slate-200 p-3 dark:border-slate-800">
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton class="p-1">
+                                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-xs font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                                        {{ page.props.auth?.user?.name?.charAt(0)?.toUpperCase() || 'U' }}
+                                    </span>
+                                    <span class="sidebar-footer-label truncate text-xs text-slate-500 dark:text-slate-400">
+                                        {{ page.props.auth?.user?.email || '' }}
+                                    </span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarFooter>
+                </SidebarPanel>
+            </SidebarAside>
+        </Sidebar>
 
-                    <div v-if="!sidebarCollapsed" class="min-w-0">
-                        <div class="text-sm font-bold tracking-tight">
-                            Marketplace
-                        </div>
-                        <div class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                            Analytics
-                        </div>
-                    </div>
-                </Link>
-
-                <button
-                    type="button"
-                    class="hidden shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white lg:block"
-                    :aria-label="sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
-                    @click="toggleSidebar"
-                >
-                    <i
-                        class="pi text-sm"
-                        :class="sidebarCollapsed ? 'pi-angle-right' : 'pi-angle-left'"
-                        aria-hidden="true"
-                    />
-                </button>
-            </div>
-
-            <!-- Navigation -->
-            <nav class="flex-1 overflow-y-auto px-2 py-4 sm:px-3">
-                <div
-                    v-for="section in navigation"
-                    :key="section.label"
-                    class="mb-6"
-                >
-                    <div v-if="!sidebarCollapsed" class="mb-2 px-3 text-[10px] font-bold tracking-widest text-slate-400">
-                        {{ section.label }}
-                    </div>
-
-                    <div class="space-y-0.5">
-                        <Link
-                            v-for="item in section.items"
-                            :key="item.href"
-                            :href="item.href"
-                            v-tooltip.right="sidebarCollapsed ? item.name : null"
-                            class="group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition lg:justify-start"
-                            :class="[
-                                sidebarCollapsed ? 'lg:justify-center lg:px-2' : '',
-                                isActive(item.href)
-                                    ? 'bg-slate-100 text-slate-900'
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
-                            ]"
-                            @click="closeSidebar"
-                        >
-                            <span
-                                class="flex h-5 w-5 items-center justify-center text-xs"
-                                :class="item.color"
-                            >
-                                {{ item.icon }}
-                            </span>
-
-                            <span v-if="!sidebarCollapsed">{{ item.name }}</span>
-
-                            <span
-                                v-if="isActive(item.href) && !sidebarCollapsed"
-                                class="ml-auto h-1.5 w-1.5 rounded-full bg-slate-900"
-                            />
-                        </Link>
-                    </div>
-                </div>
-            </nav>
-
-        </aside>
-
-        <!-- Main -->
-        <div
-            class="min-w-0"
-            :class="sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'"
-        >
+        <SidebarMain class="min-w-0 overflow-y-auto bg-slate-50 dark:bg-black">
 
             <!-- Topbar -->
-            <header class="sticky top-0 z-30 flex h-16 min-w-0 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur dark:border-slate-800 dark:bg-black/95 sm:px-6">
+            <header class="sticky top-0 z-30 flex h-12 min-w-0 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur dark:border-slate-800 dark:bg-black/95 sm:px-4">
 
-                <button
-                    type="button"
-                    class="mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800 lg:hidden"
-                    aria-label="Open navigation"
-                    @click="sidebarOpen = true"
-                >
-                    <svg
-                        class="h-5 w-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M4 6h16M4 12h16M4 18h16"
-                        />
-                    </svg>
-                </button>
+                <SidebarTrigger target="main-sidebar" as-child>
+                    <template #default="{ class: triggerClass = '', a11yAttrs = {}, onClick = () => {} }">
+                        <button v-bind="a11yAttrs" type="button" :class="[triggerClass, 'mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800']" aria-label="Toggle navigation" @click="onClick">
+                            <span class="flex h-5 w-5 items-center justify-center">
+                            <i class="pi pi-bars" aria-hidden="true" />
+                            </span>
+                        </button>
+                    </template>
+                </SidebarTrigger>
 
                 <div class="flex-1">
                     <div class="hidden text-sm font-medium text-slate-400 dark:text-slate-500 sm:block">
@@ -387,7 +398,7 @@ const submitLogout = () => {
 
             <!-- Page content -->
             <main
-                class="min-h-[calc(100vh-4rem)] w-full min-w-0 bg-transparent p-4 sm:p-6 lg:p-8"
+                class="w-full min-w-0 bg-transparent p-4 sm:p-6 lg:p-8"
                 :aria-busy="isNavigating"
             >
                 <div
@@ -417,6 +428,7 @@ const submitLogout = () => {
                     </div>
                 </div>
             </main>
-        </div>
+        </SidebarMain>
+        </SidebarLayout>
     </div>
 </template>
