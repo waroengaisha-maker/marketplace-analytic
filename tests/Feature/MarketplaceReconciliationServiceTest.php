@@ -4,10 +4,15 @@ namespace Tests\Feature;
 
 use App\Http\Requests\UploadReportsRequest;
 use App\Models\User;
+use App\Services\IncomeReportImporter;
 use App\Services\MarketplaceReconciliationService;
+use App\Services\OrderReportImporter;
 use App\Services\ReportImportService;
+use App\Services\UploadReportsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Http\Testing\File;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -314,6 +319,101 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(1234.56, $method->invoke($service, '1,234.56'));
         $this->assertSame(1500.0, $method->invoke($service, '1.500'));
         $this->assertSame(10.5, $method->invoke($service, '10,5'));
+    }
+
+    public function test_importers_preserve_decimal_values_from_excel_numeric_cells(): void
+    {
+        $user = User::factory()->create();
+
+        $orderPath = tempnam(sys_get_temp_dir(), 'order-import-').'.xlsx';
+        $orderSheet = new Spreadsheet;
+        $orderWorksheet = $orderSheet->getActiveSheet();
+        $orderWorksheet->setTitle('orders');
+        $orderWorksheet->fromArray([
+            ['No. Pesanan', 'Nama Produk', 'Nama Variasi', 'Jumlah', 'Harga Satuan', 'Harga Setelah Diskon', 'Status Pesanan', 'No. Resi'],
+            ['ORDER-DECIMAL', 'Baju', 'Merah', 2, 100.5, 100.5, 'Selesai', 'TRACK-1'],
+        ], null, 'A1');
+        (new Xlsx($orderSheet))->save($orderPath);
+
+        $incomePath = tempnam(sys_get_temp_dir(), 'income-import-').'.xlsx';
+        $incomeSheet = new Spreadsheet;
+        $incomeWorksheet = $incomeSheet->getActiveSheet();
+        $incomeWorksheet->setTitle('Penghasilan');
+        $incomeWorksheet->fromArray([
+            ['Laporan Penghasilan'],
+            [],
+            ['No. Pesanan', 'Nama Produk', 'Nama Variasi', 'Jumlah', 'Harga Satuan', 'Total Pendapatan', 'Lihat berdasarkan', 'No. Pengajuan', 'Waktu Pesanan Dibuat'],
+            ['ORDER-DECIMAL', 'Baju', 'Merah', 2, 100.5, 201.0, 'Sku', 'APP-1', '2026-09-07 10:00:00'],
+        ], null, 'A1');
+        (new Xlsx($incomeSheet))->save($incomePath);
+
+        app(OrderReportImporter::class)->import($orderPath, $user->id);
+        app(IncomeReportImporter::class)->import($incomePath, $user->id);
+
+        $this->assertDatabaseHas('marketplace_orders', [
+            'user_id' => $user->id,
+            'order_number' => 'ORDER-DECIMAL',
+            'product_key' => hash('sha256', 'baju'),
+            'variation_key' => hash('sha256', 'merah'),
+            'quantity' => 2,
+            'unit_price' => 100.5,
+        ]);
+        $this->assertDatabaseHas('marketplace_income', [
+            'user_id' => $user->id,
+            'order_number' => 'ORDER-DECIMAL',
+            'product_key' => hash('sha256', 'baju'),
+            'variation_key' => hash('sha256', 'merah'),
+            'quantity' => 2,
+            'unit_price' => 100.5,
+            'total_income' => 201.0,
+        ]);
+
+        unlink($orderPath);
+        unlink($incomePath);
+    }
+
+    public function test_upload_reports_service_imports_excel_rows_through_the_full_pipeline(): void
+    {
+        $user = User::factory()->create();
+
+        $orderPath = tempnam(sys_get_temp_dir(), 'full-order-').'.xlsx';
+        $orderSheet = new Spreadsheet;
+        $orderWorksheet = $orderSheet->getActiveSheet();
+        $orderWorksheet->setTitle('orders');
+        $orderWorksheet->fromArray([
+            ['No. Pesanan', 'Nama Produk', 'Nama Variasi', 'Jumlah', 'Harga Satuan', 'Harga Setelah Diskon', 'Status Pesanan', 'No. Resi'],
+            ['ORDER-END-TO-END', 'Produk', 'Variation', 1, 250.0, 250.0, 'Selesai', 'TRACK-ORDER'],
+        ], null, 'A1');
+        (new Xlsx($orderSheet))->save($orderPath);
+
+        $incomePath = tempnam(sys_get_temp_dir(), 'full-income-').'.xlsx';
+        $incomeSheet = new Spreadsheet;
+        $incomeWorksheet = $incomeSheet->getActiveSheet();
+        $incomeWorksheet->setTitle('Penghasilan');
+        $incomeWorksheet->fromArray([
+            ['Laporan Penghasilan'],
+            [],
+            ['No. Pesanan', 'Nama Produk', 'Nama Variasi', 'Jumlah', 'Harga Satuan', 'Total Pendapatan', 'Lihat berdasarkan', 'No. Pengajuan', 'Waktu Pesanan Dibuat'],
+            ['ORDER-END-TO-END', 'Produk', 'Variation', 1, 250.0, 250.0, 'Sku', 'APP-1', '2026-09-07 10:00:00'],
+        ], null, 'A1');
+        (new Xlsx($incomeSheet))->save($incomePath);
+
+        $request = Request::create('/imports/upload', 'POST', [], [], [
+            'order_report' => new UploadedFile($orderPath, 'order.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true),
+            'income_report' => new UploadedFile($incomePath, 'income.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true),
+        ]);
+
+        $result = app(UploadReportsService::class)->storeAndImport($request, $user);
+
+        $this->assertSame(['orders' => 1, 'income' => 1], $result);
+
+        $rows = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id);
+        $this->assertCount(1, $rows);
+        $this->assertSame(250.0, (float) $rows[0]->total_income);
+        $this->assertSame('Settled', $rows[0]->settlement_status);
+
+        unlink($orderPath);
+        unlink($incomePath);
     }
 
     public function test_import_allows_missing_variation_name_when_core_reconciliation_columns_exist(): void
