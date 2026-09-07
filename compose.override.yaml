@@ -1,0 +1,26 @@
+services:
+    caddy:
+        profiles: [development]
+        ports:
+            - '127.0.0.1:8080:8080'
+
+    laravel.test:
+        profiles: [development]
+        ports:
+            - '127.0.0.1:${APP_PORT:-80}:80'
+            - '127.0.0.1:${VITE_PORT:-5173}:${VITE_PORT:-5173}'
+
+    mysql:
+        profiles: [development]
+        ports:
+            - '127.0.0.1:${FORWARD_DB_PORT:-3306}:3306'
+
+    redis:
+        profiles: [development]
+        ports:
+            - '127.0.0.1:${FORWARD_REDIS_PORT:-6379}:6379'
+
+    adminer:
+        profiles: [development]
+        ports:
+            - '127.0.0.1:${ADMINER_PORT:-8081}:8080'
