@@ -323,11 +323,11 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $result = app(MarketplaceReconciliationService::class)->calculateFinancials($row);
 
-        $this->assertSame(175.0, $result->fee_subtotal);
-        $this->assertSame(185.0, $result->total_fee);
-        $this->assertSame(1190.0, $result->penghasilan);
+        $this->assertSame(-175.0, $result->fee_subtotal);
+        $this->assertSame(-185.0, $result->total_fee);
+        $this->assertSame(810.0, $result->penghasilan);
         $this->assertSame(0.0, $result->hpp);
-        $this->assertSame(1190.0, $result->laba);
+        $this->assertSame(810.0, $result->laba);
     }
 
     public function test_report_import_number_parser_keeps_decimal_values_intact(): void
@@ -473,6 +473,63 @@ class MarketplaceReconciliationServiceTest extends TestCase
         unlink($path);
     }
 
+    public function test_order_import_uses_discounted_price_as_unit_price(): void
+    {
+        $user = User::factory()->create();
+        $path = tempnam(sys_get_temp_dir(), 'shopee-order-report-').'.xlsx';
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('orders');
+        $sheet->fromArray([
+            ['No. Pesanan', 'Nama Produk', 'Jumlah', 'Harga Awal', 'Harga Setelah Diskon'],
+            ['SHOPEE-ORDER-1', 'Produk Shopee', 2, 100.5, 90.5],
+        ], null, 'A1');
+        (new Xlsx($spreadsheet))->save($path);
+
+        $file = File::createWithContent('order-report.xlsx', file_get_contents($path));
+        $request = UploadReportsRequest::create('/imports/upload', 'POST', [], [], ['order_report' => $file], [], [], []);
+        $request->setContainer(app());
+        $request->setRedirector(app('redirect'));
+        $request->setUserResolver(fn () => $user);
+        $request->validateResolved();
+
+        app(OrderReportImporter::class)->import($path, $user->id);
+
+        $this->assertDatabaseHas('marketplace_orders', [
+            'user_id' => $user->id,
+            'order_number' => 'SHOPEE-ORDER-1',
+            'unit_price' => 90.5,
+        ]);
+
+        unlink($path);
+    }
+
+    public function test_income_report_validation_matches_shopee_income_headers(): void
+    {
+        $user = new User;
+        $path = tempnam(sys_get_temp_dir(), 'shopee-income-report-').'.xlsx';
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Penghasilan');
+        $sheet->fromArray([
+            ['Laporan Penghasilan'],
+            [],
+            ['No. Pesanan', 'Nama Produk', 'Harga Produk', 'Total Penghasilan', 'Lihat berdasarkan'],
+            ['SHOPEE-INCOME-1', 'Produk Shopee', 90.5, 90.5, 'Sku'],
+        ], null, 'A1');
+        (new Xlsx($spreadsheet))->save($path);
+
+        $file = File::createWithContent('income-report.xlsx', file_get_contents($path));
+        $request = UploadReportsRequest::create('/imports/upload', 'POST', [], [], ['income_report' => $file], [], [], []);
+        $request->setContainer(app());
+        $request->setRedirector(app('redirect'));
+        $request->setUserResolver(fn () => $user);
+
+        $request->validateResolved();
+
+        unlink($path);
+    }
+
     public function test_unsettled_orders_reuse_settled_sku_fee_percentages_and_constant_processing_fee(): void
     {
         $user = User::factory()->create();
@@ -518,10 +575,10 @@ class MarketplaceReconciliationServiceTest extends TestCase
             ->first();
 
         $this->assertSame(400.0, (float) ($row->order_subtotal ?? 0));
-        $this->assertSame(150.0, (float) $row->platform_fee);
-        $this->assertSame(30.0, (float) $row->free_shipping_xtra_fee);
-        $this->assertSame(20.0, (float) $row->promo_xtra_service_fee);
-        $this->assertSame(1250.0, (float) $row->order_processing_fee);
+        $this->assertSame(-150.0, (float) $row->platform_fee);
+        $this->assertSame(-30.0, (float) $row->free_shipping_xtra_fee);
+        $this->assertSame(-20.0, (float) $row->promo_xtra_service_fee);
+        $this->assertSame(-1250.0, (float) $row->order_processing_fee);
         $this->assertSame('Estimated', $row->settlement_status);
     }
 

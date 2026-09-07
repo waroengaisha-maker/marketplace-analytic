@@ -25,7 +25,7 @@ class OrderReportImporter
             $variationName = $this->text($data['Nama Variasi'] ?? null);
             $quantity = $this->integer($data['Jumlah'] ?? null);
             $discountedPrice = $this->number($data['Harga Setelah Diskon'] ?? null);
-            $unitPrice = $this->number($data['Harga Satuan'] ?? $discountedPrice);
+            $unitPrice = $discountedPrice;
             $originalPrice = $this->number($data['Harga Awal'] ?? null);
             $returnedQuantity = $this->integer($data['Returned quantity'] ?? null) ?? 0;
             $itemKey = $this->lineKey(

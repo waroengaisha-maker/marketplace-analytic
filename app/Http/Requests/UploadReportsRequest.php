@@ -28,13 +28,24 @@ class UploadReportsRequest extends FormRequest
             'order_report' => [
                 'sheet' => 'orders',
                 'headerRow' => 1,
-                'requiredColumns' => ['No. Pesanan', 'Nama Produk', 'Jumlah', 'Harga Satuan', 'Harga Setelah Diskon'],
+                'requiredColumns' => [
+                    ['No. Pesanan'],
+                    ['Nama Produk'],
+                    ['Jumlah'],
+                    ['Harga Setelah Diskon'],
+                ],
                 'optionalColumns' => ['Nama Variasi'],
             ],
             'income_report' => [
                 'sheet' => 'Penghasilan',
                 'headerRow' => 3,
-                'requiredColumns' => ['No. Pesanan', 'Nama Produk', 'Jumlah', 'Harga Satuan', 'Total Pendapatan', 'Lihat berdasarkan'],
+                'requiredColumns' => [
+                    ['No. Pesanan'],
+                    ['Nama Produk'],
+                    ['Harga Satuan', 'Harga Produk'],
+                    ['Total Penghasilan'],
+                    ['Lihat berdasarkan'],
+                ],
                 'optionalColumns' => ['Nama Variasi'],
             ],
         ] as $field => $definition) {
@@ -55,9 +66,17 @@ class UploadReportsRequest extends FormRequest
                     $sheet->toArray(null, true, true, false)[$definition['headerRow'] - 1] ?? [],
                 );
 
-                $missing = array_diff($definition['requiredColumns'], $headers);
+                $missing = array_values(array_filter(
+                    $definition['requiredColumns'],
+                    static fn (array $alternatives): bool => array_intersect($alternatives, $headers) === [],
+                ));
                 if ($missing !== []) {
-                    $this->failedValidationMessage($field, 'Kolom wajib tidak ditemukan: '.implode(', ', $missing).'.');
+                    $missingLabels = array_map(
+                        static fn (array $alternatives): string => implode(' atau ', $alternatives),
+                        $missing,
+                    );
+
+                    $this->failedValidationMessage($field, 'Kolom wajib tidak ditemukan: '.implode(', ', $missingLabels).'.');
                 }
             } catch (Throwable) {
                 $this->failedValidationMessage($field, 'File tidak dapat dibaca sebagai laporan Excel yang valid.');

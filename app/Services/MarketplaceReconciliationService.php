@@ -288,7 +288,7 @@ class MarketplaceReconciliationService
             );
 
         $netQuantitySql = 'CASE WHEN quantity - COALESCE(returned_quantity, 0) > 0 THEN quantity - COALESCE(returned_quantity, 0) ELSE 0 END';
-        $defaultOrderProcessingFee = (float) config('marketplace.order_processing_fee', 1250);
+        $defaultOrderProcessingFee = -(float) config('marketplace.order_processing_fee', 1250);
 
         $settledSkuFee = DB::table('marketplace_income')
             ->where('user_id', $userId)
@@ -417,11 +417,11 @@ class MarketplaceReconciliationService
         $quantity = (float) ($row->quantity ?? 0);
         $returned = (float) ($row->returned_quantity ?? 0);
         $discountedPrice = (float) ($row->discounted_price ?? 0);
-        $admin = (float) ($row->platform_fee ?? 0);
-        $shipping = (float) ($row->free_shipping_xtra_fee ?? 0);
-        $promo = (float) ($row->promo_xtra_service_fee ?? 0);
-        $processing = (float) ($row->order_processing_fee ?? 0);
-        $tax = (float) ($row->pph22 ?? 0);
+        $admin = -abs((float) ($row->platform_fee ?? 0));
+        $shipping = -abs((float) ($row->free_shipping_xtra_fee ?? 0));
+        $promo = -abs((float) ($row->promo_xtra_service_fee ?? 0));
+        $processing = -abs((float) ($row->order_processing_fee ?? 0));
+        $tax = -abs((float) ($row->pph22 ?? 0));
         $net = max($quantity - $returned, 0);
         $subtotal = $discountedPrice * $net;
         $feeSubtotal = $admin + $shipping + $promo;

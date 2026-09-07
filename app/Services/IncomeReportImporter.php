@@ -29,7 +29,7 @@ class IncomeReportImporter
             $variationName = $this->text($data['Nama Variasi'] ?? null);
             $quantity = $this->integer($data['Jumlah'] ?? $data['Quantity'] ?? null) ?? 1;
             $productPrice = $this->number($data['Harga Produk'] ?? null);
-            $unitPrice = $this->number($data['Harga Satuan'] ?? $productPrice);
+            $unitPrice = $this->number($data['Harga Satuan'] ?? $data['Harga Produk'] ?? $productPrice);
             $itemKey = $this->lineKey($orderNumber, $data['Nama Produk'] ?? null, $productPrice);
 
             $payload[] = [
@@ -49,7 +49,7 @@ class IncomeReportImporter
                 'fund_released_at' => $this->date($data['Tanggal Dana Dilepaskan'] ?? null),
                 'release_method' => $this->text($data['Metode Pelepasan Dana'] ?? null),
                 'order_type' => $this->text($data['Tipe Pesanan'] ?? null),
-                'total_income' => $this->number($data['Total Pendapatan'] ?? null),
+                'total_income' => $this->number($data['Total Penghasilan'] ?? $data['Total Pendapatan'] ?? null),
                 'product_price' => $productPrice,
                 'buyer_shipping_paid' => $this->number($data['Ongkir Dibayar Pembeli'] ?? null),
                 'platform_fee' => $this->number($data['Biaya Administrasi'] ?? null),
