@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Testing\File;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -58,6 +59,28 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $this->assertSame('180.00', $row->total_income);
         $this->assertSame('Settled', $row->settlement_status);
+    }
+
+    public function test_exact_match_unique_indexes_align_with_upsert_conflict_keys(): void
+    {
+        $ordersIndexes = collect(Schema::getIndexes('marketplace_orders'));
+        $incomeIndexes = collect(Schema::getIndexes('marketplace_income'));
+
+        $this->assertTrue($ordersIndexes->contains(function (array $index): bool {
+            return ($index['name'] ?? null) === 'orders_line_identity_unique'
+                && ($index['columns'] ?? []) === ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'];
+        }));
+        $this->assertFalse($ordersIndexes->contains(function (array $index): bool {
+            return ($index['columns'] ?? []) === ['user_id', 'order_number', 'item_index'];
+        }));
+
+        $this->assertTrue($incomeIndexes->contains(function (array $index): bool {
+            return ($index['name'] ?? null) === 'income_line_identity_unique'
+                && ($index['columns'] ?? []) === ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'];
+        }));
+        $this->assertFalse($incomeIndexes->contains(function (array $index): bool {
+            return ($index['columns'] ?? []) === ['user_id', 'order_number', 'item_index'];
+        }));
     }
 
     public function test_zero_income_is_not_a_settlement(): void
