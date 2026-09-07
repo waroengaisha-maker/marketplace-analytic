@@ -2,12 +2,190 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use Throwable;
+
 class IncomeReportImporter
 {
-    public function __construct(private readonly ReportImportService $importer) {}
-
     public function import(string $path, int $userId): int
     {
-        return $this->importer->importIncome($path, $userId);
+        $sheet = IOFactory::load($path)->getSheetByName('Penghasilan');
+        $rows = $sheet->toArray(null, true, true, false);
+        array_shift($rows);
+        array_shift($rows);
+
+        $headers = array_map(fn (mixed $value): string => trim((string) $value), array_shift($rows));
+        $payload = [];
+
+        foreach ($rows as $row) {
+            $data = $this->row($headers, $row);
+            $orderNumber = $this->text($data['No. Pesanan'] ?? null);
+            if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) {
+                continue;
+            }
+
+            $variationName = $this->text($data['Nama Variasi'] ?? null);
+            $quantity = $this->integer($data['Jumlah'] ?? $data['Quantity'] ?? null) ?? 1;
+            $productPrice = $this->number($data['Harga Produk'] ?? null);
+            $unitPrice = $this->number($data['Harga Satuan'] ?? $productPrice);
+            $itemKey = $this->lineKey($orderNumber, $data['Nama Produk'] ?? null, $productPrice);
+
+            $payload[] = [
+                'user_id' => $userId,
+                'order_number' => $orderNumber,
+                'item_index' => $this->itemIndex($itemKey),
+                'row_type' => $this->text($data['Lihat berdasarkan'] ?? null),
+                'source_row' => $this->integer($data['No.'] ?? null),
+                'application_number' => $this->text($data['No. Pengajuan'] ?? null),
+                'product_id' => $this->text($data['ID Produk'] ?? null),
+                'product_name' => $this->text($data['Nama Produk'] ?? null),
+                'product_key' => hash('sha256', mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')))),
+                'variation_key' => $this->key($variationName),
+                'unit_price' => $unitPrice,
+                'quantity' => $quantity,
+                'order_created_at' => $this->date($data['Waktu Pesanan Dibuat'] ?? null),
+                'fund_released_at' => $this->date($data['Tanggal Dana Dilepaskan'] ?? null),
+                'release_method' => $this->text($data['Metode Pelepasan Dana'] ?? null),
+                'order_type' => $this->text($data['Tipe Pesanan'] ?? null),
+                'total_income' => $this->number($data['Total Pendapatan'] ?? null),
+                'product_price' => $productPrice,
+                'buyer_shipping_paid' => $this->number($data['Ongkir Dibayar Pembeli'] ?? null),
+                'platform_fee' => $this->number($data['Biaya Administrasi'] ?? null),
+                'order_processing_fee' => $this->number($data['Biaya Proses Pesanan'] ?? null),
+                'free_shipping_xtra_fee' => $this->sumNumbers($data, ['Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori D)', 'Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori E)', 'Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori G)']),
+                'shipping_fee' => $this->number($data['Subtotal Ongkos Kirim'] ?? null),
+                'service_fee' => $this->number($data['Biaya Layanan'] ?? null),
+                'promo_xtra_service_fee' => $this->number($data['Biaya Layanan Promo XTRA'] ?? null),
+                'promotion_fee' => $this->number($data['Biaya Promosi'] ?? null),
+                'pph22' => $this->number($data['PPh 22'] ?? null),
+                'other_fee' => $this->number($data['Biaya Lainnya'] ?? null),
+                'refund_to_buyer' => $this->number($data['Jumlah Pengembalian Dana ke Pembeli'] ?? null),
+                'buyer_username' => $this->text($data['Username (Pembeli)'] ?? null),
+                'buyer_paid_amount' => $this->number($data['Jumlah Dibayar Pembeli'] ?? null),
+                'buyer_payment_method' => $this->text($data['Metode pembayaran pembeli'] ?? null),
+                'shipping_provider' => $this->text($data['Nama Kurir'] ?? null),
+                'voucher_code' => $this->text($data['Kode Voucher'] ?? null),
+                'raw_data' => json_encode($data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+        }
+
+        $orderNumbers = array_values(array_unique(array_column($payload, 'order_number')));
+        DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
+
+        foreach (array_chunk($payload, 500) as $chunk) {
+            DB::table('marketplace_income')->upsert($chunk, ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'], array_keys($chunk[0] ?? []));
+        }
+
+        return count($payload);
+    }
+
+    private function row(array $headers, array $values): array
+    {
+        return array_combine($headers, array_pad($values, count($headers), null)) ?: [];
+    }
+
+    private function text(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' || $value === '-' ? null : $value;
+    }
+
+    private function key(?string $value): ?string
+    {
+        return $value === null ? null : hash('sha256', mb_strtolower(trim($value)));
+    }
+
+    private function lineKey(string $orderNumber, mixed $productName, ?float $lineAmount): string
+    {
+        return $orderNumber.'|'.mb_strtolower(trim((string) $productName)).'|'.($lineAmount === null ? '' : number_format($lineAmount, 2, '.', ''));
+    }
+
+    private function itemIndex(string $lineKey): int
+    {
+        return (int) sprintf('%u', crc32($lineKey));
+    }
+
+    private function number(mixed $value): ?float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        $value = $this->text($value);
+        if ($value === null) {
+            return null;
+        }
+
+        $negative = false;
+        if (str_starts_with($value, '(') && str_ends_with($value, ')')) {
+            $negative = true;
+            $value = substr($value, 1, -1);
+        }
+
+        $value = preg_replace('/[^\d,\.\-+]/u', '', $value);
+        if ($value === null || $value === '' || $value === '-' || $value === '+' || $value === '.' || $value === ',') {
+            return null;
+        }
+
+        $value = str_replace([' ', "\u{00A0}"], '', $value);
+
+        if (str_contains($value, ',') && str_contains($value, '.')) {
+            $decimalSeparator = strrpos($value, ',') > strrpos($value, '.') ? ',' : '.';
+            $thousandSeparator = $decimalSeparator === ',' ? '.' : ',';
+            $value = str_replace($thousandSeparator, '', $value);
+            $value = str_replace($decimalSeparator, '.', $value);
+        } elseif (str_contains($value, ',')) {
+            $lastComma = strrpos($value, ',');
+            $fractionDigits = $lastComma === false ? 0 : strlen(substr($value, $lastComma + 1));
+            if ($fractionDigits <= 2) {
+                $value = str_replace(',', '.', $value);
+            } else {
+                $value = str_replace(',', '', $value);
+            }
+        } elseif (str_contains($value, '.')) {
+            $lastDot = strrpos($value, '.');
+            $fractionDigits = $lastDot === false ? 0 : strlen(substr($value, $lastDot + 1));
+            if ($fractionDigits > 2) {
+                $value = str_replace('.', '', $value);
+            }
+        }
+
+        $number = (float) $value;
+
+        return $negative ? -$number : $number;
+    }
+
+    private function integer(mixed $value): ?int
+    {
+        $value = $this->number($value);
+
+        return $value === null ? null : (int) $value;
+    }
+
+    private function sumNumbers(array $data, array $keys): ?float
+    {
+        $values = array_map(fn (string $key): ?float => $this->number($data[$key] ?? null), $keys);
+        $values = array_filter($values, fn (?float $value): bool => $value !== null);
+
+        return $values === [] ? null : array_sum($values);
+    }
+
+    private function date(mixed $value): ?string
+    {
+        $value = $this->text($value);
+        if ($value === null) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($value)->format('Y-m-d H:i:s');
+        } catch (Throwable) {
+            return null;
+        }
     }
 }
