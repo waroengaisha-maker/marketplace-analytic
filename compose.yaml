@@ -37,7 +37,7 @@ services:
     mysql:
         image: 'mysql:8.4'
         ports:
-            - '${FORWARD_DB_PORT:-3306}:3306'
+            - '${FORWARD_DB_PORT:-127.0.0.1:3306}:3306'
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ROOT_HOST: '%'
@@ -62,7 +62,7 @@ services:
     redis:
         image: 'redis:alpine'
         ports:
-            - '${FORWARD_REDIS_PORT:-6379}:6379'
+            - '${FORWARD_REDIS_PORT:-127.0.0.1:6379}:6379'
         volumes:
             - 'sail-redis:/data'
         networks:
@@ -77,7 +77,7 @@ services:
     adminer:
         image: 'adminer:6.0.1'
         ports:
-            - '${ADMINER_PORT:-8081}:8080'
+            - '${ADMINER_PORT:-127.0.0.1:8081}:8080'
         environment:
             ADMINER_DEFAULT_SERVER: mysql
         networks:
