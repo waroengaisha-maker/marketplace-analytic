@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -42,7 +43,9 @@ class ReportImportService
         foreach ($rows as $row) {
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
-            if ($orderNumber === null) continue;
+            if ($orderNumber === null) {
+                continue;
+            }
 
             $variationName = $this->text($data['Nama Variasi'] ?? null);
             $quantity = $this->integer($data['Jumlah'] ?? null);
@@ -105,6 +108,7 @@ class ReportImportService
         foreach (array_chunk($payload, 500) as $chunk) {
             DB::table('marketplace_orders')->upsert($chunk, ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'], array_keys($chunk[0] ?? []));
         }
+
         return count($payload);
     }
 
@@ -112,13 +116,16 @@ class ReportImportService
     {
         $sheet = IOFactory::load($path)->getSheetByName('Penghasilan');
         $rows = $sheet->toArray(null, true, true, false);
-        array_shift($rows); array_shift($rows);
+        array_shift($rows);
+        array_shift($rows);
         $headers = array_map(fn (mixed $value): string => trim((string) $value), array_shift($rows));
         $payload = [];
         foreach ($rows as $row) {
             $data = $this->row($headers, $row);
             $orderNumber = $this->text($data['No. Pesanan'] ?? null);
-            if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) continue;
+            if ($orderNumber === null || strcasecmp(trim((string) ($data['Lihat berdasarkan'] ?? '')), 'Sku') !== 0) {
+                continue;
+            }
             $variationName = $this->text($data['Nama Variasi'] ?? null);
             $quantity = $this->integer($data['Jumlah'] ?? $data['Quantity'] ?? null) ?? 1;
             $productPrice = $this->number($data['Harga Produk'] ?? null);
@@ -169,23 +176,111 @@ class ReportImportService
         foreach (array_chunk($payload, 500) as $chunk) {
             DB::table('marketplace_income')->upsert($chunk, ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'], array_keys($chunk[0] ?? []));
         }
+
         return count($payload);
     }
 
-    private function row(array $headers, array $values): array { return array_combine($headers, array_pad($values, count($headers), null)) ?: []; }
-    private function text(mixed $value): ?string { $value = trim((string) $value); return $value === '' || $value === '-' ? null : $value; }
-    private function key(?string $value): ?string { return $value === null ? null : hash('sha256', mb_strtolower(trim($value))); }
+    private function row(array $headers, array $values): array
+    {
+        return array_combine($headers, array_pad($values, count($headers), null)) ?: [];
+    }
+
+    private function text(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' || $value === '-' ? null : $value;
+    }
+
+    private function key(?string $value): ?string
+    {
+        return $value === null ? null : hash('sha256', mb_strtolower(trim($value)));
+    }
+
     private function lineKey(string $orderNumber, mixed $productName, ?float $lineAmount): string
     {
         return $orderNumber.'|'.mb_strtolower(trim((string) $productName)).'|'.($lineAmount === null ? '' : number_format($lineAmount, 2, '.', ''));
     }
+
     private function itemIndex(string $lineKey): int
     {
         return (int) sprintf('%u', crc32($lineKey));
     }
-    private function number(mixed $value): ?float { $value = $this->text($value); if ($value === null) return null; return (float) str_replace(['.', ',', ' '], '', $value); }
-    private function sumNumbers(array $data, array $keys): ?float { $values = array_map(fn (string $key): ?float => $this->number($data[$key] ?? null), $keys); $values = array_filter($values, fn (?float $value): bool => $value !== null); return $values === [] ? null : array_sum($values); }
 
-    private function integer(mixed $value): ?int { $value = $this->number($value); return $value === null ? null : (int) $value; }
-    private function date(mixed $value): ?string { $value = $this->text($value); if ($value === null) return null; try { return \Carbon\Carbon::parse($value)->format('Y-m-d H:i:s'); } catch (Throwable) { return null; } }
+    private function number(mixed $value): ?float
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float) $value;
+        }
+
+        $value = $this->text($value);
+        if ($value === null) {
+            return null;
+        }
+
+        $negative = false;
+        if (str_starts_with($value, '(') && str_ends_with($value, ')')) {
+            $negative = true;
+            $value = substr($value, 1, -1);
+        }
+
+        $value = preg_replace('/[^\d,\.\-+]/u', '', $value);
+        if ($value === null || $value === '' || $value === '-' || $value === '+' || $value === '.' || $value === ',') {
+            return null;
+        }
+
+        $value = str_replace([' ', "\u{00A0}"], '', $value);
+
+        if (str_contains($value, ',') && str_contains($value, '.')) {
+            $decimalSeparator = strrpos($value, ',') > strrpos($value, '.') ? ',' : '.';
+            $thousandSeparator = $decimalSeparator === ',' ? '.' : ',';
+            $value = str_replace($thousandSeparator, '', $value);
+            $value = str_replace($decimalSeparator, '.', $value);
+        } elseif (str_contains($value, ',')) {
+            $lastComma = strrpos($value, ',');
+            $fractionDigits = $lastComma === false ? 0 : strlen(substr($value, $lastComma + 1));
+            if ($fractionDigits <= 2) {
+                $value = str_replace(',', '.', $value);
+            } else {
+                $value = str_replace(',', '', $value);
+            }
+        } elseif (str_contains($value, '.')) {
+            $lastDot = strrpos($value, '.');
+            $fractionDigits = $lastDot === false ? 0 : strlen(substr($value, $lastDot + 1));
+            if ($fractionDigits > 2) {
+                $value = str_replace('.', '', $value);
+            }
+        }
+
+        $number = (float) $value;
+
+        return $negative ? -$number : $number;
+    }
+
+    private function sumNumbers(array $data, array $keys): ?float
+    {
+        $values = array_map(fn (string $key): ?float => $this->number($data[$key] ?? null), $keys);
+        $values = array_filter($values, fn (?float $value): bool => $value !== null);
+
+        return $values === [] ? null : array_sum($values);
+    }
+
+    private function integer(mixed $value): ?int
+    {
+        $value = $this->number($value);
+
+        return $value === null ? null : (int) $value;
+    }
+
+    private function date(mixed $value): ?string
+    {
+        $value = $this->text($value);
+        if ($value === null) {
+            return null;
+        } try {
+            return Carbon::parse($value)->format('Y-m-d H:i:s');
+        } catch (Throwable) {
+            return null;
+        }
+    }
 }

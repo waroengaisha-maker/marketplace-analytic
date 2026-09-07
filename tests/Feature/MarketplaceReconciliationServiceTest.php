@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\MarketplaceReconciliationService;
+use App\Services\ReportImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class MarketplaceReconciliationServiceTest extends TestCase
@@ -293,6 +295,20 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(1190.0, $result->penghasilan);
         $this->assertSame(0.0, $result->hpp);
         $this->assertSame(1190.0, $result->laba);
+    }
+
+    public function test_report_import_number_parser_keeps_decimal_values_intact(): void
+    {
+        $service = app(ReportImportService::class);
+        $method = new ReflectionMethod($service, 'number');
+        $method->setAccessible(true);
+
+        $this->assertSame(100.5, $method->invoke($service, '100.50'));
+        $this->assertSame(123456.0, $method->invoke($service, '123.456'));
+        $this->assertSame(1234.56, $method->invoke($service, '1.234,56'));
+        $this->assertSame(1234.56, $method->invoke($service, '1,234.56'));
+        $this->assertSame(1500.0, $method->invoke($service, '1.500'));
+        $this->assertSame(10.5, $method->invoke($service, '10,5'));
     }
 
     public function test_unsettled_orders_reuse_settled_sku_fee_percentages_and_constant_processing_fee(): void
