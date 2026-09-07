@@ -2,11 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Http\Requests\UploadReportsRequest;
 use App\Models\User;
 use App\Services\MarketplaceReconciliationService;
 use App\Services\ReportImportService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Testing\File;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use ReflectionMethod;
 use Tests\TestCase;
 
@@ -309,6 +314,38 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(1234.56, $method->invoke($service, '1,234.56'));
         $this->assertSame(1500.0, $method->invoke($service, '1.500'));
         $this->assertSame(10.5, $method->invoke($service, '10,5'));
+    }
+
+    public function test_import_allows_missing_variation_name_when_core_reconciliation_columns_exist(): void
+    {
+        $user = User::factory()->create();
+
+        $path = tempnam(sys_get_temp_dir(), 'order-report-').'.xlsx';
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('orders');
+        $sheet->fromArray([
+            ['No. Pesanan', 'Nama Produk', 'Jumlah', 'Harga Satuan', 'Harga Setelah Diskon'],
+            ['ORDER-1', 'Produk Sample', 2, 250000, 500000],
+        ], null, 'A1');
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($path);
+
+        $file = File::createWithContent('order-report.xlsx', file_get_contents($path));
+        $request = UploadReportsRequest::create('/imports/upload', 'POST', [], [], ['order_report' => $file], [], [], []);
+        $request->setContainer(app());
+        $request->setRedirector(app('redirect'));
+        $request->setUserResolver(fn () => $user);
+
+        try {
+            $request->validateResolved();
+            $this->assertTrue(true);
+        } catch (ValidationException $exception) {
+            $this->fail('Order reports without a variation name should still be accepted when the core reconciliation columns are present.');
+        }
+
+        unlink($path);
     }
 
     public function test_unsettled_orders_reuse_settled_sku_fee_percentages_and_constant_processing_fee(): void

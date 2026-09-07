@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Throwable;
 
@@ -24,10 +25,20 @@ class UploadReportsRequest extends FormRequest
     protected function passedValidation(): void
     {
         foreach ([
-            'order_report' => ['sheet' => 'orders', 'headerRow' => 1, 'columns' => ['No. Pesanan', 'Nama Produk', 'Jumlah']],
-            'income_report' => ['sheet' => 'Penghasilan', 'headerRow' => 3, 'columns' => ['No. Pesanan', 'Nama Produk', 'Total Penghasilan']],
+            'order_report' => [
+                'sheet' => 'orders',
+                'headerRow' => 1,
+                'requiredColumns' => ['No. Pesanan', 'Nama Produk', 'Jumlah', 'Harga Satuan', 'Harga Setelah Diskon'],
+                'optionalColumns' => ['Nama Variasi'],
+            ],
+            'income_report' => [
+                'sheet' => 'Penghasilan',
+                'headerRow' => 3,
+                'requiredColumns' => ['No. Pesanan', 'Nama Produk', 'Jumlah', 'Harga Satuan', 'Total Pendapatan', 'Lihat berdasarkan'],
+                'optionalColumns' => ['Nama Variasi'],
+            ],
         ] as $field => $definition) {
-            if (!$this->hasFile($field)) {
+            if (! $this->hasFile($field)) {
                 continue;
             }
 
@@ -44,7 +55,7 @@ class UploadReportsRequest extends FormRequest
                     $sheet->toArray(null, true, true, false)[$definition['headerRow'] - 1] ?? [],
                 );
 
-                $missing = array_diff($definition['columns'], $headers);
+                $missing = array_diff($definition['requiredColumns'], $headers);
                 if ($missing !== []) {
                     $this->failedValidationMessage($field, 'Kolom wajib tidak ditemukan: '.implode(', ', $missing).'.');
                 }
@@ -57,6 +68,6 @@ class UploadReportsRequest extends FormRequest
     private function failedValidationMessage(string $field, string $message): never
     {
         $this->getValidatorInstance()->errors()->add($field, $message);
-        throw new \Illuminate\Validation\ValidationException($this->getValidatorInstance());
+        throw new ValidationException($this->getValidatorInstance());
     }
 }
