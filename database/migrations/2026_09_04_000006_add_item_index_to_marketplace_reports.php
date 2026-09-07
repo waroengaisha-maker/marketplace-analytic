@@ -18,7 +18,6 @@ return new class extends Migration
             if (! Schema::hasColumn('marketplace_income', 'item_index')) {
                 $table->unsignedInteger('item_index')->nullable()->after('order_number');
             }
-            $table->unique(['user_id', 'order_number', 'item_index'], 'income_user_item_unique');
         });
     }
 

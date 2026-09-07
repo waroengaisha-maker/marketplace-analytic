@@ -20,8 +20,6 @@ return new class extends Migration
             if (! Schema::hasColumn('marketplace_income', 'product_key')) {
                 $table->string('product_key', 64)->nullable()->after('product_name');
             }
-            $table->dropUnique('income_user_item_unique');
-            $table->unique(['user_id', 'order_number', 'product_key', 'item_index'], 'income_user_product_item_unique');
         });
     }
 
