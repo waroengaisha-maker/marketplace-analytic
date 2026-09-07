@@ -3,9 +3,9 @@
         "laravel-boost": {
             "command": "wsl.exe",
             "args": [
-                "/home/debian/.config/herd-lite/bin/php",
-                "/home/debian/projects/marketplace-analytics/artisan",
-                "boost:mcp"
+                "bash",
+                "-lc",
+                "cd \"$(git rev-parse --show-toplevel)\" && php artisan boost:mcp"
             ]
         }
     }
