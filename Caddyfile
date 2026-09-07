@@ -1,7 +1,7 @@
 :8080 {
     @vite path /@vite/* /@id/* /@fs/* /resources/* /node_modules/* /__vite_ping
     header @vite {
-        Access-Control-Allow-Origin "http://localhost"
+        Access-Control-Allow-Origin "http://localhost:8080"
         Access-Control-Allow-Methods "GET, OPTIONS, POST, PUT, PATCH, DELETE"
         Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
         Access-Control-Allow-Credentials "true"
@@ -10,7 +10,7 @@
 
     @websocket header Connection *Upgrade*
     header @websocket {
-        Access-Control-Allow-Origin "http://localhost"
+        Access-Control-Allow-Origin "http://localhost:8080"
         Access-Control-Allow-Methods "GET, OPTIONS, POST, PUT, PATCH, DELETE"
         Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
         Access-Control-Allow-Credentials "true"
