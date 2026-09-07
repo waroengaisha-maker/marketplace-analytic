@@ -318,6 +318,8 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(1234.56, $method->invoke($service, '1.234,56'));
         $this->assertSame(1234.56, $method->invoke($service, '1,234.56'));
         $this->assertSame(1500.0, $method->invoke($service, '1.500'));
+        $this->assertSame(7750.0, $method->invoke($service, '7.750'));
+        $this->assertSame(7750.0, $method->invoke($service, '7,750'));
         $this->assertSame(10.5, $method->invoke($service, '10,5'));
     }
 
