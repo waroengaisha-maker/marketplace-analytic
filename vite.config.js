@@ -23,7 +23,11 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         port: 5173,
         strictPort: true,
-        cors: true,
+        cors: {
+            origin: env.VITE_PUBLIC_URL ? [env.VITE_PUBLIC_URL, 'http://localhost:8080', 'http://localhost:80', 'http://127.0.0.1:8080', 'http://127.0.0.1:80'] : ['http://localhost:8080', 'http://localhost:80', 'http://127.0.0.1:8080', 'http://127.0.0.1:80'],
+            methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+            credentials: true,
+        },
         ...(env.VITE_PUBLIC_URL
             ? (() => {
                 const publicUrl = new URL(env.VITE_PUBLIC_URL);
