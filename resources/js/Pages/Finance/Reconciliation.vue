@@ -13,6 +13,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Popover from 'primevue/popover'
+import Message from 'primevue/message'
 import { formatNominal } from '@/utils/formatters'
 import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
 import DateRangeFilter from '@/Components/DateRangeFilter.vue'
@@ -30,6 +31,7 @@ const fromDate = ref<Date | null>(parseDate(props.appliedFrom))
 const toDate = ref<Date | null>(parseDate(props.appliedTo))
 const appliedFromDate = ref<Date | null>(parseDate(props.appliedFrom))
 const appliedToDate = ref<Date | null>(parseDate(props.appliedTo))
+const dateValidationError = ref<string | null>(null)
 const selectedOrderStatuses = ref<string[]>(['Settled', 'Unsettled'])
 const selectedRows = ref<Row[]>([])
 const multiSortMeta = ref<{ field: string; order: number }[]>([])
@@ -82,6 +84,12 @@ const tableFilters = Object.fromEntries(
 const visibleColumns = computed(() => selectedColumns.value)
 const orderStatusOptions = ['Settled', 'Unsettled', 'Batal', 'Tidak Valid']
 function applyDateFilter() {
+    if (!fromDate.value || !toDate.value) {
+        dateValidationError.value = 'Tanggal belum ditentukan.'
+        return
+    }
+
+    dateValidationError.value = null
     appliedFromDate.value = fromDate.value
     appliedToDate.value = toDate.value
     hasAppliedFilter.value = true
@@ -382,6 +390,9 @@ function onFilter() {
                         </div>
                     </div>
                     <div class="flex flex-wrap justify-start gap-2">
+                        <Message v-if="dateValidationError" severity="error" :closable="false" class="w-full">
+                            {{ dateValidationError }}
+                        </Message>
                         <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
                         <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
                     </div>
