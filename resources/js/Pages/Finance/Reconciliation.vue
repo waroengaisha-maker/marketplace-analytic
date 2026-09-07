@@ -378,7 +378,6 @@ function onFilter() {
                                     panel: { class: 'text-sm' },
                                     item: { class: 'py-2' },
                                 }"
-                                @change="onFilter"
                             />
                         </div>
                     </div>
@@ -656,7 +655,7 @@ function onFilter() {
                                         @keyup.enter="onFilter"
                                     />
                                 </IconField>
-                                <button v-if="field !== 'settlement_status' && filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="filters[field].value = null; onFilter()">
+                                <button v-if="field !== 'settlement_status' && filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
                                     <i class="pi pi-times text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
