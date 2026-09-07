@@ -102,7 +102,21 @@ function localDateKey(date: Date) {
 
     return `${year}-${month}-${day}`
 }
-function severity(status: string) { return status === 'Settled' ? 'success' : status === 'Unsettled' ? 'warn' : 'danger' }
+function severity(status: string) {
+    if (status === 'Settled' || status === 'Grouped Match') {
+        return 'success'
+    }
+
+    if (status === 'Estimated' || status === 'Unsettled' || status === 'Belum Settlement') {
+        return 'warn'
+    }
+
+    if (status === 'Ambiguous' || status === 'Batal' || status === 'Tidak Valid') {
+        return 'danger'
+    }
+
+    return 'info'
+}
 function orderCategory(row: Row) {
     const rawStatus = String(row.order_status ?? '').trim().toLowerCase()
     const hasTracking = String(row.tracking_number ?? '').trim() !== ''
@@ -124,7 +138,9 @@ function clearColumnFilter(field: string) {
 }
 function exportValue(row: Row, field: string) {
     if (field === 'settlement_status') {
-        return orderCategory(row)
+        const settlementStatus = String(row.settlement_status ?? '').trim()
+
+        return settlementStatus || orderCategory(row)
     }
 
     if (field === 'order_product_name') {
@@ -646,7 +662,7 @@ function onFilter() {
                             </div>
                         </template>
                         <template #body="{ data }">
-                            <Tag v-if="field === 'settlement_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
+                            <Tag v-if="field === 'settlement_status'" :value="String(data.settlement_status ?? orderCategory(data))" :severity="severity(String(data.settlement_status ?? orderCategory(data)))" />
                             <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
                             <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
                             <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>

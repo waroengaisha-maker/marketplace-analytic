@@ -252,7 +252,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertCount(1, $rows);
         $this->assertSame(108, $rows->first()->item_index);
         $this->assertNull($rows->first()->total_income);
-        $this->assertSame('Belum Settlement', $rows->first()->settlement_status);
+        $this->assertSame('Estimated', $rows->first()->settlement_status);
     }
 
     public function test_dashboard_excludes_orders_without_tracking_from_valid_totals(): void
@@ -397,7 +397,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(30.0, (float) $row->free_shipping_xtra_fee);
         $this->assertSame(20.0, (float) $row->promo_xtra_service_fee);
         $this->assertSame(1250.0, (float) $row->order_processing_fee);
-        $this->assertSame('Belum Settlement', $row->settlement_status);
+        $this->assertSame('Estimated', $row->settlement_status);
     }
 
     private function order(int $userId, array $overrides = []): array
