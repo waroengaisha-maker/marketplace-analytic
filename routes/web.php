@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\IncomeReconciliationController;
 use App\Http\Controllers\ReconciliationController;
 use App\Http\Controllers\UploadReportsController;
 use App\Services\MarketplaceReconciliationService;
@@ -56,6 +57,7 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::get('/imports/upload', fn () => Inertia::render('Imports/Upload'))->name('imports.upload');
     Route::post('/imports/upload', [UploadReportsController::class, 'store'])->name('imports.upload.store');
     Route::get('/finance/reconciliation', [ReconciliationController::class, 'index'])->name('finance.reconciliation');
+    Route::get('/finance/income-reconciliation', [IncomeReconciliationController::class, 'index'])->name('finance.income-reconciliation');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {

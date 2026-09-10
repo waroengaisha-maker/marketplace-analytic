@@ -32,12 +32,12 @@ const toDate = ref<Date | null>(parseDate(props.appliedTo))
 const appliedFromDate = ref<Date | null>(parseDate(props.appliedFrom))
 const appliedToDate = ref<Date | null>(parseDate(props.appliedTo))
 const dateValidationError = ref<string | null>(null)
-const selectedOrderStatuses = ref<string[]>(['Settled', 'Unsettled'])
+const selectedOrderStatuses = ref<string[]>(['Settled', 'Refunded', 'Partially Refunded', 'Returned', 'Unmatched', 'Cancelled', 'Invalid'])
 const selectedRows = ref<Row[]>([])
 const multiSortMeta = ref<{ field: string; order: number }[]>([])
 const totalFeePopoverRefs = ref<Record<string, { toggle: (event: Event) => void } | null>>({})
 const clearButtonClass = 'absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary transition-colors hover:bg-surface-200 hover:text-color dark:hover:bg-surface-700'
-const money = ['discounted_price', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
+const money = ['discounted_price', 'refund_amount', 'order_subtotal', 'platform_fee', 'free_shipping_xtra_fee', 'promo_xtra_service_fee', 'fee_subtotal', 'order_processing_fee', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba']
 const formulaTooltips: Record<string, string> = {
     net_quantity: 'Jumlah Bersih = Jumlah - Retur',
     order_subtotal: 'Subtotal = Harga setelah diskon x (Jumlah - Retur)',
@@ -62,7 +62,11 @@ const columns = [
     ['penghasilan', 'Penghasilan'], ['hpp', 'HPP'], ['laba', 'Laba'],
 ] as const
 const allColumns = [
-    ['settlement_status', 'Status'],
+    ['business_status', 'Status'],
+    ['match_method', 'Metode Match'],
+    ['match_confidence', 'Confidence Match'],
+    ['refund_amount', 'Refund'],
+    ['refund_type', 'Tipe Refund'],
     ...columns,
 ] as const
 const selectedColumns = ref([...allColumns])
@@ -71,18 +75,18 @@ const filters = ref<Record<string, { value: string | null; matchMode: string }>>
         global: { value: null, matchMode: FilterMatchMode.CONTAINS },
         ...Object.fromEntries(allColumns.map(([field]) => [field, {
             value: null,
-            matchMode: field === 'settlement_status' ? FilterMatchMode.EQUALS : FilterMatchMode.CONTAINS,
+            matchMode: field === 'business_status' ? FilterMatchMode.EQUALS : FilterMatchMode.CONTAINS,
         }])),
     },
 )
 const tableFilters = Object.fromEntries(
     allColumns.map(([field]) => [field, {
         value: null,
-        matchMode: field === 'settlement_status' ? FilterMatchMode.EQUALS : FilterMatchMode.CONTAINS,
+        matchMode: field === 'business_status' ? FilterMatchMode.EQUALS : FilterMatchMode.CONTAINS,
     }]),
 )
 const visibleColumns = computed(() => selectedColumns.value)
-const orderStatusOptions = ['Settled', 'Unsettled', 'Batal', 'Tidak Valid']
+const orderStatusOptions = ['Settled', 'Refunded', 'Partially Refunded', 'Returned', 'Unmatched', 'Cancelled', 'Invalid']
 function applyDateFilter() {
     if (!fromDate.value || !toDate.value) {
         dateValidationError.value = 'Tanggal belum ditentukan.'
@@ -111,44 +115,38 @@ function localDateKey(date: Date) {
     return `${year}-${month}-${day}`
 }
 function severity(status: string) {
-    if (status === 'Settled' || status === 'Grouped Match') {
+    if (status === 'Settled') {
         return 'success'
     }
 
-    if (status === 'Estimated' || status === 'Unsettled' || status === 'Belum Settlement') {
+    if (status === 'Refunded' || status === 'Partially Refunded') {
+        return 'info'
+    }
+
+    if (status === 'Returned') {
         return 'warn'
     }
 
-    if (status === 'Ambiguous' || status === 'Batal' || status === 'Tidak Valid') {
+    if (status === 'Unmatched') {
+        return 'warn'
+    }
+
+    if (status === 'Cancelled' || status === 'Invalid') {
         return 'danger'
     }
 
     return 'info'
 }
 function orderCategory(row: Row) {
-    const rawStatus = String(row.order_status ?? '').trim().toLowerCase()
-    const hasTracking = String(row.tracking_number ?? '').trim() !== ''
-    const hasIncome = numericValue(row, 'total_income') > 0
-
-    if (rawStatus === 'batal') {
-        return 'Batal'
-    }
-
-    if (!hasTracking) {
-        return 'Tidak Valid'
-    }
-
-    return hasIncome ? 'Settled' : 'Unsettled'
+    return String(row.business_status ?? '').trim() || 'Unmatched'
 }
 function clearColumnFilter(field: string) {
     filters.value[field].value = null
     onFilter()
 }
 function exportValue(row: Row, field: string) {
-    if (field === 'settlement_status') {
-        const settlementStatus = String(row.settlement_status ?? '').trim()
-
-        return settlementStatus || orderCategory(row)
+    if (field === 'business_status') {
+        return orderCategory(row)
     }
 
     if (field === 'order_product_name') {
@@ -219,9 +217,12 @@ const totalSummary = computed(() => ({
 const summaryGroups = computed(() => {
     const groups = [
         { label: 'Settled', severity: 'success', icon: 'pi pi-check-circle' },
-        { label: 'Unsettled', severity: 'warn', icon: 'pi pi-clock' },
-        { label: 'Batal', severity: 'danger', icon: 'pi pi-times-circle' },
-        { label: 'Tidak Valid', severity: 'secondary', icon: 'pi pi-ban' },
+        { label: 'Refunded', severity: 'info', icon: 'pi pi-replay' },
+        { label: 'Partially Refunded', severity: 'info', icon: 'pi pi-refresh' },
+        { label: 'Returned', severity: 'warn', icon: 'pi pi-undo' },
+        { label: 'Unmatched', severity: 'warn', icon: 'pi pi-clock' },
+        { label: 'Cancelled', severity: 'danger', icon: 'pi pi-times-circle' },
+        { label: 'Invalid', severity: 'danger', icon: 'pi pi-ban' },
     ]
     return groups.map((group) => {
         const rows = summaryFilteredRows.value.filter((row) => orderCategory(row) === group.label)
@@ -229,7 +230,7 @@ const summaryGroups = computed(() => {
         return {
             ...group,
             count: rows.length,
-            cards: buildSummaryCards(rows, ['Batal', 'Tidak Valid'].includes(group.label)),
+            cards: buildSummaryCards(rows, ['Cancelled', 'Invalid'].includes(group.label)),
         }
     })
 })
@@ -640,7 +641,7 @@ function onFilter() {
                         <template #filter="{ filterModel }">
                             <div class="relative">
                                 <Select
-                                    v-if="field === 'settlement_status'"
+                                    v-if="field === 'business_status'"
                                     :model-value="filters[field].value"
                                     :options="orderStatusOptions"
                                     :aria-label="`Filter ${header}`"
@@ -666,13 +667,13 @@ function onFilter() {
                                         @keyup.enter="onFilter"
                                     />
                                 </IconField>
-                                <button v-if="field !== 'settlement_status' && filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
+                                <button v-if="field !== 'business_status' && filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
                                     <i class="pi pi-times text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </template>
                         <template #body="{ data }">
-                            <Tag v-if="field === 'settlement_status'" :value="String(data.settlement_status ?? orderCategory(data))" :severity="severity(String(data.settlement_status ?? orderCategory(data)))" />
+                            <Tag v-if="field === 'business_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
                             <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
                             <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
                             <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>

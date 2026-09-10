@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AccountStatus;
 use App\Http\Requests\UploadReportsRequest;
 use App\Models\User;
+use App\Services\IncomeReconciliationService;
 use App\Services\IncomeReportImporter;
 use App\Services\MarketplaceReconciliationService;
 use App\Services\OrderReportImporter;
@@ -59,6 +61,483 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $this->assertSame('180.00', $row->total_income);
         $this->assertSame('Settled', $row->settlement_status);
+    }
+
+    public function test_income_reconciliation_preserves_one_row_per_income_and_classifies_kewpie_orphan(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('k', 64);
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'KEWPIE-ORPHAN',
+            'product_name' => 'Kewpie',
+            'product_key' => $productKey,
+            'product_price' => 543000,
+            'unit_price' => 543000,
+            'total_income' => 299155,
+            'refund_to_buyer' => -181000,
+        ]));
+
+        $page = app(IncomeReconciliationService::class)->page($user->id, null, null, ['per_page' => 25]);
+        $row = collect($page->items())->first();
+
+        $this->assertSame(1, $page->total());
+        $this->assertSame('Orphan', $row->income_match_status);
+        $this->assertSame('None', $row->match_method);
+        $this->assertSame('None', $row->match_confidence);
+        $this->assertSame(-181000.0, (float) $row->refund_amount);
+        $this->assertSame('Partial', $row->refund_type);
+        $this->assertSame(299155.0, (float) $row->total_income);
+    }
+
+    public function test_income_refund_with_one_compatible_order_is_exact_without_grouped_allocation(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('d', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'DOWNY-EXACT-REFUND',
+            'product_name' => 'Downy',
+            'product_key' => $productKey,
+            'variation_key' => str_repeat('v', 64),
+            'variation_name' => 'Sunrise Fresh',
+            'discounted_price' => 38000,
+            'unit_price' => 38000,
+            'quantity' => 1,
+            'item_index' => 1001,
+        ]));
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'DOWNY-EXACT-REFUND',
+            'product_name' => 'Downy',
+            'product_key' => $productKey,
+            'product_price' => 38000,
+            'unit_price' => 38000,
+            'quantity' => 1,
+            'item_index' => 1001,
+            'total_income' => 0,
+            'refund_to_buyer' => -38000,
+        ]));
+
+        $row = app(IncomeReconciliationService::class)->page($user->id, null, null, ['per_page' => 25])->items()[0];
+
+        $this->assertSame('Matched', $row->income_match_status);
+        $this->assertSame('Exact', $row->match_method);
+        $this->assertSame('Exact', $row->match_confidence);
+        $this->assertSame('Full', $row->refund_type);
+        $this->assertSame('-38000.00', $row->refund_amount);
+    }
+
+    public function test_income_matching_keeps_refund_and_candidate_outcomes_independent(): void
+    {
+        $user = User::factory()->create();
+        $exactKey = str_repeat('e', 64);
+        $groupedKey = str_repeat('g', 64);
+        $ambiguousKey = str_repeat('a', 64);
+        $partialKey = str_repeat('p', 64);
+
+        DB::table('marketplace_orders')->insert([
+            $this->order($user->id, [
+                'order_number' => 'INCOME-EXACT',
+                'product_name' => 'Exact',
+                'product_key' => $exactKey,
+                'variation_key' => str_repeat('x', 64),
+                'item_index' => 1001,
+                'discounted_price' => 100,
+                'unit_price' => 100,
+            ]),
+            $this->order($user->id, [
+                'order_number' => 'INCOME-GROUPED',
+                'product_name' => 'Grouped',
+                'product_key' => $groupedKey,
+                'variation_key' => str_repeat('y', 64),
+                'item_index' => 2002,
+                'discounted_price' => 200,
+                'unit_price' => 200,
+            ]),
+            $this->order($user->id, [
+                'order_number' => 'INCOME-AMBIGUOUS',
+                'product_name' => 'Ambiguous',
+                'product_key' => $ambiguousKey,
+                'variation_key' => str_repeat('m', 64),
+                'item_index' => 3003,
+                'discounted_price' => 300,
+                'unit_price' => 300,
+            ]),
+            $this->order($user->id, [
+                'order_number' => 'INCOME-AMBIGUOUS',
+                'product_name' => 'Ambiguous',
+                'product_key' => $ambiguousKey,
+                'variation_key' => str_repeat('n', 64),
+                'item_index' => 3003,
+                'discounted_price' => 300,
+                'unit_price' => 300,
+            ]),
+            $this->order($user->id, [
+                'order_number' => 'INCOME-PARTIAL',
+                'product_name' => 'Partial',
+                'product_key' => $partialKey,
+                'variation_key' => str_repeat('z', 64),
+                'item_index' => 4004,
+                'discounted_price' => 400,
+                'unit_price' => 400,
+            ]),
+        ]);
+
+        DB::table('marketplace_income')->insert([
+            $this->income($user->id, ['order_number' => 'INCOME-EXACT', 'product_name' => 'Exact', 'product_key' => $exactKey, 'variation_key' => str_repeat('x', 64), 'product_price' => 100, 'unit_price' => 100, 'item_index' => 1001]),
+            $this->income($user->id, ['order_number' => 'INCOME-GROUPED', 'product_name' => 'Grouped', 'product_key' => $groupedKey, 'product_price' => 200, 'unit_price' => 200, 'item_index' => 2002]),
+            $this->income($user->id, ['order_number' => 'INCOME-AMBIGUOUS', 'product_name' => 'Ambiguous', 'product_key' => $ambiguousKey, 'product_price' => 300, 'unit_price' => 300, 'item_index' => 3003]),
+            $this->income($user->id, ['order_number' => 'INCOME-PARTIAL', 'product_name' => 'Partial', 'product_key' => $partialKey, 'product_price' => 400, 'unit_price' => 400, 'item_index' => 4004, 'total_income' => 200, 'refund_to_buyer' => -100]),
+            $this->income($user->id, ['order_number' => 'INCOME-ZERO', 'product_name' => 'Zero', 'product_key' => str_repeat('0', 64), 'product_price' => 500, 'unit_price' => 500, 'total_income' => 0, 'refund_to_buyer' => 0, 'item_index' => null]),
+        ]);
+
+        $rows = collect(app(IncomeReconciliationService::class)->page($user->id, null, null, ['per_page' => 25])->items())->keyBy('order_number');
+
+        $this->assertSame(['Matched', 'Exact', 'Exact'], [$rows['INCOME-EXACT']->income_match_status, $rows['INCOME-EXACT']->match_method, $rows['INCOME-EXACT']->match_confidence]);
+        $this->assertSame(['Matched', 'Grouped', 'Grouped'], [$rows['INCOME-GROUPED']->income_match_status, $rows['INCOME-GROUPED']->match_method, $rows['INCOME-GROUPED']->match_confidence]);
+        $this->assertSame(['Ambiguous', 'None', 'Ambiguous'], [$rows['INCOME-AMBIGUOUS']->income_match_status, $rows['INCOME-AMBIGUOUS']->match_method, $rows['INCOME-AMBIGUOUS']->match_confidence]);
+        $this->assertSame(['Matched', 'Exact', 'Exact', 'Partial'], [$rows['INCOME-PARTIAL']->income_match_status, $rows['INCOME-PARTIAL']->match_method, $rows['INCOME-PARTIAL']->match_confidence, $rows['INCOME-PARTIAL']->refund_type]);
+        $this->assertSame(['Orphan', 'None', 'None'], [$rows['INCOME-ZERO']->income_match_status, $rows['INCOME-ZERO']->match_method, $rows['INCOME-ZERO']->match_confidence]);
+        $this->assertSame(0, $rows->filter(fn ($row) => (float) ($row->refund_amount ?? 0) < 0 && $row->match_method === 'Grouped')->count());
+    }
+
+    public function test_exact_match_exposes_settled_business_status_and_exact_match_contract(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('a', 64);
+        $variationKey = str_repeat('b', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-CONTRACT-EXACT',
+            'product_key' => $productKey,
+            'variation_key' => $variationKey,
+            'item_index' => 101,
+            'unit_price' => 100,
+            'discounted_price' => 80,
+            'quantity' => 2,
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'ORDER-CONTRACT-EXACT',
+            'product_key' => $productKey,
+            'variation_key' => $variationKey,
+            'item_index' => 999,
+            'product_price' => 160,
+            'quantity' => 2,
+            'total_income' => 180,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-CONTRACT-EXACT')
+            ->first();
+
+        $this->assertSame('Settled', $row->business_status);
+        $this->assertSame('Exact', $row->match_method);
+        $this->assertSame('Exact', $row->match_confidence);
+    }
+
+    public function test_rawon_full_refund_is_not_grouped_or_allocated_to_non_refund_income(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('r', 64);
+        $itemIndex = 2320329593;
+
+        foreach ([
+            ['variation' => 'Rawon', 'tracking' => null],
+            ['variation' => 'Rendang', 'tracking' => 'TRACKING'],
+            ['variation' => 'Gulai', 'tracking' => 'TRACKING'],
+        ] as $line) {
+            DB::table('marketplace_orders')->insert($this->order($user->id, [
+                'order_number' => '260819RTG8Y8NS',
+                'product_key' => $productKey,
+                'item_index' => $itemIndex,
+                'discounted_price' => 7750,
+                'unit_price' => 7750,
+                'quantity' => 1,
+                'variation_name' => $line['variation'],
+                'variation_key' => hash('sha256', $line['variation']),
+                'tracking_number' => $line['tracking'],
+            ]));
+        }
+
+        DB::table('marketplace_income')->insert([
+            $this->income($user->id, [
+                'order_number' => '260819RTG8Y8NS',
+                'product_key' => $productKey,
+                'item_index' => $itemIndex,
+                'product_price' => 7750,
+                'quantity' => 1,
+                'total_income' => 6304,
+                'refund_to_buyer' => 0,
+            ]),
+            $this->income($user->id, [
+                'order_number' => '260819RTG8Y8NS',
+                'product_key' => $productKey,
+                'item_index' => $itemIndex,
+                'product_price' => 7750,
+                'quantity' => 1,
+                'total_income' => 6305,
+                'refund_to_buyer' => 0,
+            ]),
+            $this->income($user->id, [
+                'order_number' => '260819RTG8Y8NS',
+                'product_key' => $productKey,
+                'item_index' => $itemIndex,
+                'product_price' => 7750,
+                'quantity' => 1,
+                'total_income' => 0,
+                'refund_to_buyer' => -7750,
+            ]),
+        ]);
+
+        $rows = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', '260819RTG8Y8NS')
+            ->get()
+            ->keyBy('variation_name');
+
+        $rawon = $rows->get('Rawon');
+        $this->assertSame('Refunded', $rawon->business_status);
+        $this->assertNotSame('Unmatched', $rawon->business_status);
+        $this->assertNotSame('Invalid', $rawon->business_status);
+        $this->assertSame(-7750.0, (float) $rawon->refund_amount);
+        $this->assertSame('Full', $rawon->refund_type);
+        $this->assertSame(0.0, (float) $rawon->total_income);
+        $this->assertSame(0, $rawon->returned_quantity);
+        $this->assertNull($rawon->tracking_number);
+        $this->assertSame('None', $rawon->match_method);
+        $this->assertSame('None', $rawon->match_confidence);
+        $this->assertNotSame('Grouped', $rawon->match_method);
+        $this->assertSame(0.0, (float) $rawon->total_income);
+        $this->assertNotSame(6304.5, (float) $rawon->total_income);
+        $this->assertSame(7750.0, (float) ($rawon->order_subtotal ?? 0));
+
+        $this->assertNotSame('Refunded', $rows->get('Rendang')->business_status);
+        $this->assertNotSame('Refunded', $rows->get('Gulai')->business_status);
+    }
+
+    public function test_downy_full_refund_with_zero_return_is_refunded_even_without_tracking(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('d', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => '2608125PE48NT9',
+            'product_key' => $productKey,
+            'item_index' => 4025513973,
+            'discounted_price' => 38000,
+            'unit_price' => 38000,
+            'quantity' => 1,
+            'tracking_number' => null,
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => '2608125PE48NT9',
+            'product_key' => $productKey,
+            'item_index' => 4025513973,
+            'product_price' => 38000,
+            'quantity' => 1,
+            'total_income' => 0,
+            'refund_to_buyer' => -38000,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', '2608125PE48NT9')
+            ->first();
+
+        $this->assertSame('Refunded', $row->business_status);
+        $this->assertSame(-38000.0, (float) $row->refund_amount);
+        $this->assertSame('Full', $row->refund_type);
+        $this->assertSame(0.0, (float) $row->total_income);
+        $this->assertSame(0, $row->returned_quantity);
+        $this->assertNull($row->tracking_number);
+        $this->assertSame('None', $row->match_method);
+        $this->assertSame('None', $row->match_confidence);
+        $this->assertNotSame('Returned', $row->business_status);
+        $this->assertNotSame('Unmatched', $row->business_status);
+    }
+
+    /**
+     * Uses Kewpie's audited refund values with a synthetic Order counterpart.
+     *
+     * The actual Kewpie Income row is orphaned and is not exposed by the
+     * current order-centric reconciliation result.
+     */
+    public function test_synthetic_partial_refund_is_classified_by_refund_amount(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('k', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-PARTIAL-REFUND-CONTRACT',
+            'product_key' => $productKey,
+            'item_index' => 2057022040,
+            'discounted_price' => 543000,
+            'unit_price' => 543000,
+            'quantity' => 1,
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'ORDER-PARTIAL-REFUND-CONTRACT',
+            'product_key' => $productKey,
+            'item_index' => 2057022040,
+            'product_price' => 543000,
+            'quantity' => 1,
+            'total_income' => 299155,
+            'refund_to_buyer' => -181000,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-PARTIAL-REFUND-CONTRACT')
+            ->first();
+
+        $this->assertSame('Partially Refunded', $row->business_status);
+        $this->assertNotSame('Refunded', $row->business_status);
+        $this->assertSame(-181000.0, (float) $row->refund_amount);
+        $this->assertSame('Partial', $row->refund_type);
+        $this->assertSame(299155.0, (float) $row->total_income);
+    }
+
+    public function test_order_without_income_and_without_refund_evidence_is_unmatched(): void
+    {
+        $user = User::factory()->create();
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-UNMATCHED-CONTRACT',
+            'product_key' => str_repeat('u', 64),
+            'item_index' => 109,
+            'tracking_number' => 'TRACKING',
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-UNMATCHED-CONTRACT')
+            ->first();
+
+        $this->assertSame('Unmatched', $row->business_status);
+        $this->assertSame('None', $row->match_method);
+        $this->assertSame('None', $row->match_confidence);
+        $this->assertNull($row->refund_amount);
+        $this->assertNull($row->total_income);
+    }
+
+    public function test_zero_income_with_refund_evidence_is_not_unmatched(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('z', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-REFUND-CONTRACT',
+            'product_key' => $productKey,
+            'item_index' => 110,
+            'discounted_price' => 100,
+            'unit_price' => 100,
+            'quantity' => 1,
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'ORDER-REFUND-CONTRACT',
+            'product_key' => $productKey,
+            'item_index' => 110,
+            'product_price' => 100,
+            'quantity' => 1,
+            'total_income' => 0,
+            'refund_to_buyer' => -100,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-REFUND-CONTRACT')
+            ->first();
+
+        $this->assertSame('Refunded', $row->business_status);
+        $this->assertNotSame('Unmatched', $row->business_status);
+        $this->assertSame(-100.0, (float) $row->refund_amount);
+        $this->assertSame('Full', $row->refund_type);
+        $this->assertSame(0.0, (float) $row->total_income);
+        $this->assertSame(0, $row->returned_quantity);
+        $this->assertSame('None', $row->match_method);
+        $this->assertSame('None', $row->match_confidence);
+    }
+
+    public function test_returned_quantity_produces_returned_business_status(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('t', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-RETURN-CONTRACT',
+            'product_key' => $productKey,
+            'item_index' => 111,
+            'discounted_price' => 100,
+            'unit_price' => 100,
+            'quantity' => 2,
+            'returned_quantity' => 1,
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'ORDER-RETURN-CONTRACT',
+            'product_key' => $productKey,
+            'item_index' => 111,
+            'product_price' => 100,
+            'quantity' => 2,
+            'total_income' => 90,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-RETURN-CONTRACT')
+            ->first();
+
+        $this->assertSame('Returned', $row->business_status);
+        $this->assertSame(1, $row->returned_quantity);
+        $this->assertSame('Exact', $row->match_method);
+        $this->assertSame('Exact', $row->match_confidence);
+    }
+
+    public function test_reconciliation_filter_accepts_all_business_status_values(): void
+    {
+        $user = User::factory()->create([
+            'account_status' => AccountStatus::Active,
+        ]);
+
+        $existingStatuses = [
+            'Settled',
+            'Unsettled',
+            'Batal',
+            'Tidak Valid',
+        ];
+        $newBusinessStatuses = [
+            'Refunded',
+            'Partially Refunded',
+            'Returned',
+            'Unmatched',
+            'Cancelled',
+            'Invalid',
+        ];
+
+        $this->actingAs($user)->get(route('finance.reconciliation', [
+            'from' => '2026-08-01',
+            'to' => '2026-08-31',
+            'statuses' => $existingStatuses,
+        ]))->assertOk();
+
+        $this->actingAs($user)->get(route('finance.reconciliation', [
+            'from' => '2026-08-01',
+            'to' => '2026-08-31',
+            'statuses' => $newBusinessStatuses,
+        ]))->assertOk();
+
+        $this->actingAs($user)
+            ->get(route('finance.reconciliation', [
+                'from' => '2026-08-01',
+                'to' => '2026-08-31',
+                'statuses' => ['Not A Status'],
+            ]))
+            ->assertSessionHasErrors('statuses.0');
     }
 
     public function test_exact_match_unique_indexes_align_with_upsert_conflict_keys(): void
@@ -143,7 +622,10 @@ class MarketplaceReconciliationServiceTest extends TestCase
             ->first();
 
         $this->assertNull($row->total_income);
-        $this->assertSame('Ambiguous', $row->settlement_status);
+        $this->assertSame('Belum Settlement', $row->settlement_status);
+        $this->assertSame('Unmatched', $row->business_status);
+        $this->assertSame('None', $row->match_method);
+        $this->assertSame('Ambiguous', $row->match_confidence);
     }
 
     public function test_identical_item_index_lines_can_settle_as_a_group(): void
@@ -183,6 +665,9 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertCount(2, $rows);
         $this->assertSame(['Grouped Match'], $rows->pluck('settlement_status')->unique()->values()->all());
         $this->assertEquals(181.0, (float) $rows->sum('total_income'));
+        $this->assertSame(['Settled'], $rows->pluck('business_status')->unique()->values()->all());
+        $this->assertSame(['Grouped'], $rows->pluck('match_method')->unique()->values()->all());
+        $this->assertSame(['Grouped'], $rows->pluck('match_confidence')->unique()->values()->all());
     }
 
     public function test_order_260819_rtg8y8ns_excludes_untracked_rawon_from_tracked_query(): void
@@ -281,6 +766,9 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(108, $rows->first()->item_index);
         $this->assertNull($rows->first()->total_income);
         $this->assertSame('Estimated', $rows->first()->settlement_status);
+        $this->assertSame('Unmatched', $rows->first()->business_status);
+        $this->assertSame('Estimated', $rows->first()->match_method);
+        $this->assertSame('Estimated', $rows->first()->match_confidence);
     }
 
     public function test_dashboard_excludes_orders_without_tracking_from_valid_totals(): void
@@ -305,6 +793,63 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(0.0, $stats['net_sales']);
         $this->assertSame(1, $stats['valid_without_tracking']);
         $this->assertSame(500.0, $stats['valid_without_tracking_sales']);
+    }
+
+    public function test_dashboard_uses_returned_business_status_instead_of_income_for_settled_totals(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('v', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-RETURNED-DASHBOARD',
+            'product_key' => $productKey,
+            'item_index' => 114,
+            'discounted_price' => 250,
+            'unit_price' => 250,
+            'quantity' => 1,
+            'returned_quantity' => 1,
+            'tracking_number' => 'TRACKING-RETURNED',
+            'order_created_at' => '2026-08-12 10:00:00',
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'ORDER-RETURNED-DASHBOARD',
+            'product_key' => $productKey,
+            'item_index' => 114,
+            'product_price' => 250,
+            'quantity' => 1,
+            'total_income' => 200,
+        ]));
+
+        $stats = app(MarketplaceReconciliationService::class)
+            ->dashboardStats($user->id, '2026-08-12', '2026-08-12');
+
+        $this->assertSame(0.0, $stats['settled_sales']);
+        $this->assertSame(0, $stats['settled_order_count']);
+        $this->assertSame(0.0, $stats['pending_sales']);
+        $this->assertSame(0, $stats['pending_order_count']);
+    }
+
+    public function test_cancelled_business_status_deterministically_maps_to_batal_legacy_status(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('w', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-CANCELLED-LEGACY',
+            'product_key' => $productKey,
+            'item_index' => 115,
+            'order_status' => 'Batal',
+            'tracking_number' => 'TRACKING-CANCELLED',
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-CANCELLED-LEGACY')
+            ->first();
+
+        $this->assertSame('Cancelled', $row->business_status);
+        $this->assertSame('Batal', $row->settlement_status);
     }
 
     public function test_financial_columns_follow_reconciliation_fee_contract(): void
@@ -580,6 +1125,9 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(-20.0, (float) $row->promo_xtra_service_fee);
         $this->assertSame(-1250.0, (float) $row->order_processing_fee);
         $this->assertSame('Estimated', $row->settlement_status);
+        $this->assertSame('Unmatched', $row->business_status);
+        $this->assertSame('Estimated', $row->match_method);
+        $this->assertSame('Estimated', $row->match_confidence);
     }
 
     private function order(int $userId, array $overrides = []): array
@@ -607,12 +1155,14 @@ class MarketplaceReconciliationServiceTest extends TestCase
         return array_merge([
             'user_id' => $userId,
             'order_number' => 'ORDER',
+            'item_index' => null,
             'product_name' => 'Product',
             'product_key' => str_repeat('f', 64),
             'variation_key' => null,
             'product_price' => 100,
             'quantity' => 1,
             'total_income' => 100,
+            'refund_to_buyer' => 0,
             'raw_data' => '{}',
             'created_at' => now(),
             'updated_at' => now(),

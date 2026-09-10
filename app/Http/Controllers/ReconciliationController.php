@@ -17,9 +17,9 @@ class ReconciliationController extends Controller
             'per_page' => ['nullable', 'integer', 'min:25', 'max:500'],
             'search' => ['nullable', 'string', 'max:255'],
             'statuses' => ['nullable', 'array'],
-            'statuses.*' => ['string', 'in:Settled,Unsettled,Batal,Tidak Valid'],
+            'statuses.*' => ['string', 'in:Settled,Unsettled,Batal,Tidak Valid,Refunded,Partially Refunded,Returned,Unmatched,Cancelled,Invalid'],
             'column_filters' => ['nullable', 'json'],
-            'sort_field' => ['nullable', 'string', 'in:settlement_status,order_number,order_product_name,quantity,discounted_price,order_created_at'],
+            'sort_field' => ['nullable', 'string', 'in:settlement_status,business_status,order_number,order_product_name,quantity,discounted_price,order_created_at'],
             'sort_order' => ['nullable', 'string', 'in:asc,desc'],
             'multi_sort_meta' => ['nullable', 'json'],
         ]);

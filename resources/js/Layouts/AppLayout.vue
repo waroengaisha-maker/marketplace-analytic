@@ -116,6 +116,7 @@ const navigation = computed(() => [
         items: [
             { name: 'Income', href: '/finance/income', icon: 'pi pi-wallet', color: 'text-slate-400' },
             { name: 'Reconciliation', href: '/finance/reconciliation', icon: 'pi pi-sync', color: 'text-slate-400' },
+            { name: 'Income Reconciliation', href: '/finance/income-reconciliation', icon: 'pi pi-wallet', color: 'text-slate-400' },
             { name: 'Profit', href: '/finance/profit', icon: 'pi pi-chart-line', color: 'text-slate-400' },
         ],
     },

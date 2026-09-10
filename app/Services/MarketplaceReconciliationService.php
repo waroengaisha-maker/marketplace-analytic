@@ -61,9 +61,18 @@ class MarketplaceReconciliationService
         $query = DB::query()->fromSub($base, 'rows');
         $search = trim((string) ($parameters['search'] ?? ''));
         $statuses = array_values(array_filter((array) ($parameters['statuses'] ?? [])));
+        $statuses = array_map(
+            fn (string $status): string => match ($status) {
+                'Unsettled' => 'Unmatched',
+                'Batal' => 'Cancelled',
+                'Tidak Valid' => 'Invalid',
+                default => $status,
+            },
+            $statuses,
+        );
         $columnFilters = json_decode((string) ($parameters['column_filters'] ?? '{}'), true);
         $columnFilters = is_array($columnFilters) ? $columnFilters : [];
-        $statusExpression = "CASE WHEN LOWER(TRIM(COALESCE(rows.order_status, ''))) = 'batal' THEN 'Batal' WHEN rows.tracking_number IS NULL OR TRIM(rows.tracking_number) = '' THEN 'Tidak Valid' WHEN COALESCE(rows.total_income, 0) > 0 THEN 'Settled' ELSE 'Unsettled' END";
+        $statusExpression = 'rows.business_status';
 
         if ($search !== '') {
             $like = '%'.addcslashes($search, '%_\\').'%';
@@ -82,6 +91,7 @@ class MarketplaceReconciliationService
 
         $netQuantityExpression = 'CASE WHEN rows.quantity - COALESCE(rows.returned_quantity, 0) > 0 THEN rows.quantity - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
         $filterExpressions = [
+            'business_status' => $statusExpression,
             'settlement_status' => $statusExpression,
             'order_number' => 'rows.order_number',
             'order_product_name' => 'rows.order_product_name',
@@ -108,6 +118,7 @@ class MarketplaceReconciliationService
         }
 
         $sortFields = [
+            'business_status' => DB::raw($statusExpression),
             'settlement_status' => DB::raw($statusExpression),
             'order_number' => 'rows.order_number',
             'order_product_name' => 'rows.order_product_name',
@@ -143,31 +154,33 @@ class MarketplaceReconciliationService
             ->when($from, fn (Builder $query) => $query->where('orders.order_created_at', '>=', CarbonImmutable::parse($from)->startOfDay()))
             ->when($to, fn (Builder $query) => $query->where('orders.order_created_at', '<', CarbonImmutable::parse($to)->addDay()->startOfDay()));
 
-        $statusIsValid = "(rows.order_status IS NULL OR LOWER(TRIM(rows.order_status)) <> 'batal')";
         $hasTracking = "(rows.tracking_number IS NOT NULL AND TRIM(rows.tracking_number) <> '')";
-        $withoutTracking = "(rows.tracking_number IS NULL OR TRIM(rows.tracking_number) = '')";
+        $isCancelled = "rows.business_status = 'Cancelled'";
+        $isInvalid = "rows.business_status = 'Invalid'";
+        $isSettled = "rows.business_status = 'Settled'";
+        $isUnmatched = "rows.business_status = 'Unmatched'";
         $sales = $this->salesExpression('rows');
         $profit = "COALESCE(rows.total_income, {$sales}) + COALESCE(rows.platform_fee, 0) + COALESCE(rows.order_processing_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.pph22, 0)";
         $aggregate = DB::query()
             ->fromSub($orders, 'rows')
             ->selectRaw("
                 COALESCE(SUM({$sales}), 0) AS gross_sales,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS net_sales,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN COALESCE(rows.platform_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.order_processing_fee, 0) ELSE 0 END), 0) AS total_fee,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN COALESCE(rows.pph22, 0) ELSE 0 END), 0) AS total_tax,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) > 0 THEN {$sales} ELSE 0 END), 0) AS settled_sales,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) <= 0 THEN {$sales} ELSE 0 END), 0) AS pending_sales,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) > 0 THEN {$profit} ELSE 0 END), 0) AS settled_profit,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) <= 0 THEN {$profit} ELSE 0 END), 0) AS pending_profit,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS total_profit,
-                COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$withoutTracking} THEN rows.order_number END) AS valid_without_tracking,
-                COALESCE(SUM(CASE WHEN {$statusIsValid} AND {$withoutTracking} THEN {$sales} ELSE 0 END), 0) AS valid_without_tracking_sales,
-                COALESCE(SUM(CASE WHEN NOT {$statusIsValid} THEN {$sales} ELSE 0 END), 0) AS cancelled_sales,
-                COUNT(DISTINCT CASE WHEN NOT {$statusIsValid} THEN rows.order_number END) AS cancelled_order_count,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS net_sales,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN COALESCE(rows.platform_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.order_processing_fee, 0) ELSE 0 END), 0) AS total_fee,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN COALESCE(rows.pph22, 0) ELSE 0 END), 0) AS total_tax,
+                COALESCE(SUM(CASE WHEN {$isSettled} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS settled_sales,
+                COALESCE(SUM(CASE WHEN {$isUnmatched} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS pending_sales,
+                COALESCE(SUM(CASE WHEN {$isSettled} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS settled_profit,
+                COALESCE(SUM(CASE WHEN {$isUnmatched} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS pending_profit,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS total_profit,
+                COUNT(DISTINCT CASE WHEN {$isInvalid} THEN rows.order_number END) AS valid_without_tracking,
+                COALESCE(SUM(CASE WHEN {$isInvalid} THEN {$sales} ELSE 0 END), 0) AS valid_without_tracking_sales,
+                COALESCE(SUM(CASE WHEN {$isCancelled} THEN {$sales} ELSE 0 END), 0) AS cancelled_sales,
+                COUNT(DISTINCT CASE WHEN {$isCancelled} THEN rows.order_number END) AS cancelled_order_count,
                 COUNT(DISTINCT rows.order_number) AS gross_order_count,
-                COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$hasTracking} THEN rows.order_number END) AS net_order_count,
-                COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) > 0 THEN rows.order_number END) AS settled_order_count,
-                COUNT(DISTINCT CASE WHEN {$statusIsValid} AND {$hasTracking} AND COALESCE(rows.total_income, 0) <= 0 THEN rows.order_number END) AS pending_order_count
+                COUNT(DISTINCT CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN rows.order_number END) AS net_order_count,
+                COUNT(DISTINCT CASE WHEN {$isSettled} AND {$hasTracking} THEN rows.order_number END) AS settled_order_count,
+                COUNT(DISTINCT CASE WHEN {$isUnmatched} AND {$hasTracking} THEN rows.order_number END) AS pending_order_count
             ")
             ->first();
 
@@ -223,12 +236,8 @@ class MarketplaceReconciliationService
     {
         /*
          * Reconciliation contract:
-         * - Ignore Order lines without a tracking number.
-         * - Ignore Income lines with NULL or zero total_income.
-         * - Match exact lines by order, product, variation, quantity, and discounted price.
-         * - Use item_index only as a fallback.
-         * - Accept grouped fallback only when valid Order and Income line counts and amounts match.
-         * Any change to these rules must update the corresponding feature tests first.
+         * Refund and return evidence is evaluated before item_index fallback
+         * allocation; matching metadata is kept separate from business status.
          */
         $incomeExact = DB::table('marketplace_income')
             ->whereNotNull('total_income')
@@ -265,6 +274,9 @@ class MarketplaceReconciliationService
         $incomeFallback = DB::table('marketplace_income')
             ->whereNotNull('total_income')
             ->where('total_income', '<>', 0)
+            ->where(function (Builder $query): void {
+                $query->whereNull('refund_to_buyer')->orWhere('refund_to_buyer', '>=', 0);
+            })
             ->selectRaw('
                 user_id,
                 order_number,
@@ -287,6 +299,20 @@ class MarketplaceReconciliationService
                 'item_index'
             );
 
+        $incomeRefund = DB::table('marketplace_income')
+            ->where('refund_to_buyer', '<', 0)
+            ->selectRaw('
+                user_id,
+                order_number,
+                product_key,
+                item_index,
+                variation_key,
+                MAX(product_price) AS product_price,
+                MAX(total_income) AS total_income,
+                MAX(refund_to_buyer) AS refund_to_buyer
+            ')
+            ->groupBy('user_id', 'order_number', 'product_key', 'item_index', 'variation_key');
+
         $netQuantitySql = 'CASE WHEN quantity - COALESCE(returned_quantity, 0) > 0 THEN quantity - COALESCE(returned_quantity, 0) ELSE 0 END';
         $defaultOrderProcessingFee = -(float) config('marketplace.order_processing_fee', 1250);
 
@@ -294,6 +320,9 @@ class MarketplaceReconciliationService
             ->where('user_id', $userId)
             ->whereNotNull('total_income')
             ->where('total_income', '<>', 0)
+            ->where(function (Builder $query): void {
+                $query->whereNull('refund_to_buyer')->orWhere('refund_to_buyer', '>=', 0);
+            })
             ->selectRaw('
                 user_id,
                 product_key,
@@ -354,6 +383,19 @@ class MarketplaceReconciliationService
             'orders.total_payment',
             'orders.order_created_at',
         ];
+        $refundAmount = 'COALESCE(NULLIF(income_exact.refund_to_buyer, 0), income_refund.refund_to_buyer)';
+        $refundEvidence = "({$refundAmount} < 0)";
+        $exactMatch = 'income_exact.candidate_count = 1';
+        $groupedMatch = '(income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND ((income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount) OR income_fallback.candidate_count = 1))';
+        $ambiguousMatch = '(income_exact.candidate_count > 1 OR (income_exact.candidate_count IS NULL AND income_fallback.candidate_count > 1 AND (income_fallback.candidate_count <> order_group.order_line_count OR income_fallback.income_amount <> order_group.order_amount)))';
+        $estimatedMatch = '(income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL)';
+        $returnEvidence = "(COALESCE(orders.returned_quantity, 0) > 0 OR NULLIF(TRIM(COALESCE(orders.return_status, '')), '') IS NOT NULL)";
+        $cancelledEvidence = "(LOWER(TRIM(COALESCE(orders.order_status, ''))) = 'batal' OR NULLIF(TRIM(COALESCE(orders.cancellation_reason, '')), '') IS NOT NULL)";
+        $invalidEvidence = "(orders.tracking_number IS NULL OR TRIM(orders.tracking_number) = '')";
+        $businessStatus = "CASE WHEN {$refundEvidence} THEN CASE WHEN ABS({$refundAmount}) >= COALESCE(orders.discounted_price, 0) * COALESCE(orders.quantity, 0) THEN 'Refunded' ELSE 'Partially Refunded' END WHEN {$returnEvidence} THEN 'Returned' WHEN {$cancelledEvidence} THEN 'Cancelled' WHEN {$invalidEvidence} THEN 'Invalid' WHEN {$exactMatch} OR {$groupedMatch} THEN 'Settled' ELSE 'Unmatched' END";
+        $matchMethod = "CASE WHEN {$refundEvidence} OR {$cancelledEvidence} OR {$invalidEvidence} OR {$ambiguousMatch} THEN 'None' WHEN {$exactMatch} THEN 'Exact' WHEN {$groupedMatch} THEN 'Grouped' WHEN {$estimatedMatch} THEN 'Estimated' ELSE 'None' END";
+        $matchConfidence = "CASE WHEN {$refundEvidence} OR {$cancelledEvidence} OR {$invalidEvidence} THEN 'None' WHEN {$ambiguousMatch} THEN 'Ambiguous' WHEN {$exactMatch} THEN 'Exact' WHEN {$groupedMatch} THEN 'Grouped' WHEN {$estimatedMatch} THEN 'Estimated' ELSE 'None' END";
+        $settlementStatus = "CASE WHEN ({$businessStatus}) = 'Settled' AND ({$matchMethod}) = 'Grouped' THEN 'Grouped Match' WHEN ({$businessStatus}) = 'Settled' THEN 'Settled' WHEN ({$businessStatus}) = 'Refunded' THEN 'Refunded' WHEN ({$businessStatus}) = 'Partially Refunded' THEN 'Partially Refunded' WHEN ({$businessStatus}) = 'Returned' THEN 'Returned' WHEN ({$businessStatus}) = 'Unmatched' AND ({$matchMethod}) = 'Estimated' THEN 'Estimated' WHEN ({$businessStatus}) = 'Unmatched' THEN 'Belum Settlement' WHEN ({$businessStatus}) = 'Cancelled' THEN 'Batal' WHEN ({$businessStatus}) = 'Invalid' THEN 'Tidak Valid' END";
 
         return DB::table('marketplace_orders as orders')
             ->leftJoinSub($incomeExact, 'income_exact', function ($join): void {
@@ -367,6 +409,17 @@ class MarketplaceReconciliationService
                         COALESCE(income_exact.unit_price, income_exact.product_price) = COALESCE(orders.unit_price, orders.discounted_price)
                         OR income_exact.product_price = orders.discounted_price * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END
                     )');
+            })
+            ->leftJoinSub($incomeRefund, 'income_refund', function ($join): void {
+                $join->on('income_refund.user_id', '=', 'orders.user_id')
+                    ->on('income_refund.order_number', '=', 'orders.order_number')
+                    ->on('income_refund.product_key', '=', 'orders.product_key')
+                    ->on('income_refund.item_index', '=', 'orders.item_index')
+                    ->where(function ($join): void {
+                        $join->whereNull('orders.tracking_number')
+                            ->orWhereRaw("TRIM(orders.tracking_number) = ''")
+                            ->orWhereRaw("COALESCE(income_refund.variation_key, '') = COALESCE(orders.variation_key, '')");
+                    });
             })
             ->leftJoinSub($incomeFallback, 'income_fallback', function ($join): void {
                 $join->on('income_fallback.user_id', '=', 'orders.user_id')
@@ -394,14 +447,19 @@ class MarketplaceReconciliationService
                 ...$orderColumns,
                 'orders.product_name as order_product_name',
                 'orders.variation_name as order_variation_name',
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.total_income WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.total_income_sum / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.total_income_sum END AS total_income'),
+                DB::raw("CASE WHEN {$refundEvidence} THEN COALESCE(income_exact.total_income, income_refund.total_income, 0) WHEN {$exactMatch} THEN income_exact.total_income WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.total_income_sum / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.total_income_sum END AS total_income"),
                 DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.order_processing_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.processing_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.processing_total WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL THEN '.(string) $defaultOrderProcessingFee.' ELSE 0 END AS order_processing_fee'),
                 DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.platform_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.platform_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.platform_total WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL THEN (COALESCE(orders.discounted_price, 0) * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END) * COALESCE(settled_sku_fee.avg_platform_fee_rate, 0) ELSE 0 END AS platform_fee'),
-                DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.refund_to_buyer WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.refund_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.refund_total END AS refund_to_buyer'),
+                DB::raw("CASE WHEN {$refundEvidence} THEN {$refundAmount} WHEN {$exactMatch} THEN income_exact.refund_to_buyer WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.refund_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.refund_total END AS refund_to_buyer"),
                 DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.free_shipping_xtra_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.shipping_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.shipping_total WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL THEN (COALESCE(orders.discounted_price, 0) * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END) * COALESCE(settled_sku_fee.avg_free_shipping_xtra_fee_rate, 0) ELSE 0 END AS free_shipping_xtra_fee'),
                 DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.promo_xtra_service_fee WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.promo_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.promo_total WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL THEN (COALESCE(orders.discounted_price, 0) * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END) * COALESCE(settled_sku_fee.avg_promo_xtra_service_fee_rate, 0) ELSE 0 END AS promo_xtra_service_fee'),
                 DB::raw('CASE WHEN income_exact.candidate_count = 1 THEN income_exact.pph22 WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount THEN 1.0 * income_fallback.tax_total / order_group.order_line_count WHEN income_exact.candidate_count IS NULL AND income_fallback.candidate_count = 1 THEN income_fallback.tax_total END AS pph22'),
-                DB::raw("CASE WHEN income_exact.candidate_count > 1 OR (income_exact.candidate_count IS NULL AND income_fallback.candidate_count > 1 AND (income_fallback.candidate_count <> order_group.order_line_count OR income_fallback.income_amount <> order_group.order_amount)) THEN 'Ambiguous' WHEN income_exact.candidate_count = 1 THEN 'Settled' WHEN income_fallback.candidate_count = 1 OR (income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount) THEN CASE WHEN income_fallback.candidate_count > 1 THEN 'Grouped Match' ELSE 'Settled' END WHEN settled_sku_fee.user_id IS NOT NULL THEN 'Estimated' ELSE 'Belum Settlement' END AS settlement_status"),
+                DB::raw("{$businessStatus} AS business_status"),
+                DB::raw("{$matchMethod} AS match_method"),
+                DB::raw("{$matchConfidence} AS match_confidence"),
+                DB::raw("{$refundAmount} AS refund_amount"),
+                DB::raw("CASE WHEN {$refundEvidence} THEN CASE WHEN ABS({$refundAmount}) >= COALESCE(orders.discounted_price, 0) * COALESCE(orders.quantity, 0) THEN 'Full' ELSE 'Partial' END END AS refund_type"),
+                DB::raw("{$settlementStatus} AS settlement_status"),
             ]);
     }
 

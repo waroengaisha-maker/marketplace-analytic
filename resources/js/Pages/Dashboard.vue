@@ -42,7 +42,7 @@ function resetDateFilter() {
     router.get('/', {}, { preserveState: true, preserveScroll: true })
 }
 const exportColumns = [
-    ['settlement_status', 'Status'], ['order_number', 'No. Pesanan'], ['order_product_name', 'Nama Produk'],
+    ['business_status', 'Status'], ['order_number', 'No. Pesanan'], ['order_product_name', 'Nama Produk'],
     ['net_quantity', 'Jumlah Bersih'], ['discounted_price', 'Harga (@)'], ['quantity', 'Jumlah'], ['returned_quantity', 'Retur'],
     ['order_subtotal', 'Subtotal'], ['platform_fee', 'Biaya Administrasi'], ['admin_fee_percent', 'Admin (%)'],
     ['free_shipping_xtra_fee', 'Gratis Ongkir'], ['free_shipping_xtra_fee_percent', 'Gratis Ongkir (%)'],
@@ -56,12 +56,10 @@ function numericValue(row: Record<string, unknown>, field: string) {
     return Number.isFinite(value) ? value : 0
 }
 function orderCategory(row: Record<string, unknown>) {
-    if (String(row.order_status ?? '').trim().toLowerCase() === 'batal') return 'Batal'
-    if (String(row.tracking_number ?? '').trim() === '') return 'Tidak Valid'
-    return numericValue(row, 'total_income') > 0 ? 'Settled' : 'Unsettled'
+    return String(row.business_status ?? '').trim() || 'Unmatched'
 }
 function exportValue(row: Record<string, unknown>, field: string) {
-    if (field === 'settlement_status') return orderCategory(row)
+    if (field === 'business_status') return orderCategory(row)
     if (field === 'order_product_name') {
         const name = String(row[field] ?? '')
         const variation = String(row.order_variation_name ?? '').trim()
