@@ -9,19 +9,38 @@ import Tag from 'primevue/tag'
 
 type Row = Record<string, unknown>
 type Pagination = { current_page: number; per_page: number; total: number; last_page: number }
+type Filters = { search?: string | null; statuses?: string[] | string | null; refund_type?: string | null; from?: string | null; to?: string | null }
 
-const props = defineProps<{ rows: Row[]; pagination: Pagination; filters: Record<string, string | null> }>()
+const props = defineProps<{ rows: Row[]; pagination: Pagination; filters: Filters }>()
 const search = ref(props.filters.search ?? '')
-const status = ref(props.filters.statuses ?? null)
+const status = ref(Array.isArray(props.filters.statuses) ? props.filters.statuses[0] ?? null : props.filters.statuses ?? null)
+const refundType = ref(props.filters.refund_type ?? null)
 const statuses = ['Matched', 'Orphan', 'Ambiguous']
+const refundTypes = ['Full', 'Partial', 'None']
 
 function applyFilters(): void {
     router.get('/finance/income-reconciliation', {
         search: search.value || undefined,
         statuses: status.value ? [status.value] : undefined,
+        refund_type: refundType.value || undefined,
         from: props.filters.from ?? undefined,
         to: props.filters.to ?? undefined,
         page: 1,
+    }, { preserveState: true, preserveScroll: true })
+}
+
+function goToPage(page: number): void {
+    if (page < 1 || page > props.pagination.last_page) {
+        return
+    }
+
+    router.get('/finance/income-reconciliation', {
+        search: props.filters.search || undefined,
+        statuses: Array.isArray(props.filters.statuses) ? props.filters.statuses : props.filters.statuses ? [props.filters.statuses] : undefined,
+        refund_type: props.filters.refund_type || undefined,
+        from: props.filters.from || undefined,
+        to: props.filters.to || undefined,
+        page,
     }, { preserveState: true, preserveScroll: true })
 }
 
@@ -37,6 +56,10 @@ function money(row: Row, field: string): string {
 
 function severity(statusValue: string): string {
     return statusValue === 'Matched' ? 'success' : statusValue === 'Orphan' ? 'warn' : 'danger'
+}
+
+function refundSeverity(refundTypeValue: string): string {
+    return refundTypeValue === 'Full' ? 'danger' : 'warn'
 }
 </script>
 
@@ -58,6 +81,10 @@ function severity(statusValue: string): string {
                     <div class="flex min-w-0 flex-1 flex-col gap-1">
                         <label for="income-status" class="text-xs font-medium text-color-secondary">Income status</label>
                         <Select id="income-status" v-model="status" :options="statuses" placeholder="Semua status" show-clear />
+                    </div>
+                    <div class="flex min-w-0 flex-1 flex-col gap-1">
+                        <label for="income-refund" class="text-xs font-medium text-color-secondary">Refund</label>
+                        <Select id="income-refund" v-model="refundType" :options="refundTypes" placeholder="Semua refund" show-clear />
                     </div>
                     <Button label="Terapkan" icon="pi pi-filter" @click="applyFilters" />
                 </div>
@@ -93,13 +120,21 @@ function severity(statusValue: string): string {
                                 <td class="p-3">{{ value(row, 'match_confidence') }}</td>
                                 <td class="p-3 text-right">{{ money(row, 'total_income') }}</td>
                                 <td class="p-3 text-right">{{ money(row, 'refund_amount') }}</td>
-                                <td class="p-3">{{ value(row, 'refund_type') }}</td>
+                                <td class="p-3">
+                                    <Tag v-if="value(row, 'refund_type') !== '-'" :value="`${value(row, 'refund_type')} Refund`" :severity="refundSeverity(value(row, 'refund_type'))" />
+                                    <span v-else>-</span>
+                                </td>
                             </tr>
                             <tr v-if="rows.length === 0">
                                 <td colspan="8" class="p-6 text-center text-color-secondary">Belum ada data income.</td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+                <div v-if="pagination.last_page > 1" class="mt-4 flex items-center justify-between gap-3">
+                    <Button label="Sebelumnya" icon="pi pi-chevron-left" severity="secondary" outlined :disabled="pagination.current_page === 1" @click="goToPage(pagination.current_page - 1)" />
+                    <span class="text-sm text-color-secondary">Halaman {{ pagination.current_page }} dari {{ pagination.last_page }}</span>
+                    <Button label="Berikutnya" icon="pi pi-chevron-right" icon-pos="right" severity="secondary" outlined :disabled="pagination.current_page === pagination.last_page" @click="goToPage(pagination.current_page + 1)" />
                 </div>
             </template>
         </Card>

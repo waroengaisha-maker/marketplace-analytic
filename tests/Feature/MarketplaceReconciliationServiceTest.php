@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\AccountStatus;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Requests\UploadReportsRequest;
 use App\Models\User;
 use App\Services\IncomeReconciliationService;
@@ -199,6 +200,78 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(['Matched', 'Exact', 'Exact', 'Partial'], [$rows['INCOME-PARTIAL']->income_match_status, $rows['INCOME-PARTIAL']->match_method, $rows['INCOME-PARTIAL']->match_confidence, $rows['INCOME-PARTIAL']->refund_type]);
         $this->assertSame(['Orphan', 'None', 'None'], [$rows['INCOME-ZERO']->income_match_status, $rows['INCOME-ZERO']->match_method, $rows['INCOME-ZERO']->match_confidence]);
         $this->assertSame(0, $rows->filter(fn ($row) => (float) ($row->refund_amount ?? 0) < 0 && $row->match_method === 'Grouped')->count());
+    }
+
+    public function test_income_reconciliation_endpoint_requires_authentication(): void
+    {
+        $this->get(route('finance.income-reconciliation'))->assertRedirect('/login');
+    }
+
+    public function test_income_reconciliation_endpoint_exposes_paginated_contract_and_filters(): void
+    {
+        $user = User::factory()->create([
+            'account_status' => AccountStatus::Active,
+            'trial_ends_at' => now()->addDay(),
+        ]);
+        $productKey = str_repeat('i', 64);
+
+        DB::table('marketplace_income')->insert([
+            $this->income($user->id, [
+                'order_number' => 'HTTP-ORPHAN',
+                'product_name' => 'HTTP Product',
+                'product_key' => $productKey,
+                'total_income' => 100,
+                'refund_to_buyer' => -25,
+            ]),
+            $this->income($user->id, [
+                'order_number' => 'HTTP-NORMAL',
+                'product_name' => 'Normal Product',
+                'product_key' => str_repeat('n', 64),
+                'total_income' => 100,
+                'refund_to_buyer' => 0,
+            ]),
+        ]);
+
+        $request = Request::create(route('finance.income-reconciliation'));
+        $version = app(HandleInertiaRequests::class)->version($request);
+        $response = $this->actingAs($user)->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => $version,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'text/html, application/xhtml+xml',
+        ])->get(route('finance.income-reconciliation', [
+            'per_page' => 25,
+            'statuses' => ['Orphan'],
+            'refund_type' => 'Partial',
+            'search' => 'HTTP-ORPHAN',
+        ]));
+
+        $response->assertOk()->assertJsonStructure([
+            'props' => [
+                'rows' => [[
+                    'income_match_status',
+                    'match_method',
+                    'match_confidence',
+                    'refund_amount',
+                    'refund_type',
+                    'order_number',
+                    'product_name',
+                    'product_key',
+                    'variation_key',
+                    'item_index',
+                    'product_price',
+                    'unit_price',
+                    'quantity',
+                    'total_income',
+                ]],
+                'pagination' => ['current_page', 'per_page', 'total', 'last_page'],
+                'filters',
+            ],
+        ]);
+        $response->assertJsonPath('props.pagination.total', 1);
+        $response->assertJsonPath('props.rows.0.order_number', 'HTTP-ORPHAN');
+        $response->assertJsonPath('props.rows.0.income_match_status', 'Orphan');
+        $response->assertJsonPath('props.rows.0.refund_type', 'Partial');
     }
 
     public function test_exact_match_exposes_settled_business_status_and_exact_match_contract(): void

@@ -18,6 +18,7 @@ class IncomeReconciliationController extends Controller
             'search' => ['nullable', 'string', 'max:255'],
             'statuses' => ['nullable', 'array'],
             'statuses.*' => ['string', 'in:Matched,Orphan,Ambiguous'],
+            'refund_type' => ['nullable', 'string', 'in:Full,Partial,None'],
             'sort_field' => ['nullable', 'string', 'in:order_number,product_name,total_income,refund_amount,income_match_status'],
             'sort_order' => ['nullable', 'string', 'in:asc,desc'],
         ]);

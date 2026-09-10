@@ -71,6 +71,15 @@ class IncomeReconciliationService
             $query->whereIn(DB::raw($matchStatus), $statuses);
         }
 
+        if (($refundTypeFilter = $parameters['refund_type'] ?? null) !== null) {
+            $query->whereRaw(match ($refundTypeFilter) {
+                'Full' => "{$refundType} = 'Full'",
+                'Partial' => "{$refundType} = 'Partial'",
+                'None' => 'i.refund_to_buyer IS NULL OR i.refund_to_buyer >= 0',
+                default => '1 = 0',
+            });
+        }
+
         $search = trim((string) ($parameters['search'] ?? ''));
         if ($search !== '') {
             $like = '%'.addcslashes($search, '%_\\').'%';
