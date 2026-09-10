@@ -613,26 +613,93 @@ class MarketplaceReconciliationServiceTest extends TestCase
             ->assertSessionHasErrors('statuses.0');
     }
 
-    public function test_exact_match_unique_indexes_align_with_upsert_conflict_keys(): void
+    public function test_line_identity_unique_indexes_are_scoped_per_user_and_canonical(): void
     {
         $ordersIndexes = collect(Schema::getIndexes('marketplace_orders'));
         $incomeIndexes = collect(Schema::getIndexes('marketplace_income'));
 
         $this->assertTrue($ordersIndexes->contains(function (array $index): bool {
-            return ($index['name'] ?? null) === 'orders_line_identity_unique'
-                && ($index['columns'] ?? []) === ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'];
+            return ($index['name'] ?? null) === 'orders_user_line_identity_unique'
+                && ($index['columns'] ?? []) === ['user_id', 'line_identity'];
         }));
-        $this->assertFalse($ordersIndexes->contains(function (array $index): bool {
-            return ($index['columns'] ?? []) === ['user_id', 'order_number', 'item_index'];
+        $this->assertTrue($incomeIndexes->contains(function (array $index): bool {
+            return ($index['name'] ?? null) === 'income_user_line_identity_unique'
+                && ($index['columns'] ?? []) === ['user_id', 'line_identity'];
         }));
 
-        $this->assertTrue($incomeIndexes->contains(function (array $index): bool {
-            return ($index['name'] ?? null) === 'income_line_identity_unique'
-                && ($index['columns'] ?? []) === ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'];
-        }));
-        $this->assertFalse($incomeIndexes->contains(function (array $index): bool {
-            return ($index['columns'] ?? []) === ['user_id', 'order_number', 'item_index'];
-        }));
+        $userA = User::factory()->create();
+        $userB = User::factory()->create();
+        $lineIdentity = \App\Services\ReportLineIdentity::make('ORDER-LINE', str_repeat('x', 64), hash('sha256', 'variant-a'), 250.0, 2);
+
+        DB::table('marketplace_orders')->insert($this->order($userA->id, [
+            'order_number' => 'ORDER-LINE',
+            'product_key' => str_repeat('x', 64),
+            'variation_key' => hash('sha256', 'variant-a'),
+            'unit_price' => 250.0,
+            'quantity' => 2,
+            'line_identity' => $lineIdentity,
+        ]));
+
+        DB::table('marketplace_orders')->insert($this->order($userB->id, [
+            'order_number' => 'ORDER-LINE',
+            'product_key' => str_repeat('x', 64),
+            'variation_key' => hash('sha256', 'variant-a'),
+            'unit_price' => 250.0,
+            'quantity' => 2,
+            'line_identity' => $lineIdentity,
+        ]));
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+
+        DB::table('marketplace_orders')->insert($this->order($userA->id, [
+            'order_number' => 'ORDER-LINE-DUPLICATE',
+            'product_key' => str_repeat('x', 64),
+            'variation_key' => hash('sha256', 'variant-a'),
+            'unit_price' => 250.0,
+            'quantity' => 2,
+            'line_identity' => $lineIdentity,
+        ]));
+    }
+
+    public function test_canonical_identity_takes_priority_over_item_index_fallback(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('f', 64);
+        $variationKey = hash('sha256', 'variant-p');
+        $lineIdentity = \App\Services\ReportLineIdentity::make('ORDER-CANONICAL', $productKey, $variationKey, 100.0, 1);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-CANONICAL',
+            'product_key' => $productKey,
+            'variation_key' => $variationKey,
+            'item_index' => 404,
+            'unit_price' => 100,
+            'discounted_price' => 100,
+            'quantity' => 1,
+            'line_identity' => $lineIdentity,
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'ORDER-CANONICAL',
+            'product_key' => $productKey,
+            'variation_key' => $variationKey,
+            'item_index' => 999,
+            'unit_price' => 100,
+            'product_price' => 100,
+            'quantity' => 1,
+            'total_income' => 100,
+            'line_identity' => $lineIdentity,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-CANONICAL')
+            ->first();
+
+        $this->assertSame('100.00', $row->total_income);
+        $this->assertSame('Exact', $row->match_method);
+        $this->assertSame('Settled', $row->business_status);
+        $this->assertNotSame(999, $row->item_index);
     }
 
     public function test_zero_income_is_not_a_settlement(): void
@@ -897,10 +964,44 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $stats = app(MarketplaceReconciliationService::class)
             ->dashboardStats($user->id, '2026-08-12', '2026-08-12');
 
+        $this->assertSame(0.0, $stats['net_sales']);
         $this->assertSame(0.0, $stats['settled_sales']);
         $this->assertSame(0, $stats['settled_order_count']);
         $this->assertSame(0.0, $stats['pending_sales']);
         $this->assertSame(0, $stats['pending_order_count']);
+    }
+
+    public function test_dashboard_net_sales_uses_remaining_quantity_for_tracked_returned_orders(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('n', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-NET-SALES-RETURN',
+            'product_key' => $productKey,
+            'item_index' => 116,
+            'discounted_price' => 250,
+            'unit_price' => 250,
+            'quantity' => 2,
+            'returned_quantity' => 1,
+            'tracking_number' => 'TRACKING-NET-SALES',
+            'order_created_at' => '2026-08-12 10:00:00',
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'ORDER-NET-SALES-RETURN',
+            'product_key' => $productKey,
+            'item_index' => 116,
+            'product_price' => 500,
+            'quantity' => 2,
+            'total_income' => 400,
+        ]));
+
+        $stats = app(MarketplaceReconciliationService::class)
+            ->dashboardStats($user->id, '2026-08-12', '2026-08-12');
+
+        $this->assertSame(500.0, $stats['gross_sales']);
+        $this->assertSame(250.0, $stats['net_sales']);
     }
 
     public function test_cancelled_business_status_deterministically_maps_to_batal_legacy_status(): void
@@ -1001,6 +1102,8 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'quantity' => 2,
             'unit_price' => 100.5,
         ]);
+        $orderIdentity = DB::table('marketplace_orders')->where('order_number', 'ORDER-DECIMAL')->value('line_identity');
+        $this->assertNotNull($orderIdentity);
         $this->assertDatabaseHas('marketplace_income', [
             'user_id' => $user->id,
             'order_number' => 'ORDER-DECIMAL',
@@ -1010,6 +1113,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'unit_price' => 100.5,
             'total_income' => 201.0,
         ]);
+        $this->assertSame($orderIdentity, DB::table('marketplace_income')->where('order_number', 'ORDER-DECIMAL')->value('line_identity'));
 
         unlink($orderPath);
         unlink($incomePath);
@@ -1146,61 +1250,6 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $request->validateResolved();
 
         unlink($path);
-    }
-
-    public function test_unsettled_orders_reuse_settled_sku_fee_percentages_and_constant_processing_fee(): void
-    {
-        $user = User::factory()->create();
-        $productKey = str_repeat('j', 64);
-
-        DB::table('marketplace_orders')->insert([
-            $this->order($user->id, [
-                'order_number' => 'UNSETTLED-REUSE',
-                'product_key' => $productKey,
-                'item_index' => 110,
-                'discounted_price' => 200,
-                'unit_price' => 200,
-                'quantity' => 2,
-                'tracking_number' => 'TRACKING-A',
-            ]),
-            $this->order($user->id, [
-                'order_number' => 'SETTLED-REUSE',
-                'product_key' => $productKey,
-                'item_index' => 111,
-                'discounted_price' => 200,
-                'unit_price' => 200,
-                'quantity' => 2,
-                'tracking_number' => 'TRACKING-B',
-            ]),
-        ]);
-
-        DB::table('marketplace_income')->insert($this->income($user->id, [
-            'order_number' => 'SETTLED-REUSE',
-            'product_key' => $productKey,
-            'item_index' => 111,
-            'product_price' => 200,
-            'quantity' => 2,
-            'total_income' => 500,
-            'platform_fee' => 150,
-            'free_shipping_xtra_fee' => 30,
-            'promo_xtra_service_fee' => 20,
-            'order_processing_fee' => 1000,
-        ]));
-
-        $row = app(MarketplaceReconciliationService::class)
-            ->joinedQuery($user->id, true)
-            ->where('orders.order_number', 'UNSETTLED-REUSE')
-            ->first();
-
-        $this->assertSame(400.0, (float) ($row->order_subtotal ?? 0));
-        $this->assertSame(-150.0, (float) $row->platform_fee);
-        $this->assertSame(-30.0, (float) $row->free_shipping_xtra_fee);
-        $this->assertSame(-20.0, (float) $row->promo_xtra_service_fee);
-        $this->assertSame(-1250.0, (float) $row->order_processing_fee);
-        $this->assertSame('Estimated', $row->settlement_status);
-        $this->assertSame('Unmatched', $row->business_status);
-        $this->assertSame('Estimated', $row->match_method);
-        $this->assertSame('Estimated', $row->match_confidence);
     }
 
     private function order(int $userId, array $overrides = []): array

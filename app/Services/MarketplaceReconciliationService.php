@@ -160,12 +160,13 @@ class MarketplaceReconciliationService
         $isSettled = "rows.business_status = 'Settled'";
         $isUnmatched = "rows.business_status = 'Unmatched'";
         $sales = $this->salesExpression('rows');
+        $netSales = $this->netSalesExpression('rows');
         $profit = "COALESCE(rows.total_income, {$sales}) + COALESCE(rows.platform_fee, 0) + COALESCE(rows.order_processing_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.pph22, 0)";
         $aggregate = DB::query()
             ->fromSub($orders, 'rows')
             ->selectRaw("
                 COALESCE(SUM({$sales}), 0) AS gross_sales,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS net_sales,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN {$netSales} ELSE 0 END), 0) AS net_sales,
                 COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN COALESCE(rows.platform_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.order_processing_fee, 0) ELSE 0 END), 0) AS total_fee,
                 COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN COALESCE(rows.pph22, 0) ELSE 0 END), 0) AS total_tax,
                 COALESCE(SUM(CASE WHEN {$isSettled} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS settled_sales,
@@ -218,6 +219,11 @@ class MarketplaceReconciliationService
         return "COALESCE({$tableAlias}.discounted_price, 0) * COALESCE({$tableAlias}.quantity, 0)";
     }
 
+    private function netSalesExpression(string $tableAlias): string
+    {
+        return "COALESCE({$tableAlias}.discounted_price, 0) * CASE WHEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) > 0 THEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) ELSE 0 END";
+    }
+
     /** @return array{min: ?string, max: ?string} */
     public function orderDateRange(int $userId): array
     {
@@ -248,6 +254,7 @@ class MarketplaceReconciliationService
                 product_name,
                 product_key,
                 variation_key,
+                line_identity,
                 COALESCE(unit_price, product_price) AS unit_price,
                 product_price,
                 quantity,
@@ -266,6 +273,7 @@ class MarketplaceReconciliationService
                 'product_name',
                 'product_key',
                 'variation_key',
+                'line_identity',
                 'unit_price',
                 'product_price',
                 'quantity'
@@ -274,6 +282,7 @@ class MarketplaceReconciliationService
         $incomeFallback = DB::table('marketplace_income')
             ->whereNotNull('total_income')
             ->where('total_income', '<>', 0)
+            ->whereNull('variation_key')
             ->where(function (Builder $query): void {
                 $query->whereNull('refund_to_buyer')->orWhere('refund_to_buyer', '>=', 0);
             })
@@ -284,6 +293,7 @@ class MarketplaceReconciliationService
                 item_index,
                 COUNT(*) AS candidate_count,
                 SUM(product_price) AS income_amount,
+                SUM(quantity) AS income_quantity,
                 SUM(total_income) AS total_income_sum,
                 SUM(order_processing_fee) AS processing_total,
                 SUM(platform_fee) AS platform_total,
@@ -351,7 +361,8 @@ class MarketplaceReconciliationService
                 product_key,
                 item_index,
                 COUNT(*) AS order_line_count,
-                SUM(discounted_price * '.$netQuantitySql.') AS order_amount
+                SUM(discounted_price * '.$netQuantitySql.') AS order_amount,
+                SUM(quantity) AS order_quantity
             ')
             ->groupBy('user_id', 'order_number', 'product_key', 'item_index');
 
@@ -386,7 +397,7 @@ class MarketplaceReconciliationService
         $refundAmount = 'COALESCE(NULLIF(income_exact.refund_to_buyer, 0), income_refund.refund_to_buyer)';
         $refundEvidence = "({$refundAmount} < 0)";
         $exactMatch = 'income_exact.candidate_count = 1';
-        $groupedMatch = '(income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND ((income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount) OR income_fallback.candidate_count = 1))';
+        $groupedMatch = '(income_exact.candidate_count IS NULL AND income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount AND income_fallback.income_quantity = order_group.order_quantity)';
         $ambiguousMatch = '(income_exact.candidate_count > 1 OR (income_exact.candidate_count IS NULL AND income_fallback.candidate_count > 1 AND (income_fallback.candidate_count <> order_group.order_line_count OR income_fallback.income_amount <> order_group.order_amount)))';
         $estimatedMatch = '(income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL)';
         $returnEvidence = "(COALESCE(orders.returned_quantity, 0) > 0 OR NULLIF(TRIM(COALESCE(orders.return_status, '')), '') IS NOT NULL)";
@@ -402,6 +413,7 @@ class MarketplaceReconciliationService
                 $join->on('income_exact.user_id', '=', 'orders.user_id')
                     ->on('income_exact.order_number', '=', 'orders.order_number')
                     ->on('income_exact.product_key', '=', 'orders.product_key')
+                    ->on('income_exact.line_identity', '=', 'orders.line_identity')
                     ->on('income_exact.quantity', '=', 'orders.quantity')
                     ->whereRaw('LOWER(COALESCE(income_exact.product_name, \'\')) = LOWER(COALESCE(orders.product_name, \'\'))')
                     ->whereRaw('COALESCE(income_exact.variation_key, \'\') = COALESCE(orders.variation_key, \'\')')

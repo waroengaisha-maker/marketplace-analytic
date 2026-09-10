@@ -28,13 +28,14 @@ class IncomeReconciliationService
         $incomePrice = 'COALESCE(i.product_price, i.unit_price)';
         $orderNetQuantity = 'CASE WHEN o.quantity - COALESCE(o.returned_quantity, 0) > 0 THEN o.quantity - COALESCE(o.returned_quantity, 0) ELSE 0 END';
         $sameProduct = 'o.user_id = i.user_id AND o.order_number = i.order_number AND o.product_key = i.product_key';
+        $sameCanonicalIdentity = 'o.user_id = i.user_id AND o.line_identity = i.line_identity';
         $sameVariation = "COALESCE(o.variation_key, '') = COALESCE(i.variation_key, '')";
         $sameName = "LOWER(COALESCE(o.product_name, '')) = LOWER(COALESCE(i.product_name, ''))";
         $samePrice = "(COALESCE(o.unit_price, o.discounted_price) = COALESCE(i.unit_price, i.product_price) OR o.discounted_price * {$orderNetQuantity} = {$incomePrice})";
-        $exactCount = "(SELECT COUNT(*) FROM marketplace_orders o WHERE {$sameProduct} AND o.quantity = i.quantity AND {$sameVariation} AND {$sameName} AND {$samePrice})";
-        $refundExactCount = "(SELECT COUNT(*) FROM marketplace_orders o WHERE {$sameProduct} AND o.quantity = i.quantity AND o.item_index = i.item_index AND {$sameName} AND {$samePrice})";
-        $groupedCount = "(SELECT COUNT(*) FROM marketplace_orders o WHERE {$sameProduct} AND o.item_index = i.item_index)";
-        $groupedAmount = "(SELECT COALESCE(SUM(o.discounted_price * {$orderNetQuantity}), 0) FROM marketplace_orders o WHERE {$sameProduct} AND o.item_index = i.item_index)";
+        $exactCount = "(SELECT COUNT(*) FROM marketplace_orders o WHERE {$sameCanonicalIdentity} AND o.quantity = i.quantity AND {$sameVariation} AND {$sameName} AND {$samePrice})";
+        $refundExactCount = "(SELECT COUNT(*) FROM marketplace_orders o WHERE {$sameCanonicalIdentity} AND o.quantity = i.quantity AND o.item_index = i.item_index AND {$sameName} AND ({$sameVariation} OR i.variation_key IS NULL) AND {$samePrice})";
+        $groupedCount = "(SELECT COUNT(*) FROM marketplace_orders o WHERE {$sameProduct} AND o.item_index = i.item_index AND (i.variation_key IS NULL OR {$sameVariation}))";
+        $groupedAmount = "(SELECT COALESCE(SUM(o.discounted_price * {$orderNetQuantity}), 0) FROM marketplace_orders o WHERE {$sameProduct} AND o.item_index = i.item_index AND (i.variation_key IS NULL OR {$sameVariation}))";
         $productCount = "(SELECT COUNT(*) FROM marketplace_orders o WHERE {$sameProduct})";
         $groupedMatch = "COALESCE(i.refund_to_buyer, 0) >= 0 AND {$groupedCount} = 1 AND {$groupedAmount} = {$incomePrice}";
         $exactMatch = "({$exactCount} = 1 OR (i.refund_to_buyer < 0 AND {$refundExactCount} = 1))";

@@ -26,6 +26,7 @@ class OrderReportImporter
             $quantity = $this->integer($data['Jumlah'] ?? null);
             $discountedPrice = $this->number($data['Harga Setelah Diskon'] ?? null);
             $unitPrice = $discountedPrice;
+            $productKey = hash('sha256', mb_strtolower(trim((string) ($data['Nama Produk'] ?? ''))));
             $originalPrice = $this->number($data['Harga Awal'] ?? null);
             $returnedQuantity = $this->integer($data['Returned quantity'] ?? null) ?? 0;
             $itemKey = $this->lineKey(
@@ -38,6 +39,7 @@ class OrderReportImporter
                 'user_id' => $userId,
                 'order_number' => $orderNumber,
                 'item_index' => $this->itemIndex($itemKey),
+                'line_identity' => ReportLineIdentity::make($orderNumber, $productKey, $this->key($variationName), $unitPrice, $quantity),
                 'order_status' => $this->text($data['Status Pesanan'] ?? null),
                 'cancellation_reason' => $this->text($data['Alasan Pembatalan'] ?? null),
                 'return_status' => $this->text($data['Status Pembatalan/ Pengembalian'] ?? null),
@@ -47,7 +49,7 @@ class OrderReportImporter
                 'payment_method' => $this->text($data['Metode Pembayaran'] ?? null),
                 'parent_sku' => $this->text($data['SKU Induk'] ?? null),
                 'product_name' => $this->text($data['Nama Produk'] ?? null),
-                'product_key' => hash('sha256', mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')))),
+                'product_key' => $productKey,
                 'sku_reference' => $this->text($data['Nomor Referensi SKU'] ?? null),
                 'variation_name' => $variationName,
                 'variation_key' => $this->key($variationName),
@@ -83,7 +85,7 @@ class OrderReportImporter
         DB::table('marketplace_orders')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
 
         foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_orders')->upsert($chunk, ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'], array_keys($chunk[0] ?? []));
+            DB::table('marketplace_orders')->insert($chunk);
         }
 
         return count($payload);

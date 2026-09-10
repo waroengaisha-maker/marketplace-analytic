@@ -30,19 +30,22 @@ class IncomeReportImporter
             $quantity = $this->integer($data['Jumlah'] ?? $data['Quantity'] ?? null) ?? 1;
             $productPrice = $this->number($data['Harga Produk'] ?? null);
             $unitPrice = $this->number($data['Harga Satuan'] ?? $data['Harga Produk'] ?? $productPrice);
+            $productKey = hash('sha256', mb_strtolower(trim((string) ($data['Nama Produk'] ?? ''))));
+            $variationKey = $this->key($variationName);
             $itemKey = $this->lineKey($orderNumber, $data['Nama Produk'] ?? null, $productPrice);
 
             $payload[] = [
                 'user_id' => $userId,
                 'order_number' => $orderNumber,
                 'item_index' => $this->itemIndex($itemKey),
+                'line_identity' => ReportLineIdentity::make($orderNumber, $productKey, $variationKey, $unitPrice, $quantity),
                 'row_type' => $this->text($data['Lihat berdasarkan'] ?? null),
                 'source_row' => $this->integer($data['No.'] ?? null),
                 'application_number' => $this->text($data['No. Pengajuan'] ?? null),
                 'product_id' => $this->text($data['ID Produk'] ?? null),
                 'product_name' => $this->text($data['Nama Produk'] ?? null),
-                'product_key' => hash('sha256', mb_strtolower(trim((string) ($data['Nama Produk'] ?? '')))),
-                'variation_key' => $this->key($variationName),
+                'product_key' => $productKey,
+                'variation_key' => $variationKey,
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
                 'order_created_at' => $this->date($data['Waktu Pesanan Dibuat'] ?? null),
@@ -77,7 +80,7 @@ class IncomeReportImporter
         DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
 
         foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_income')->upsert($chunk, ['user_id', 'order_number', 'product_key', 'variation_key', 'unit_price', 'quantity'], array_keys($chunk[0] ?? []));
+            DB::table('marketplace_income')->insert($chunk);
         }
 
         return count($payload);
