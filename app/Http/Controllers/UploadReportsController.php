@@ -16,11 +16,9 @@ class UploadReportsController extends Controller
         } catch (Throwable $exception) {
             report($exception);
 
-            $message = config('app.debug')
-                ? 'Laporan gagal diproses: '.$exception->getMessage()
-                : 'Laporan gagal diproses. Silakan coba lagi atau hubungi administrator.';
-
-            return back()->withInput()->with('error', $message);
+            return back()
+                ->withInput()
+                ->with('error', 'Laporan gagal diproses. Silakan coba lagi atau hubungi administrator.');
         }
 
         return to_route('imports.upload')->with('success', $result['orders'] > 0 && $result['income'] > 0 ? sprintf('Import berhasil. Order: %d baris, Income: %d baris.', $result['orders'], $result['income']) : ($result['orders'] > 0 ? sprintf('Import Order berhasil: %d baris.', $result['orders']) : sprintf('Import Income berhasil: %d baris.', $result['income'])));

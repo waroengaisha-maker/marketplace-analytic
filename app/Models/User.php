@@ -15,13 +15,36 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Laravel\Fortify\TwoFactorAuthenticatable;
 
 #[Fillable(['name', 'username', 'email', 'phone', 'password', 'role', 'account_status', 'subscription_status', 'payment_status', 'trial_started_at', 'trial_ends_at', 'subscription_ends_at', 'activated_at', 'suspended_at'])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'remember_token', 'two_factor_secret', 'two_factor_recovery_codes'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, TwoFactorAuthenticatable;
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function toSafeArray(): array
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'username' => $this->username,
+            'email' => $this->email,
+            'email_verified_at' => $this->email_verified_at?->toIso8601String(),
+            'phone' => $this->phone,
+            'role' => $this->role?->value,
+            'account_status' => $this->account_status?->value,
+            'subscription_status' => $this->subscription_status?->value,
+            'payment_status' => $this->payment_status?->value,
+            'trial_started_at' => $this->trial_started_at?->toIso8601String(),
+            'trial_ends_at' => $this->trial_ends_at?->toIso8601String(),
+            'subscription_ends_at' => $this->subscription_ends_at?->toIso8601String(),
+        ];
+    }
 
     /**
      * Get the attributes that should be cast.

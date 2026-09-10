@@ -46,11 +46,11 @@ Route::get('/register', function () {
 })->middleware('guest')->name('register');
 
 Route::get('/account/status', function (Request $request) {
-    return Inertia::render('Account/Status', ['user' => $request->user()]);
+    return Inertia::render('Account/Status', ['user' => $request->user()->toSafeArray()]);
 })->middleware('auth')->name('account.status');
 
 Route::get('/account/subscription', function (Request $request) {
-    return Inertia::render('Account/Subscription', ['user' => $request->user()]);
+    return Inertia::render('Account/Subscription', ['user' => $request->user()->toSafeArray()]);
 })->middleware('auth')->name('account.subscription');
 
 Route::middleware(['auth', 'account.active'])->group(function (): void {
