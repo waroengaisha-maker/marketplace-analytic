@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CLI Arguments" tests="41" assertions="172" errors="3" failures="6" skipped="0" time="31.457609">
+    <testsuite name="Tests\Feature\MasterHppDomainTest" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" tests="9" assertions="14" errors="3" failures="1" skipped="0" time="29.734483">
+      <testcase name="test_same_user_duplicate_template_item_code_is_rejected" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="33" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="1" time="29.215499"/>
+      <testcase name="test_different_users_can_share_the_same_template_item_code" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="63" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="2" time="0.202795"/>
+      <testcase name="test_multi_unit_product_selects_base_unit_and_calculates_hpp_per_base_unit" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="96" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="3" time="0.046055"/>
+      <testcase name="test_hpp_history_resolution_uses_effective_date_and_missing_value_is_null" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="126" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="0" time="0.048041">
+        <error type="InvalidArgumentException">Tests\Feature\MasterHppDomainTest::test_hpp_history_resolution_uses_effective_date_and_missing_value_is_null
+InvalidArgumentException: Overlapping HPP periods are not allowed for the same product and unit.
+
+/var/www/html/app/Services/MasterProductCatalogService.php:188
+/var/www/html/app/Services/MasterProductCatalogService.php:115
+/var/www/html/tests/Feature/MasterHppDomainTest.php:143</error>
+      </testcase>
+      <testcase name="test_overlapping_hpp_periods_are_rejected" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="157" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="1" time="0.036402"/>
+      <testcase name="test_manual_mapping_overrides_exact_auto_match" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="182" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="0" time="0.067883">
+        <error type="Illuminate\Database\UniqueConstraintViolationException">Tests\Feature\MasterHppDomainTest::test_manual_mapping_overrides_exact_auto_match
+Illuminate\Database\UniqueConstraintViolationException: SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry '7-SP-100-SV-100' for key 'shopee_product_mapping.shopee_product_mapping_unique' (Connection: mysql, Host: mysql, Port: 3306, Database: testing, SQL: insert into `shopee_product_mapping` (`user_id`, `master_product_id`, `master_unit_id`, `shopee_product_id`, `shopee_variant_id`, `shopee_product_name`, `shopee_variant_name`, `normalized_shopee_name`, `match_method`, `match_confidence`, `is_active`, `ambiguous`, `manual_override_by`, `manual_override_note`, `updated_at`, `created_at`) values (7, 7, 8, SP-100, SV-100, Susu UHT, Plain, susu uht, manual, 1, 1, 0, 7, Manual validation, 2026-09-10 14:07:18, 2026-09-10 14:07:18))
+
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:857
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:813
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/MySqlConnection.php:42
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Query/Processors/MySqlProcessor.php:35
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Query/Builder.php:4313
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Builder.php:2304
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1687
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1603
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Eloquent/Model.php:1407
+/var/www/html/app/Services/ShopeeProductMappingService.php:160
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/Concerns/ManagesTransactions.php:35
+/var/www/html/vendor/laravel/framework/src/Illuminate/Database/DatabaseManager.php:502
+/var/www/html/vendor/laravel/framework/src/Illuminate/Support/Facades/Facade.php:364
+/var/www/html/app/Services/ShopeeProductMappingService.php:134
+/var/www/html/tests/Feature/MasterHppDomainTest.php:224</error>
+      </testcase>
+      <testcase name="test_missing_hpp_allocation_sets_explicit_missing_status" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="252" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="4" time="0.039811"/>
+      <testcase name="test_hpp_overlap_validation_uses_candidate_dates_not_now" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="275" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="0" time="0.033122">
+        <error type="InvalidArgumentException">Tests\Feature\MasterHppDomainTest::test_hpp_overlap_validation_uses_candidate_dates_not_now
+InvalidArgumentException: Overlapping HPP periods are not allowed for the same product and unit.
+
+/var/www/html/app/Services/MasterProductCatalogService.php:188
+/var/www/html/app/Services/MasterProductCatalogService.php:115
+/var/www/html/tests/Feature/MasterHppDomainTest.php:290</error>
+      </testcase>
+      <testcase name="test_order_allocation_formula_is_idempotent_and_uses_non_returned_quantity" file="/var/www/html/tests/Feature/MasterHppDomainTest.php" line="305" class="Tests\Feature\MasterHppDomainTest" classname="Tests.Feature.MasterHppDomainTest" assertions="3" time="0.044876">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\MasterHppDomainTest::test_order_allocation_formula_is_idempotent_and_uses_non_returned_quantity
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'24000.00'
++'36000.00'
+
+/var/www/html/tests/Feature/MasterHppDomainTest.php:326</failure>
+      </testcase>
+    </testsuite>
+    <testsuite name="Tests\Feature\MarketplaceReconciliationServiceTest" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" tests="32" assertions="158" errors="0" failures="5" skipped="0" time="1.723127">
+      <testcase name="test_exact_match_uses_variation_price_and_quantity" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="31" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="1" time="0.067510">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\MarketplaceReconciliationServiceTest::test_exact_match_uses_variation_price_and_quantity
+Failed asserting that null is identical to '180.00'.
+
+/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php:63</failure>
+      </testcase>
+      <testcase name="test_income_reconciliation_preserves_one_row_per_income_and_classifies_kewpie_orphan" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="67" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="7" time="0.062591"/>
+      <testcase name="test_income_refund_with_one_compatible_order_is_exact_without_grouped_allocation" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="94" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="1" time="0.043843">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\MarketplaceReconciliationServiceTest::test_income_refund_with_one_compatible_order_is_exact_without_grouped_allocation
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'Matched'
++'Ambiguous'
+
+/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php:124</failure>
+      </testcase>
+      <testcase name="test_income_matching_keeps_refund_and_candidate_outcomes_independent" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="131" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="1" time="0.043875">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\MarketplaceReconciliationServiceTest::test_income_matching_keeps_refund_and_candidate_outcomes_independent
+Failed asserting that two arrays are identical.
+--- Expected
++++ Actual
+@@ @@
+ Array &amp;0 [
+     0 =&gt; 'Matched',
+-    1 =&gt; 'Exact',
+-    2 =&gt; 'Exact',
++    1 =&gt; 'Grouped',
++    2 =&gt; 'Grouped',
+ ]
+
+/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php:197</failure>
+      </testcase>
+      <testcase name="test_income_reconciliation_endpoint_requires_authentication" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="205" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="2" time="0.068707"/>
+      <testcase name="test_income_reconciliation_endpoint_exposes_paginated_contract_and_filters" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="210" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="28" time="0.091120"/>
+      <testcase name="test_exact_match_exposes_settled_business_status_and_exact_match_contract" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="277" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="1" time="0.077787">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\MarketplaceReconciliationServiceTest::test_exact_match_exposes_settled_business_status_and_exact_match_contract
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'Settled'
++'Unmatched'
+
+/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php:308</failure>
+      </testcase>
+      <testcase name="test_rawon_full_refund_is_not_grouped_or_allocated_to_non_refund_income" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="313" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="16" time="0.070085"/>
+      <testcase name="test_downy_full_refund_with_zero_return_is_refunded_even_without_tracking" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="393" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="10" time="0.052273"/>
+      <testcase name="test_synthetic_partial_refund_is_classified_by_refund_amount" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="441" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="5" time="0.032966"/>
+      <testcase name="test_order_without_income_and_without_refund_evidence_is_unmatched" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="477" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="5" time="0.048329"/>
+      <testcase name="test_zero_income_with_refund_evidence_is_not_unmatched" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="500" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="8" time="0.060203"/>
+      <testcase name="test_returned_quantity_produces_returned_business_status" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="539" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="3" time="0.065660">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Tests\Feature\MarketplaceReconciliationServiceTest::test_returned_quantity_produces_returned_business_status
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'Exact'
++'Grouped'
+
+/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php:570</failure>
+      </testcase>
+      <testcase name="test_reconciliation_filter_accepts_all_business_status_values" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="574" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="4" time="0.113893"/>
+      <testcase name="test_line_identity_unique_indexes_are_scoped_per_user_and_canonical" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="616" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="3" time="0.034333"/>
+      <testcase name="test_canonical_identity_takes_priority_over_item_index_fallback" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="664" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="4" time="0.027801"/>
+      <testcase name="test_zero_income_is_not_a_settlement" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="705" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="2" time="0.031365"/>
+      <testcase name="test_ambiguous_item_index_fallback_is_not_settled" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="735" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="5" time="0.032612"/>
+      <testcase name="test_identical_item_index_lines_can_settle_as_a_group" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="771" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="6" time="0.029451"/>
+      <testcase name="test_order_260819_rtg8y8ns_excludes_untracked_rawon_from_tracked_query" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="813" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="3" time="0.033371"/>
+      <testcase name="test_reconciliation_contract_ignores_untracked_orders_and_zero_income" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="857" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="7" time="0.040037"/>
+      <testcase name="test_dashboard_excludes_orders_without_tracking_from_valid_totals" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="914" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="4" time="0.050950"/>
+      <testcase name="test_dashboard_uses_returned_business_status_instead_of_income_for_settled_totals" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="938" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="5" time="0.036118"/>
+      <testcase name="test_dashboard_net_sales_uses_remaining_quantity_for_tracked_returned_orders" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="974" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="2" time="0.052493"/>
+      <testcase name="test_cancelled_business_status_deterministically_maps_to_batal_legacy_status" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="1007" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="2" time="0.024782"/>
+      <testcase name="test_financial_columns_follow_reconciliation_fee_contract" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="1029" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="5" time="0.014649"/>
+      <testcase name="test_report_import_number_parser_keeps_decimal_values_intact" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="1052" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="8" time="0.018057"/>
+      <testcase name="test_importers_preserve_decimal_values_from_excel_numeric_cells" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="1068" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="4" time="0.168514"/>
+      <testcase name="test_upload_reports_service_imports_excel_rows_through_the_full_pipeline" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="1122" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="4" time="0.136484"/>
+      <testcase name="test_import_allows_missing_variation_name_when_core_reconciliation_columns_exist" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="1166" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="1" time="0.030571"/>
+      <testcase name="test_order_import_uses_discounted_price_as_unit_price" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="1198" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="1" time="0.033609"/>
+      <testcase name="test_income_report_validation_matches_shopee_income_headers" file="/var/www/html/tests/Feature/MarketplaceReconciliationServiceTest.php" line="1229" class="Tests\Feature\MarketplaceReconciliationServiceTest" classname="Tests.Feature.MarketplaceReconciliationServiceTest" assertions="0" time="0.029089"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

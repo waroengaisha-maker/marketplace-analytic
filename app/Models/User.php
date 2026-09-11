@@ -73,6 +73,11 @@ class User extends Authenticatable
         return $this->hasMany(AccountAuditLog::class);
     }
 
+    public function masterProducts(): HasMany
+    {
+        return $this->hasMany(MasterProduct::class);
+    }
+
     public function isAdmin(): bool
     {
         return in_array($this->role, [UserRole::Admin, UserRole::SuperAdmin], true);
