@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\ShopeeProductMapping;
 use App\Models\User;
 use App\Services\MasterProductCatalogService;
 use App\Services\OrderCostAllocationService;
@@ -28,6 +29,21 @@ class MasterHppDomainTest extends TestCase
         $this->catalog = app(MasterProductCatalogService::class);
         $this->mapping = app(ShopeeProductMappingService::class);
         $this->allocation = app(OrderCostAllocationService::class);
+    }
+
+    protected function registerProduct(User $user, string $code, string $name)
+    {
+        return $this->catalog->registerTemplateItem($user->id, [
+            'template_item_code' => $code,
+            'template_name' => $name,
+            'units' => [[
+                'unit_code' => 'PCS',
+                'unit_name' => 'PCS',
+                'conversion_to_base' => 1,
+                'hpp_amount' => 10000,
+                'effective_from' => '2026-08-01 00:00:00',
+            ]],
+        ]);
     }
 
     public function test_same_user_duplicate_template_item_code_is_rejected(): void
@@ -212,7 +228,7 @@ class MasterHppDomainTest extends TestCase
             ]],
         ]);
 
-        \App\Models\ShopeeProductMapping::query()->create([
+        ShopeeProductMapping::query()->create([
             'user_id' => $user->id,
             'master_product_id' => $productB->id,
             'master_unit_id' => $productB->baseUnit->id,
@@ -301,13 +317,194 @@ class MasterHppDomainTest extends TestCase
             'source_type' => 'template',
         ]);
 
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         $this->catalog->persistHppVersion($product, $product->baseUnit, [
             'hpp_amount' => 1300,
             'effective_from' => '2026-08-14 12:00:00',
             'effective_to' => '2026-08-20 00:00:00',
             'source_type' => 'template',
         ]);
+    }
+
+    public function test_manual_override_updates_existing_mapping_instead_of_duplicating(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT1001', 'Teh Botol');
+        $productB = $this->registerProduct($user, 'IT1002', 'Teh Botol 600ml');
+
+        $identity = [
+            'shopee_product_id' => 'SP-1',
+            'shopee_variant_id' => 'SV-1',
+            'shopee_product_name' => 'Teh Botol',
+            'shopee_variant_name' => 'Original',
+        ];
+
+        $this->mapping->createManualMapping($user->id, $productA, $productA->baseUnit->id, $identity + ['manual_override_by' => $user->id]);
+        $this->mapping->createManualMapping($user->id, $productB, $productB->baseUnit->id, $identity + ['manual_override_by' => $user->id]);
+
+        $mappings = ShopeeProductMapping::query()->forUser($user->id)->get();
+        $this->assertCount(1, $mappings);
+        $this->assertSame($productB->id, $mappings->first()->master_product_id);
+
+        $resolved = $this->mapping->resolve($user->id, $identity);
+        $this->assertSame('manual', $resolved['match_method']);
+        $this->assertSame($productB->id, $resolved['mapping']->master_product_id);
+    }
+
+    public function test_product_and_variation_mappings_do_not_swap(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT2001', 'Teh Botol');
+        $productB = $this->registerProduct($user, 'IT2002', 'Teh Botol Kemasan');
+
+        $this->mapping->createManualMapping($user->id, $productA, $productA->baseUnit->id, [
+            'shopee_product_name' => 'Teh Botol',
+            'shopee_variant_name' => 'Original',
+            'manual_override_by' => $user->id,
+        ]);
+        $this->mapping->createManualMapping($user->id, $productB, $productB->baseUnit->id, [
+            'shopee_product_name' => 'Teh Botol',
+            'shopee_variant_name' => 'Rasa Melati',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $original = $this->mapping->resolve($user->id, [
+            'shopee_product_name' => 'Teh Botol',
+            'shopee_variant_name' => 'Original',
+        ]);
+        $melati = $this->mapping->resolve($user->id, [
+            'shopee_product_name' => 'Teh Botol',
+            'shopee_variant_name' => 'Rasa Melati',
+        ]);
+
+        $this->assertSame('manual', $original['match_method']);
+        $this->assertSame($productA->id, $original['mapping']->master_product_id);
+        $this->assertSame('manual', $melati['match_method']);
+        $this->assertSame($productB->id, $melati['mapping']->master_product_id);
+
+        $nameOnly = $this->mapping->resolve($user->id, ['shopee_product_name' => 'Teh Botol']);
+        $this->assertSame('ambiguous', $nameOnly['status']);
+    }
+
+    public function test_manual_mapping_rejects_unit_not_owned_by_product(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT3001', 'Kopi Hitam');
+        $productB = $this->registerProduct($user, 'IT3002', 'Kopi Susu');
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->mapping->createManualMapping($user->id, $productA, $productB->baseUnit->id, [
+            'shopee_product_name' => 'Kopi Hitam',
+            'shopee_variant_name' => 'Panjang',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $this->assertSame(0, ShopeeProductMapping::query()->forUser($user->id)->count());
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->mapping->createManualMapping($user->id, $productA, null, [
+            'shopee_product_name' => 'Kopi Hitam',
+            'manual_override_by' => $user->id,
+        ]);
+    }
+
+    public function test_idless_mapping_is_deterministic_and_updates_existing_record(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT4001', 'Susu Kedelai');
+        $productB = $this->registerProduct($user, 'IT4002', 'Susu Kedelai Instant');
+
+        $identity = [
+            'shopee_product_name' => 'Susu Kedelai',
+            'shopee_variant_name' => 'Vanilla',
+            'manual_override_by' => $user->id,
+        ];
+
+        $this->mapping->createManualMapping($user->id, $productA, $productA->baseUnit->id, $identity);
+        $this->mapping->createManualMapping($user->id, $productB, $productB->baseUnit->id, $identity);
+
+        $mappings = ShopeeProductMapping::query()->forUser($user->id)->get();
+        $this->assertCount(1, $mappings);
+        $this->assertSame($productB->id, $mappings->first()->master_product_id);
+    }
+
+    public function test_manual_mapping_is_isolated_per_tenant(): void
+    {
+        $userA = User::factory()->create();
+        $userB = User::factory()->create();
+        $productA = $this->registerProduct($userA, 'IT5001', 'Aqua 600ml');
+        $productB = $this->registerProduct($userB, 'IT5001', 'Aqua 600ml');
+
+        $identity = [
+            'shopee_product_id' => 'SP-9',
+            'shopee_variant_id' => 'SV-9',
+            'shopee_product_name' => 'Aqua 600ml',
+            'shopee_variant_name' => 'Regular',
+        ];
+
+        $this->mapping->createManualMapping($userA->id, $productA, $productA->baseUnit->id, $identity + ['manual_override_by' => $userA->id]);
+        $this->mapping->createManualMapping($userB->id, $productB, $productB->baseUnit->id, $identity + ['manual_override_by' => $userB->id]);
+
+        $resolvedA = $this->mapping->resolve($userA->id, $identity);
+        $resolvedB = $this->mapping->resolve($userB->id, $identity);
+
+        $this->assertSame($productA->id, $resolvedA['mapping']->master_product_id);
+        $this->assertSame($productB->id, $resolvedB['mapping']->master_product_id);
+    }
+
+    public function test_manual_override_has_priority_over_exact_and_normalized_matches(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT6001', 'Mi Instan Goreng');
+        $productB = $this->registerProduct($user, 'IT6002', 'Mi Instan Goreng Jumbo');
+        $productC = $this->registerProduct($user, 'IT6003', 'Mi Instan Goreng Premium');
+
+        ShopeeProductMapping::query()->create([
+            'user_id' => $user->id,
+            'master_product_id' => $productA->id,
+            'master_unit_id' => $productA->baseUnit->id,
+            'shopee_product_id' => 'SP-5',
+            'shopee_variant_id' => 'SV-5',
+            'shopee_product_name' => 'Mi Instan',
+            'shopee_variant_name' => 'Kari',
+            'normalized_shopee_name' => 'mi instan|kari',
+            'match_method' => 'exact',
+            'match_confidence' => 1.00,
+            'is_active' => true,
+            'ambiguous' => false,
+        ]);
+
+        ShopeeProductMapping::query()->create([
+            'user_id' => $user->id,
+            'master_product_id' => $productB->id,
+            'master_unit_id' => $productB->baseUnit->id,
+            'shopee_product_name' => 'Mi Instan',
+            'shopee_variant_name' => 'Kari',
+            'normalized_shopee_name' => 'mi instan|kari',
+            'match_method' => 'normalized',
+            'match_confidence' => 0.90,
+            'is_active' => true,
+            'ambiguous' => false,
+        ]);
+
+        $identity = [
+            'shopee_product_id' => 'SP-5',
+            'shopee_variant_id' => 'SV-5',
+            'shopee_product_name' => 'Mi Instan',
+            'shopee_variant_name' => 'Kari',
+        ];
+
+        $exactMatch = $this->mapping->resolve($user->id, $identity);
+        $this->assertSame('exact', $exactMatch['match_method']);
+        $this->assertSame($productA->id, $exactMatch['mapping']->master_product_id);
+
+        $this->mapping->createManualMapping($user->id, $productC, $productC->baseUnit->id, $identity + ['manual_override_by' => $user->id]);
+
+        $manualMatch = $this->mapping->resolve($user->id, $identity);
+        $this->assertSame('manual', $manualMatch['match_method']);
+        $this->assertSame($productC->id, $manualMatch['mapping']->master_product_id);
+
+        $this->assertSame(2, ShopeeProductMapping::query()->forUser($user->id)->count());
     }
 
     public function test_order_allocation_formula_is_idempotent_and_uses_non_returned_quantity(): void

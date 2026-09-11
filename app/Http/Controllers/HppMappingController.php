@@ -4,44 +4,49 @@ namespace App\Http\Controllers;
 
 use App\Models\MasterProduct;
 use App\Models\ShopeeProductMapping;
-use App\Models\TemplateItemRow;
 use App\Services\ShopeeProductMappingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class HppMappingController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, ShopeeProductMappingService $mappingService)
     {
-        $templateRows = TemplateItemRow::query()
+        $templateOptions = MasterProduct::query()
             ->forUser($request->user()->id)
-            ->where('is_active', true)
-            ->orderBy('nama_item')
-            ->orderBy('kode_item')
-            ->get();
+            ->active()
+            ->with([
+                'units' => fn ($query) => $query->orderBy('conversion_to_base'),
+                'hppRecords' => fn ($query) => $query->orderByDesc('effective_from'),
+            ])
+            ->orderBy('template_name')
+            ->orderBy('template_item_code')
+            ->get()
+            ->map(function (MasterProduct $product): array {
+                $units = $product->units
+                    ->map(function ($unit): array {
+                        $latestHpp = $product->hppRecords->firstWhere('master_unit_id', $unit->id);
 
-        $templateOptions = $templateRows
-            ->groupBy('kode_item')
-            ->map(function ($rows, $kodeItem): array {
-                $first = $rows->first();
+                        return [
+                            'value' => $unit->unit_code,
+                            'label' => $unit->unit_code.' / '.($unit->conversion_to_base ?? 1),
+                            'code' => $unit->unit_code,
+                            'conversion' => (float) ($unit->conversion_to_base ?? 1),
+                            'hpp_amount' => $latestHpp !== null ? (float) $latestHpp->hpp_amount : 0,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+
+                $templateHpp = $product->hppRecords->sortByDesc('effective_from')->first();
 
                 return [
-                    'value' => $kodeItem,
-                    'label' => trim((string) ($first->nama_item ?? $kodeItem)).' — '.(string) $kodeItem,
-                    'hpp_amount' => (float) ($first->hpp_amount ?? 0),
-                    'units' => $rows
-                        ->sortBy('satuan')
-                        ->values()
-                        ->map(function ($row): array {
-                            return [
-                                'value' => $row->satuan,
-                                'label' => $row->satuan.' / '.($row->conversion_to_base ?? 1),
-                                'code' => $row->satuan,
-                                'conversion' => (float) ($row->conversion_to_base ?? 1),
-                                'hpp_amount' => (float) ($row->hpp_amount ?? 0),
-                            ];
-                        })->values()->all(),
+                    'value' => $product->template_item_code,
+                    'label' => trim((string) ($product->template_name ?? $product->template_item_code)).' — '.$product->template_item_code,
+                    'hpp_amount' => $templateHpp !== null ? (float) $templateHpp->hpp_amount : 0,
+                    'units' => $units,
                 ];
             })
             ->values()
@@ -56,37 +61,61 @@ class HppMappingController extends Controller
             ->orderBy('variation_name')
             ->get();
 
-        $mappingLookup = ShopeeProductMapping::query()
-            ->forUser($request->user()->id)
+        $resolvedRows = $orderRows->map(function ($orderRow) use ($request, $mappingService): array {
+            return [
+                'orderRow' => $orderRow,
+                'resolved' => $mappingService->resolve($request->user()->id, [
+                    'shopee_product_id' => $orderRow->shopee_product_id,
+                    'shopee_variant_id' => $orderRow->shopee_variant_id,
+                    'shopee_product_name' => $orderRow->shopee_product_name,
+                    'shopee_variant_name' => $orderRow->shopee_variant_name,
+                ]),
+            ];
+        });
+
+        $mappingIds = $resolvedRows
+            ->map(fn ($entry) => $entry['resolved']['mapping']->id ?? null)
+            ->filter()
+            ->unique()
+            ->values();
+
+        ShopeeProductMapping::query()
+            ->whereIn('id', $mappingIds)
             ->with(['product', 'unit'])
-            ->get()
-            ->mapWithKeys(function (ShopeeProductMapping $mapping): array {
-                $key = strtolower(trim((string) ($mapping->shopee_product_name ?? ''))).'|'.strtolower(trim((string) ($mapping->shopee_variant_name ?? '')));
+            ->get();
 
-                return [$key => $mapping];
-            })
-            ->all();
+        $rows = $resolvedRows->map(function ($entry): array {
+            $orderRow = $entry['orderRow'];
+            $resolved = $entry['resolved'];
+            $mapping = $resolved['mapping'] ?? null;
 
-        $rows = $orderRows->map(function ($orderRow) use ($mappingLookup): array {
-            $productName = $orderRow->shopee_product_name ?? null;
-            $variationName = $orderRow->shopee_variant_name ?? null;
-            $matchKey = strtolower(trim((string) ($productName ?? ''))).'|'.strtolower(trim((string) ($variationName ?? '')));
-            $mapping = $mappingLookup[$matchKey] ?? null;
+            $status = match ($resolved['status']) {
+                'matched' => $resolved['match_method'],
+                'ambiguous' => 'ambiguous',
+                default => 'missing',
+            };
 
-            $candidate = $mapping && $mapping->product
-                ? $mapping->product->template_item_code.' / '.($mapping->product->template_name ?? '-')
-                : '-';
+            $autoMatch = $mapping?->match_method ?? ($resolved['status'] === 'ambiguous' ? 'ambiguous' : 'missing');
 
-            $status = $mapping?->ambiguous ? 'missing' : ($mapping?->match_method === 'manual' ? 'approved' : ($mapping ? 'review' : 'missing'));
+            $candidate = null;
+            if ($mapping !== null && $mapping->product !== null) {
+                $candidate = $mapping->product->template_item_code.' / '.($mapping->product->template_name ?? '-');
+            } elseif ($mapping !== null) {
+                $candidate = $mapping->shopee_product_name ?? '-';
+            } elseif (! empty($resolved['candidates'])) {
+                $candidate = collect($resolved['candidates'])
+                    ->map(fn ($candidateMapping) => $candidateMapping?->product?->template_item_code ?? $candidateMapping->shopee_product_name ?? '-')
+                    ->implode(', ');
+            }
 
             return [
                 'id' => (int) $orderRow->id,
-                'productName' => $productName ?? '-',
-                'variationName' => $variationName ?? '-',
+                'productName' => $orderRow->shopee_product_name ?? '-',
+                'variationName' => $orderRow->shopee_variant_name ?? '-',
                 'shopeeProductId' => $orderRow->shopee_product_id ?? '-',
                 'shopeeVariantId' => $orderRow->shopee_variant_id ?? '-',
-                'autoMatch' => $mapping?->match_method ?? 'missing',
-                'candidate' => $candidate,
+                'autoMatch' => $autoMatch,
+                'candidate' => $candidate ?? '-',
                 'templateProductId' => $mapping?->master_product_id,
                 'templateItemCode' => $mapping?->product?->template_item_code,
                 'templateUnitId' => $mapping?->master_unit_id,
@@ -121,31 +150,37 @@ class HppMappingController extends Controller
         ]);
 
         $payloads = $validated['mappings'] ?? [];
+        $errors = [];
 
-        foreach ($payloads as $payload) {
-            $productCode = $payload['template_item_code'] ?? null;
+        foreach ($payloads as $index => $payload) {
             $product = null;
 
             if (! empty($payload['template_product_id'])) {
-                $product = MasterProduct::query()->forUser($request->user()->id)->findOrFail($payload['template_product_id']);
-            } elseif ($productCode !== null) {
-                $product = MasterProduct::query()->forUser($request->user()->id)->where('template_item_code', $productCode)->firstOrFail();
+                $product = MasterProduct::query()->forUser($request->user()->id)->find($payload['template_product_id']);
+            } elseif (! empty($payload['template_item_code'])) {
+                $product = MasterProduct::query()->forUser($request->user()->id)->where('template_item_code', $payload['template_item_code'])->first();
             }
 
-            $unitId = null;
-            $unitCode = $payload['template_unit_code'] ?? null;
+            if ($product === null) {
+                $errors["mappings.$index.template_item_code"] = 'Template item tidak ditemukan untuk akun Anda.';
 
+                continue;
+            }
+
+            $unit = null;
             if (! empty($payload['template_unit_id'])) {
-                $unitId = $product->units()->whereKey($payload['template_unit_id'])->value('id');
-            } elseif ($unitCode !== null) {
-                $unitId = $product->units()->where('unit_code', $unitCode)->value('id');
+                $unit = $product->units()->whereKey($payload['template_unit_id'])->first();
+            } elseif (! empty($payload['template_unit_code'])) {
+                $unit = $product->units()->where('unit_code', $payload['template_unit_code'])->first();
             }
 
-            if ($unitId === null && $product->baseUnit !== null) {
-                $unitId = $product->baseUnit->id;
+            if ($unit === null) {
+                $errors["mappings.$index.template_unit_code"] = 'Satuan harus dipilih dari unit milik template item terpilih.';
+
+                continue;
             }
 
-            $mappingService->createManualMapping($request->user()->id, $product, $unitId, [
+            $mappingService->createManualMapping($request->user()->id, $product, $unit->id, [
                 'shopee_product_id' => $payload['shopee_product_id'] ?? null,
                 'shopee_variant_id' => $payload['shopee_variant_id'] ?? null,
                 'shopee_product_name' => $payload['shopee_product_name'] ?? null,
@@ -154,6 +189,10 @@ class HppMappingController extends Controller
                 'manual_override_by' => $request->user()->id,
                 'match_confidence' => 1.00,
             ]);
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
         }
 
         return back()->with('success', 'Manual mapping HPP berhasil disimpan.');

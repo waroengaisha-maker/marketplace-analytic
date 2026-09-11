@@ -39,7 +39,7 @@ type MappingRow = {
     unit: string
     conversion: number
     confidence: number
-    status: 'approved' | 'review' | 'missing'
+    status: 'manual' | 'exact' | 'normalized' | 'ambiguous' | 'missing'
 }
 
 const props = defineProps<{ rows: MappingRow[]; templateOptions: TemplateOption[] }>()
@@ -93,9 +93,9 @@ const filteredRows = computed(() => {
 
 const summary = computed(() => ({
     total: props.rows.length,
-    approved: props.rows.filter((row) => row.status === 'approved').length,
-    review: props.rows.filter((row) => row.status === 'review').length,
-    missing: props.rows.filter((row) => row.status === 'missing').length,
+    manual: props.rows.filter((row) => row.status === 'manual').length,
+    auto: props.rows.filter((row) => row.status === 'exact' || row.status === 'normalized').length,
+    missing: props.rows.filter((row) => row.status === 'ambiguous' || row.status === 'missing').length,
 }))
 
 const matchSeverity = (match: MappingRow['autoMatch']) => {
@@ -250,10 +250,10 @@ const saveManualOverride = (row: MappingRow) => {
                 <template #content>
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-slate-500">Approved</p>
-                            <p class="mt-2 text-2xl font-bold text-green-600">{{ summary.approved }}</p>
+                            <p class="text-sm text-slate-500">Manual</p>
+                            <p class="mt-2 text-2xl font-bold text-green-600">{{ summary.manual }}</p>
                         </div>
-                        <span class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">OK</span>
+                        <span class="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">Override</span>
                     </div>
                 </template>
             </Card>
@@ -262,10 +262,10 @@ const saveManualOverride = (row: MappingRow) => {
                 <template #content>
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm text-slate-500">Review</p>
-                            <p class="mt-2 text-2xl font-bold text-amber-600">{{ summary.review }}</p>
+                            <p class="text-sm text-slate-500">Auto</p>
+                            <p class="mt-2 text-2xl font-bold text-amber-600">{{ summary.auto }}</p>
                         </div>
-                        <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">Manual</span>
+                        <span class="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700">Exact / Normalized</span>
                     </div>
                 </template>
             </Card>

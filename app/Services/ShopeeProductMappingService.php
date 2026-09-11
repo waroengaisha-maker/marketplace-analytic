@@ -26,6 +26,7 @@ class ShopeeProductMappingService
         $variantName = $this->normalizeNullableString($payload['shopee_variant_name'] ?? null);
 
         $query = ShopeeProductMapping::query()->forUser($userId)->active();
+
         $manualCandidates = $this->manualCandidates($query, $shopeeProductId, $shopeeVariantId, $productName, $variantName, $productIdValue);
         if ($manualCandidates !== []) {
             if (count($manualCandidates) === 1) {
@@ -48,6 +49,7 @@ class ShopeeProductMappingService
             $mapping = (clone $query)
                 ->where('shopee_product_id', $shopeeProductId)
                 ->where('shopee_variant_id', $shopeeVariantId)
+                ->when($productIdValue !== null, fn ($query) => $query->where('master_product_id', $productIdValue))
                 ->first();
 
             if ($mapping !== null) {
@@ -59,10 +61,12 @@ class ShopeeProductMappingService
             }
         }
 
-        $normalizedName = $this->normalizeName($productName ?? $variantName ?? '');
-        if ($normalizedName !== '') {
-            $candidates = (clone $query)
-                ->where('normalized_shopee_name', $normalizedName)
+        $productKey = $this->normalizeName((string) ($productName ?? ''));
+        $variantKey = $this->normalizeName((string) ($variantName ?? ''));
+        $identityKey = $variantKey === '' ? $productKey : $productKey.'|'.$variantKey;
+
+        if ($identityKey !== '') {
+            $candidates = $this->applyIdentityMatch((clone $query), $productName, $variantName)
                 ->when($productIdValue !== null, fn ($query) => $query->where('master_product_id', $productIdValue))
                 ->get();
 
@@ -79,7 +83,7 @@ class ShopeeProductMappingService
                     'status' => 'ambiguous',
                     'match_method' => 'normalized',
                     'mapping' => null,
-                    'candidates' => $candidates,
+                    'candidates' => $candidates->all(),
                 ];
             }
         }
@@ -94,12 +98,12 @@ class ShopeeProductMappingService
     protected function manualCandidates($query, ?string $shopeeProductId, ?string $shopeeVariantId, ?string $productName, ?string $variantName, ?int $productId): array
     {
         $manualQuery = (clone $query)->where('match_method', 'manual');
-        $manualByIdentifier = (clone $manualQuery);
 
         if ($shopeeProductId !== null && $shopeeVariantId !== null) {
-            $manualByIdentifier = $manualByIdentifier
+            $manualByIdentifier = (clone $manualQuery)
                 ->where('shopee_product_id', $shopeeProductId)
-                ->where('shopee_variant_id', $shopeeVariantId);
+                ->where('shopee_variant_id', $shopeeVariantId)
+                ->when($productId !== null, fn ($query) => $query->where('master_product_id', $productId));
 
             $manual = $manualByIdentifier->get()->all();
             if ($manual !== []) {
@@ -107,16 +111,35 @@ class ShopeeProductMappingService
             }
         }
 
-        $normalizedName = $this->normalizeName($productName ?? $variantName ?? '');
-        if ($normalizedName === '') {
+        $productKey = $this->normalizeName((string) ($productName ?? ''));
+        if ($productKey === '') {
             return [];
         }
 
-        $manualByName = (clone $manualQuery)
-            ->where('normalized_shopee_name', $normalizedName)
-            ->when($productId !== null, fn ($query) => $query->where('master_product_id', $productId));
+        return $this->applyIdentityMatch((clone $manualQuery), $productName, $variantName)
+            ->when($productId !== null, fn ($query) => $query->where('master_product_id', $productId))
+            ->get()
+            ->all();
+    }
 
-        return $manualByName->get()->all();
+    protected function applyIdentityMatch($query, ?string $productName, ?string $variantName)
+    {
+        $productKey = $this->normalizeName((string) ($productName ?? ''));
+        $variantKey = $this->normalizeName((string) ($variantName ?? ''));
+
+        if ($productKey === '') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($variantKey === '') {
+            return $query->where(function ($identityQuery) use ($productKey): void {
+                $identityQuery
+                    ->where('normalized_shopee_name', $productKey)
+                    ->orWhere('normalized_shopee_name', 'like', $productKey.'|%');
+            });
+        }
+
+        return $query->where('normalized_shopee_name', $productKey.'|'.$variantKey);
     }
 
     public function createManualMapping(int $userId, MasterProduct $product, ?int $unitId, array $payload): ShopeeProductMapping
@@ -131,14 +154,18 @@ class ShopeeProductMappingService
             throw new InvalidArgumentException('Manual mapping requires at least one Shopee identifier or name.');
         }
 
-        return DB::transaction(function () use ($userId, $product, $unitId, $shopeeProductId, $shopeeVariantId, $shopeeProductName, $shopeeVariantName, $manualOverrideNote, $payload): ShopeeProductMapping {
-            $mapping = ShopeeProductMapping::query()->firstOrNew([
-                'user_id' => $userId,
-                'master_product_id' => $product->id,
-                'master_unit_id' => $unitId,
-                'shopee_product_id' => $shopeeProductId,
-                'shopee_variant_id' => $shopeeVariantId,
-            ]);
+        if ($unitId === null || ! $product->units()->whereKey($unitId)->exists()) {
+            throw new InvalidArgumentException('Selected unit does not belong to the chosen Master Product.');
+        }
+
+        $identityKey = $this->identityKey($shopeeProductName, $shopeeVariantName);
+
+        return DB::transaction(function () use ($userId, $product, $unitId, $shopeeProductId, $shopeeVariantId, $shopeeProductName, $shopeeVariantName, $manualOverrideNote, $identityKey, $payload): ShopeeProductMapping {
+            $mapping = $this->findMappingForOverride($userId, $shopeeProductId, $shopeeVariantId, $shopeeProductName, $shopeeVariantName);
+
+            if ($mapping === null) {
+                $mapping = new ShopeeProductMapping;
+            }
 
             $mapping->fill([
                 'user_id' => $userId,
@@ -148,7 +175,7 @@ class ShopeeProductMappingService
                 'shopee_variant_id' => $shopeeVariantId,
                 'shopee_product_name' => $shopeeProductName,
                 'shopee_variant_name' => $shopeeVariantName,
-                'normalized_shopee_name' => $this->normalizeName($shopeeProductName ?? $shopeeVariantName ?? ''),
+                'normalized_shopee_name' => $identityKey,
                 'match_method' => 'manual',
                 'match_confidence' => $payload['match_confidence'] ?? 1.00,
                 'is_active' => true,
@@ -161,6 +188,39 @@ class ShopeeProductMappingService
 
             return $mapping->fresh();
         });
+    }
+
+    protected function findMappingForOverride(int $userId, ?string $shopeeProductId, ?string $shopeeVariantId, ?string $shopeeProductName, ?string $shopeeVariantName): ?ShopeeProductMapping
+    {
+        $query = ShopeeProductMapping::query()->forUser($userId);
+
+        if ($shopeeProductId !== null && $shopeeVariantId !== null) {
+            $byIdentifier = (clone $query)
+                ->where('shopee_product_id', $shopeeProductId)
+                ->where('shopee_variant_id', $shopeeVariantId)
+                ->first();
+
+            if ($byIdentifier !== null) {
+                return $byIdentifier;
+            }
+        }
+
+        $productKey = $this->normalizeName((string) ($shopeeProductName ?? ''));
+        if ($productKey === '') {
+            return null;
+        }
+
+        return $this->applyIdentityMatch((clone $query), $shopeeProductName, $shopeeVariantName)->first();
+    }
+
+    protected function identityKey(?string $productName, ?string $variantName): string
+    {
+        $productKey = $this->normalizeName((string) ($productName ?? ''));
+        $variantKey = $this->normalizeName((string) ($variantName ?? ''));
+
+        $key = $variantKey === '' ? $productKey : $productKey.'|'.$variantKey;
+
+        return mb_substr($key, 0, 255);
     }
 
     protected function normalizeName(string $value): string
