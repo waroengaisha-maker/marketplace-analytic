@@ -5,12 +5,77 @@ namespace App\Services;
 use App\Models\MasterProduct;
 use App\Models\MasterProductHpp;
 use App\Models\MasterProductUnit;
+use App\Models\TemplateItemRow;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use Throwable;
 
 class MasterProductCatalogService
 {
+    /**
+     * Materialize the normalized template catalog from the raw template-item
+     * rows imported for a user. Idempotent: template items already registered
+     * as master products are skipped, and only missing items are created
+     * (product + its units + HPP versions). Never overwrites or deletes.
+     *
+     * @return array{ok: bool, created: int, existing: int, errors: array<int, array{kode_item: string, error: string}>}
+     */
+    public function syncFromTemplateRows(int $userId): array
+    {
+        $items = TemplateItemRow::query()
+            ->forUser($userId)
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('kode_item');
+
+        $created = 0;
+        $existing = 0;
+        $errors = [];
+
+        foreach ($items as $kodeItem => $itemRows) {
+            if (MasterProduct::query()->forUser($userId)->where('template_item_code', $kodeItem)->exists()) {
+                $existing++;
+
+                continue;
+            }
+
+            $first = $itemRows->first();
+            $units = $itemRows
+                ->map(fn (TemplateItemRow $row): array => [
+                    'unit_code' => $row->satuan,
+                    'unit_name' => $row->satuan,
+                    'conversion_to_base' => (float) $row->conversion_to_base,
+                    'hpp_amount' => (float) $row->hpp_amount,
+                    'source_type' => 'template',
+                    'source_reference' => $row->source_file,
+                ])
+                ->values()
+                ->all();
+
+            try {
+                $this->registerTemplateItem($userId, [
+                    'template_item_code' => $kodeItem,
+                    'template_name' => $first?->nama_item,
+                    'units' => $units,
+                ]);
+                $created++;
+            } catch (Throwable $exception) {
+                $errors[] = [
+                    'kode_item' => $kodeItem,
+                    'error' => $exception->getMessage(),
+                ];
+            }
+        }
+
+        return [
+            'ok' => $errors === [],
+            'created' => $created,
+            'existing' => $existing,
+            'errors' => $errors,
+        ];
+    }
+
     public function registerTemplateItem(int $userId, array $payload): MasterProduct
     {
         $templateItemCode = $this->normalizeCode($payload['template_item_code'] ?? $payload['KodeItem'] ?? null);
@@ -74,8 +139,8 @@ class MasterProductCatalogService
         }
 
         $hppAmount = $this->decimal($payload['hpp_amount'] ?? $payload['HargaPokok'] ?? null);
-        if ($hppAmount !== null && $hppAmount <= 0) {
-            throw new InvalidArgumentException('HPP amount must be greater than zero.');
+        if ($hppAmount !== null && $hppAmount < 0) {
+            throw new InvalidArgumentException('HPP amount cannot be negative.');
         }
 
         if ($hppAmount !== null) {
@@ -95,8 +160,8 @@ class MasterProductCatalogService
     public function persistHppVersion(MasterProduct $product, MasterProductUnit $unit, array $payload): MasterProductHpp
     {
         $hppAmount = $this->decimal($payload['hpp_amount'] ?? null);
-        if ($hppAmount === null || $hppAmount <= 0) {
-            throw new InvalidArgumentException('HPP amount is required and must be greater than zero.');
+        if ($hppAmount === null || $hppAmount < 0) {
+            throw new InvalidArgumentException('HPP amount is required and cannot be negative.');
         }
 
         $effectiveFrom = $payload['effective_from'] ?? now();
@@ -149,7 +214,7 @@ class MasterProductCatalogService
             ->where('master_unit_id', $unit->id)
             ->where('effective_from', '<=', $at)
             ->where(function ($query) use ($at): void {
-                $query->whereNull('effective_to')->orWhere('effective_to', '>', $at);
+                $query->whereNull('effective_to')->orWhere('effective_to', '>=', $at);
             })
             ->orderBy('effective_from', 'desc')
             ->first();
@@ -161,8 +226,7 @@ class MasterProductCatalogService
             throw new InvalidArgumentException('A product must have at least one unit.');
         }
 
-        usort($units, static fn (MasterProductUnit $left, MasterProductUnit $right): int =>
-            $left->conversion_to_base <=> $right->conversion_to_base
+        usort($units, static fn (MasterProductUnit $left, MasterProductUnit $right): int => $left->conversion_to_base <=> $right->conversion_to_base
         );
 
         $preferred = collect($units)->first(fn (MasterProductUnit $unit): bool => strtolower((string) $unit->unit_code) === 'pcs');

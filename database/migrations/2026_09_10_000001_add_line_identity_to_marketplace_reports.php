@@ -18,29 +18,27 @@ return new class extends Migration
             }
 
             if (DB::table($tableName)->whereNull('line_identity')->exists()) {
-                throw new RuntimeException("Cannot add a unique line_identity index to {$tableName} while existing rows still have a null line_identity.");
+                $priceColumns = $tableName === 'marketplace_income'
+                    ? ['unit_price', 'product_price']
+                    : ['unit_price', 'discounted_price'];
+
+                DB::table($tableName)
+                    ->select(array_merge(['id', 'order_number', 'product_key', 'variation_key', 'quantity'], $priceColumns))
+                    ->whereNull('line_identity')
+                    ->orderBy('id')
+                    ->each(function (object $row) use ($tableName): void {
+                        $unitPrice = $row->unit_price ?? $row->product_price ?? $row->discounted_price ?? null;
+                        $identity = ReportLineIdentity::make(
+                            (string) $row->order_number,
+                            $row->product_key,
+                            $row->variation_key,
+                            $unitPrice === null ? null : (float) $unitPrice,
+                            $row->quantity === null ? null : (int) $row->quantity,
+                        );
+
+                        DB::table($tableName)->where('id', $row->id)->update(['line_identity' => $identity]);
+                    });
             }
-
-            $priceColumns = $tableName === 'marketplace_income'
-                ? ['unit_price', 'product_price']
-                : ['unit_price', 'discounted_price'];
-
-            DB::table($tableName)
-                ->select(array_merge(['id', 'order_number', 'product_key', 'variation_key', 'quantity'], $priceColumns))
-                ->whereNull('line_identity')
-                ->orderBy('id')
-                ->each(function (object $row) use ($tableName): void {
-                    $unitPrice = $row->unit_price ?? $row->product_price ?? $row->discounted_price ?? null;
-                    $identity = ReportLineIdentity::make(
-                        (string) $row->order_number,
-                        $row->product_key,
-                        $row->variation_key,
-                        $unitPrice === null ? null : (float) $unitPrice,
-                        $row->quantity === null ? null : (int) $row->quantity,
-                    );
-
-                    DB::table($tableName)->where('id', $row->id)->update(['line_identity' => $identity]);
-                });
         }
 
         Schema::table('marketplace_orders', function (Blueprint $table): void {

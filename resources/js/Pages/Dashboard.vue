@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import Card from 'primevue/card'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
@@ -112,9 +112,21 @@ const cards = [
     ['Total Laba Kotor', 'gross_profit', null, 'success'],
     ['Total HPP', 'total_hpp', null, 'secondary'],
     ['Laba Bersih', 'net_profit', null, 'success'],
+    ['Margin Bersih', 'net_margin', null, 'success'],
     ['Batal', 'cancelled_sales', 'cancelled_order_count', 'danger'],
     ['Tidak Valid', 'valid_without_tracking_sales', 'valid_without_tracking', 'secondary'],
 ] as const
+const hppQualityTags = computed(() => {
+    const keys = ['hpp_ok_count', 'hpp_mapping_missing_count', 'hpp_mapping_ambiguous_count', 'hpp_hpp_missing_count', 'hpp_no_allocation_count'] as const
+    const labels = ['HPP valid', 'Mapping belum lengkap', 'Mapping ambigu', 'HPP belum diisi', 'HPP belum dialokasikan'] as const
+    const severities = ['success', 'warn', 'warn', 'warn', 'warn'] as const
+
+    return keys.map((key, index) => ({
+        label: labels[index],
+        value: Number(page.props.stats[key] ?? 0),
+        severity: severities[index],
+    }))
+})
 </script>
 
 <template>
@@ -163,11 +175,32 @@ const cards = [
                 </div>
             </template>
         </Card>
+        <Card v-if="page.props.hasAppliedFilter" class="[&_.p-card-body]:!p-3">
+            <template #content>
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <div class="flex items-center gap-2">
+                            <i class="pi pi-box text-color-secondary" aria-hidden="true"></i>
+                            <span class="text-sm font-semibold">Kualitas Data HPP</span>
+                        </div>
+                        <span class="text-xs text-color-secondary">Baris valid (tidak batal & punya no. resi). Detail per order di halaman Reconciliation.</span>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <Tag v-for="tag in hppQualityTags" :key="tag.label" :value="`${tag.label}: ${tag.value.toLocaleString('id-ID')}`" :severity="tag.severity" />
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <Link href="/finance/reconciliation" class="text-xs font-medium no-underline">
+                            <Tag severity="secondary" value="Lihat detail di Reconciliation" icon="pi pi-arrow-right" />
+                        </Link>
+                    </div>
+                </div>
+            </template>
+        </Card>
         <div v-if="page.props.hasAppliedFilter" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Card v-for="([label, value, count]) in cards" :key="value" class="[&_.p-card-body]:p-3">
                 <template #content>
                     <p class="text-xs font-semibold text-color-secondary">{{ label }}</p>
-                    <p class="mt-1 text-lg font-bold">{{ formatNominal(page.props.stats[value]) }}</p>
+                    <p class="mt-1 text-lg font-bold">{{ value === 'net_margin' ? `${Number(page.props.stats[value]).toFixed(2)}%` : formatNominal(page.props.stats[value]) }}</p>
                     <small v-if="count" class="text-xs text-color-secondary">{{ page.props.stats[count] }} order</small>
                 </template>
             </Card>

@@ -5,6 +5,7 @@ use App\Http\Controllers\HppController;
 use App\Http\Controllers\HppMappingController;
 use App\Http\Controllers\IncomeReconciliationController;
 use App\Http\Controllers\ReconciliationController;
+use App\Http\Controllers\ShopeeApiController;
 use App\Http\Controllers\UploadReportsController;
 use App\Services\MarketplaceReconciliationService;
 use Illuminate\Http\Request;
@@ -63,6 +64,24 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::get('/products/hpp', [HppController::class, 'index'])->name('products.hpp');
     Route::get('/products/hpp-mapping', [HppMappingController::class, 'index'])->name('products.hpp-mapping');
     Route::post('/products/hpp-mapping', [HppMappingController::class, 'store'])->name('products.hpp-mapping.store');
+    Route::post('/products/hpp-mapping/sync-template-catalog', [HppMappingController::class, 'syncTemplateCatalog'])->name('products.hpp-mapping.sync-template-catalog');
+
+    Route::post('/products/hpp-mapping/reallocate', [HppMappingController::class, 'reallocate'])->name('products.hpp-mapping.reallocate');
+    Route::get('/integrations/shopee-api', [ShopeeApiController::class, 'index'])->name('integrations.shopee-api');
+    Route::get('/integrations/shopee-api/status', [ShopeeApiController::class, 'status'])->name('integrations.shopee-api.status');
+    Route::get('/integrations/shopee-api/test', [ShopeeApiController::class, 'testConnection'])->name('integrations.shopee-api.test');
+    Route::get('/integrations/shopee-api/orders', [ShopeeApiController::class, 'orders'])->name('integrations.shopee-api.orders');
+    Route::get('/integrations/shopee-api/orders/{order_sn}', [ShopeeApiController::class, 'orderDetail'])->name('integrations.shopee-api.order-detail')->where('order_sn', '[A-Za-z0-9_.-]+');
+    Route::get('/integrations/shopee-api/income', [ShopeeApiController::class, 'income'])->name('integrations.shopee-api.income');
+    Route::post('/integrations/shopee-api/clear', [ShopeeApiController::class, 'clear'])->name('integrations.shopee-api.clear');
+    Route::post('/integrations/shopee-api/configure', [ShopeeApiController::class, 'configure'])->name('integrations.shopee-api.configure');
+    Route::get('/integrations/shopee-api/authorize', [ShopeeApiController::class, 'authorize'])->name('integrations.shopee-api.authorize');
+    Route::get('/integrations/shopee-api/shopee-auth', [ShopeeApiController::class, 'shopeeCallback'])->name('integrations.shopee-api.shopee-auth');
+    Route::post('/integrations/shopee-api/sync-orders', [ShopeeApiController::class, 'syncOrders'])->name('integrations.shopee-api.sync-orders');
+    Route::post('/integrations/shopee-api/sync-income', [ShopeeApiController::class, 'syncIncome'])->name('integrations.shopee-api.sync-income');
+    Route::post('/integrations/shopee-api/sync-escrow', [ShopeeApiController::class, 'syncEscrow'])->name('integrations.shopee-api.sync-escrow');
+    Route::get('/integrations/shopee-api/validate', [ShopeeApiController::class, 'validate'])->name('integrations.shopee-api.validate');
+    Route::post('/integrations/shopee-api/promote', [ShopeeApiController::class, 'promote'])->name('integrations.shopee-api.promote');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {

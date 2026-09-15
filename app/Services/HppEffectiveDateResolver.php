@@ -25,7 +25,7 @@ class HppEffectiveDateResolver
             ->where('master_unit_id', $unit->id)
             ->where('effective_from', '<=', $at)
             ->where(function ($query) use ($at): void {
-                $query->whereNull('effective_to')->orWhere('effective_to', '>', $at);
+                $query->whereNull('effective_to')->orWhere('effective_to', '>=', $at);
             })
             ->orderBy('effective_from', 'desc')
             ->first();

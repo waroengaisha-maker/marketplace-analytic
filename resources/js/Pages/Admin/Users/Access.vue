@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import Message from 'primevue/message'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
-import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
-import { FilterMatchMode } from '@primevue/core/api'
+import { AppDataTable, AppDataTableToolbar, useDataTableContract, type TableColumnMeta } from '@/Components/DataTable'
 import { confirmAction } from '../../../utils/confirmAction'
 
 type User = {
@@ -25,10 +24,53 @@ type User = {
     phone: string | null
 }
 
-const props = defineProps<{ users: { data: User[] }; trialDays: number }>()
-const filters = ref({
-    global: { value: null as string | null, matchMode: FilterMatchMode.CONTAINS },
-})
+type Pagination = {
+    data: User[]
+    current_page: number
+    last_page: number
+    per_page: number
+    total: number
+}
+
+const props = defineProps<{ users: Pagination; trialDays: number }>()
+
+const allColumns = [
+    ['name', 'Akun'],
+    ['status', 'Status Akses'],
+    ['subscription_status', 'Subscription'],
+    ['payment_status', 'Pembayaran'],
+    ['trial_ends_at', 'Trial Berakhir'],
+] as const satisfies readonly TableColumnMeta[]
+
+const { globalFilter, multiSortMeta, isLoading } = useDataTableContract()
+const selectedColumns = ref<TableColumnMeta[]>([...allColumns])
+
+function loadData(params: Record<string, unknown> = {}) {
+    router.get('/admin/users/access', {
+        page: params.page ?? undefined,
+        per_page: params.per_page ?? undefined,
+        search: globalFilter.value || undefined,
+        sort_field: params.sort_field ?? multiSortMeta.value[0]?.field ?? 'name',
+        sort_order: params.sort_order ?? (multiSortMeta.value[0]?.order === -1 ? 'desc' : 'asc'),
+    }, { preserveScroll: true })
+}
+
+function onPage(event: { first: number; rows: number }) {
+    loadData({ page: Math.floor(event.first / event.rows) + 1, per_page: event.rows })
+}
+
+function onSort() {
+    loadData({ page: 1 })
+}
+
+function onFilter() {
+    loadData({ page: 1 })
+}
+
+const totalRecords = computed(() => props.users.total)
+const currentPage = computed(() => props.users.current_page)
+const perPage = computed(() => props.users.per_page)
+
 const formVisible = ref(false)
 
 const activate = (id: number) => {
@@ -99,51 +141,46 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('id
         <Message v-if="validationError()" class="mb-4" severity="error">{{ validationError() }}</Message>
         <Card class="[&_.p-card-body]:p-4">
             <template #content>
-            <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                <Button label="Tambah User" icon="pi pi-plus" @click="startCreate" />
-                <span class="relative w-full sm:w-80">
-                    <i class="pi pi-search absolute left-3 top-1/2 z-10 -translate-y-1/2 text-color-secondary" aria-hidden="true"></i>
-                    <InputText v-model="filters.global.value" placeholder="Cari user..." aria-label="Cari user" class="w-full pl-10" />
-                </span>
-            </div>
-            <DataTable
+            <AppDataTableToolbar
+                v-model:global-filter="globalFilter"
+                v-model:selected-columns="selectedColumns"
+                :all-columns="allColumns"
+                search-placeholder="Cari user..."
+                columns-label="Pilih kolom"
+                @filter="onFilter"
+            >
+                <template #actions>
+                    <Button label="Tambah User" icon="pi pi-plus" @click="startCreate" />
+                </template>
+            </AppDataTableToolbar>
+            <div class="overflow-hidden rounded-xl border border-surface-200 shadow-sm dark:border-surface-700" style="height: min(70vh, 48rem)">
+            <AppDataTable
+                :loading="isLoading"
                 :value="props.users.data"
-                v-model:filters="filters"
-                :global-filter-fields="['name', 'email', 'username', 'phone', 'status', 'subscription_status', 'payment_status']"
+                v-model:multi-sort-meta="multiSortMeta"
+                lazy
+                :total-records="totalRecords"
+                :first="(currentPage - 1) * perPage"
+                data-key="id"
+                @page="onPage"
+                @sort="onSort"
+                @filter="onFilter"
                 paginator
-                :rows="10"
+                :rows="perPage"
                 :rows-per-page-options="[10, 25, 50]"
                 paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                 current-page-report-template="{first}–{last} dari {totalRecords}"
-                responsive-layout="scroll"
-                striped-rows
-                row-hover
-                show-gridlines
-                removable-sort
-                size="small"
-                class="w-full text-sm"
+                table-style-min-width="72rem"
             >
                 <template #empty>Belum ada user aplikasi.</template>
-                <Column field="name" header="Akun" sortable>
+                <Column v-for="[field, header] in selectedColumns" :key="field" :field="field" :header="header" sortable>
                     <template #body="{ data }">
-                        <div class="font-medium">{{ data.name }}</div>
-                        <div class="text-xs text-color-secondary">{{ data.email }}</div>
-                        <div class="text-xs text-color-secondary">@{{ data.username }}</div>
+                        <template v-if="field === 'name'"><div class="font-medium">{{ data.name }}</div><div class="text-xs text-color-secondary">{{ data.email }}</div><div class="text-xs text-color-secondary">@{{ data.username }}</div></template>
+                        <Tag v-else-if="field === 'status'" :value="data.status" :severity="statusSeverity(data.status)" />
+                        <Tag v-else-if="field === 'subscription_status'" :value="data.subscription_status" :severity="statusSeverity(data.subscription_status)" />
+                        <template v-else-if="field === 'payment_status'">{{ data.payment_status }}</template>
+                        <template v-else>{{ formatDate(data.trial_ends_at) }}</template>
                     </template>
-                </Column>
-                <Column field="status" header="Status Akses" sortable>
-                    <template #body="{ data }">
-                        <Tag :value="data.status" :severity="statusSeverity(data.status)" />
-                    </template>
-                </Column>
-                <Column field="subscription_status" header="Subscription" sortable>
-                    <template #body="{ data }">
-                        <Tag :value="data.subscription_status" :severity="statusSeverity(data.subscription_status)" />
-                    </template>
-                </Column>
-                <Column field="payment_status" header="Pembayaran" sortable />
-                <Column field="trial_ends_at" header="Trial Berakhir" sortable>
-                    <template #body="{ data }">{{ formatDate(data.trial_ends_at) }}</template>
                 </Column>
                 <Column header="Aksi" :exportable="false">
                     <template #body="{ data }">
@@ -156,7 +193,8 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('id
                         </div>
                     </template>
                 </Column>
-            </DataTable>
+            </AppDataTable>
+            </div>
             </template>
         </Card>
         <Dialog v-model:visible="formVisible" :header="editingId ? 'Edit User' : 'Tambah User'" modal :style="{ width: 'min(42rem, 95vw)' }" @hide="cancelEdit">

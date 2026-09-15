@@ -83,7 +83,26 @@ class IncomeReportImporter
             DB::table('marketplace_income')->insert($chunk);
         }
 
-        return count($payload);
+        return $this->persist($payload, $userId);
+    }
+
+    /**
+     * Persists pre-built income rows with the same replace-per-order-number
+     * semantics the Excel import uses. Reused by the Shopee API promotion path.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    public function persist(array $rows, int $userId): int
+    {
+        $orderNumbers = array_values(array_unique(array_column($rows, 'order_number')));
+
+        DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            DB::table('marketplace_income')->insert($chunk);
+        }
+
+        return count($rows);
     }
 
     private function row(array $headers, array $values): array

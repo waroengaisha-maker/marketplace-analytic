@@ -9,11 +9,11 @@ import Select from 'primevue/select'
 import Toolbar from 'primevue/toolbar'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Popover from 'primevue/popover'
 import Message from 'primevue/message'
+import { AppDataTable, useDataTableContract } from '@/Components/DataTable'
 import { formatNominal } from '@/utils/formatters'
 import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
 import DateRangeFilter from '@/Components/DateRangeFilter.vue'
@@ -26,6 +26,7 @@ const props = defineProps<{ rows: Row[]; summaryRows: Row[]; pagination: Paginat
 const hasAppliedFilter = ref(props.hasAppliedFilter)
 const dataTable = ref<DataTableInstance | null>(null)
 const isFullscreen = ref(false)
+const { isLoading } = useDataTableContract()
 const parseDate = (value?: string | null) => value ? new Date(`${value}T00:00:00`) : null
 const fromDate = ref<Date | null>(parseDate(props.appliedFrom))
 const toDate = ref<Date | null>(parseDate(props.appliedTo))
@@ -33,6 +34,14 @@ const appliedFromDate = ref<Date | null>(parseDate(props.appliedFrom))
 const appliedToDate = ref<Date | null>(parseDate(props.appliedTo))
 const dateValidationError = ref<string | null>(null)
 const selectedOrderStatuses = ref<string[]>(['Settled', 'Refunded', 'Partially Refunded', 'Returned', 'Unmatched', 'Cancelled', 'Invalid'])
+const hppStatusOptions = [
+    { value: 'ok', label: 'HPP valid' },
+    { value: 'mapping_missing', label: 'Mapping belum lengkap' },
+    { value: 'mapping_ambiguous', label: 'Mapping ambigu' },
+    { value: 'hpp_missing', label: 'HPP belum diisi' },
+    { value: 'no_allocation', label: 'HPP belum dialokasikan' },
+]
+const selectedHppStatuses = ref<string[]>([])
 const selectedRows = ref<Row[]>([])
 const multiSortMeta = ref<{ field: string; order: number }[]>([])
 const totalFeePopoverRefs = ref<Record<string, { toggle: (event: Event) => void } | null>>({})
@@ -48,7 +57,7 @@ const formulaTooltips: Record<string, string> = {
     fee_subtotal_percent: 'Subtotal Biaya (%) = Subtotal Biaya / Subtotal x 100',
     total_fee: 'Total Biaya = Subtotal Biaya + Biaya Proses',
     penghasilan: 'Penghasilan = Subtotal + (Total Biaya + Pajak)',
-    hpp: 'HPP saat ini = 0',
+    hpp: 'HPP = Total HPP dari alokasi biaya (hanya status HPP valid)',
     laba: 'Laba = Penghasilan - HPP',
 }
 const columns = [
@@ -59,7 +68,7 @@ const columns = [
     ['promo_xtra_service_fee', 'Promo XTRA'], ['promo_xtra_fee_percent', 'Promo XTRA (%)'],
     ['fee_subtotal', 'Subtotal Biaya'], ['fee_subtotal_percent', 'Subtotal Biaya (%)'],
     ['order_processing_fee', 'Biaya Proses'], ['total_fee', 'Total Biaya'], ['tax', 'Pajak'],
-    ['penghasilan', 'Penghasilan'], ['hpp', 'HPP'], ['laba', 'Laba'],
+    ['penghasilan', 'Penghasilan'], ['hpp', 'HPP'], ['hpp_status', 'Status HPP'], ['laba', 'Laba'],
 ] as const
 const allColumns = [
     ['business_status', 'Status'],
@@ -104,6 +113,7 @@ function resetDateFilter() {
     toDate.value = null
     appliedFromDate.value = null
     appliedToDate.value = null
+    selectedHppStatuses.value = []
     hasAppliedFilter.value = false
     router.get('/finance/reconciliation', {}, { preserveScroll: true })
 }
@@ -137,6 +147,21 @@ function severity(status: string) {
 
     return 'info'
 }
+function rowHppStatus(row: Row) {
+    return String(row.hpp_status ?? 'no_allocation')
+}
+function hppStatusLabel(status: string) {
+    return ({
+        ok: 'HPP valid',
+        mapping_missing: 'Mapping belum lengkap',
+        mapping_ambiguous: 'Mapping ambigu',
+        hpp_missing: 'HPP belum diisi',
+        no_allocation: 'HPP belum dialokasikan',
+    } as Record<string, string>)[status] ?? 'HPP belum dialokasikan'
+}
+function hppStatusSeverity(status: string) {
+    return status === 'ok' ? 'success' : 'warn'
+}
 function orderCategory(row: Row) {
     return String(row.business_status ?? '').trim() || 'Unmatched'
 }
@@ -147,6 +172,10 @@ function clearColumnFilter(field: string) {
 function exportValue(row: Row, field: string) {
     if (field === 'business_status') {
         return orderCategory(row)
+    }
+
+    if (field === 'hpp_status') {
+        return hppStatusLabel(rowHppStatus(row))
     }
 
     if (field === 'order_product_name') {
@@ -333,6 +362,7 @@ function loadData(overrides: Record<string, unknown> = {}) {
         to: toDate.value ? localDateKey(toDate.value) : undefined,
         search: filters.value.global.value || undefined,
         statuses: selectedOrderStatuses.value,
+        hpp_statuses: selectedHppStatuses.value,
         column_filters: JSON.stringify(Object.fromEntries(
             allColumns.map(([field]) => [field, filters.value[field]?.value || null]),
         )),
@@ -386,6 +416,28 @@ function onFilter() {
                                     trigger: { class: 'rounded-md' },
                                     panel: { class: 'text-sm' },
                                     item: { class: 'py-2' },
+                                }"
+                            />
+                        </div>
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="reconciliation-hpp-status" class="text-xs font-medium text-color-secondary">Status HPP</label>
+                            <MultiSelect
+                                input-id="reconciliation-hpp-status"
+                                v-model="selectedHppStatuses"
+                                :options="hppStatusOptions"
+                                option-label="label"
+                                option-value="value"
+                                placeholder="Semua (Pilih status)"
+                                display="comma"
+                                :max-selected-labels="2"
+                                selected-items-label="{0} status dipilih"
+                                class="h-11 w-full text-sm"
+                                :pt="{
+                                    root: { class: 'h-11 rounded-md' },
+                                    trigger: { class: 'rounded-md' },
+                                    panel: { class: 'text-sm' },
+                                    item: { class: 'py-2' },
+                                    emptyMessage: { class: 'text-sm' },
                                 }"
                             />
                         </div>
@@ -597,9 +649,9 @@ function onFilter() {
                 class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg  border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-950"
                 :style="{ height: isFullscreen ? '100%' : 'min(70vh, 48rem)' }"
             >
-                <DataTable
+                <AppDataTable
                     ref="dataTable"
-                    v-model:selection="selectedRows"
+                    :loading="isLoading"
                     :value="filteredRows"
                     v-model:filters="filters"
                     filter-display="row"
@@ -610,8 +662,6 @@ function onFilter() {
                     :total-records="pagination?.total ?? 0"
                     :first="((pagination?.current_page ?? 1) - 1) * (pagination?.per_page ?? 100)"
                     data-key="id"
-                    selection-mode="multiple"
-                    meta-key-selection
                     @page="onPage"
                     @sort="onSort"
                     @filter="onFilter"
@@ -620,18 +670,6 @@ function onFilter() {
                     :rows-per-page-options="[25, 50, 100]"
                     paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                     current-page-report-template="{first}–{last} dari {totalRecords}"
-                    scrollable
-                    scroll-height="flex"
-                    resizable-columns
-                    column-resize-mode="expand"
-                    reorderable-columns
-                    striped-rows
-                    row-hover
-                    show-gridlines
-                    removable-sort
-                    size="large"
-                    table-style="min-width: 108rem"
-                    class="min-h-0 flex-1 text-xs"
                 >
                     <template #empty>Belum ada data rekonsiliasi.</template>
                     <Column v-for="[field, header] in visibleColumns" :key="field" :field="field" sortable :show-filter-menu="false">
@@ -656,6 +694,9 @@ function onFilter() {
                                     }"
                                     @update:model-value="(value) => { filters[field].value = value; onFilter() }"
                                 />
+                                <div v-else-if="field === 'hpp_status'" class="flex h-9 items-center text-xs text-color-secondary">
+                                    <span class="truncate">Gunakan filter Status HPP di atas</span>
+                                </div>
                                 <IconField v-else icon-position="left" class="w-full">
                                     <InputIcon class="pi pi-search text-sm text-color-secondary" />
                                     <InputText
@@ -667,20 +708,25 @@ function onFilter() {
                                         @keyup.enter="onFilter"
                                     />
                                 </IconField>
-                                <button v-if="field !== 'business_status' && filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
+                                <button v-if="field !== 'business_status' && field !== 'hpp_status' && filters[field].value" type="button" :aria-label="`Hapus filter ${header}`" :class="clearButtonClass" @click="clearColumnFilter(field)">
                                     <i class="pi pi-times text-xs" aria-hidden="true"></i>
                                 </button>
                             </div>
                         </template>
                         <template #body="{ data }">
                             <Tag v-if="field === 'business_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
+                            <Tag v-else-if="field === 'hpp_status'" :value="hppStatusLabel(rowHppStatus(data))" :severity="hppStatusSeverity(rowHppStatus(data))" />
                             <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
+                            <span v-else-if="field === 'hpp'">
+                                <Tag v-if="rowHppStatus(data) !== 'ok'" :value="hppStatusLabel(rowHppStatus(data))" severity="warn" icon="pi pi-exclamation-triangle" />
+                                <span v-else>{{ formatNominal(data[field]) }}</span>
+                            </span>
                             <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
                             <span v-else-if="field.endsWith('_percent')">{{ Number(data[field] || 0).toFixed(2) }}%</span>
                             <span v-else>{{ data[field] ?? 0 }}</span>
                         </template>
                     </Column>
-                </DataTable>
+                </AppDataTable>
             </div>
         </div>
     </div>

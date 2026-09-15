@@ -89,6 +89,19 @@ class MarketplaceReconciliationService
             $query->whereIn(DB::raw($statusExpression), $statuses);
         }
 
+        $hppStatuses = array_values(array_filter((array) ($parameters['hpp_statuses'] ?? [])));
+        if ($hppStatuses !== []) {
+            $query->where(function (Builder $query) use ($hppStatuses): void {
+                foreach ($hppStatuses as $status) {
+                    if ($status === 'no_allocation') {
+                        $query->orWhereNull('rows.cost_status');
+                    } else {
+                        $query->orWhere('rows.cost_status', $status);
+                    }
+                }
+            });
+        }
+
         $netQuantityExpression = 'CASE WHEN rows.quantity - COALESCE(rows.returned_quantity, 0) > 0 THEN rows.quantity - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
         $filterExpressions = [
             'business_status' => $statusExpression,
@@ -169,6 +182,12 @@ class MarketplaceReconciliationService
                 COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN {$netSales} ELSE 0 END), 0) AS net_sales,
                 COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN COALESCE(rows.platform_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.order_processing_fee, 0) ELSE 0 END), 0) AS total_fee,
                 COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN COALESCE(rows.pph22, 0) ELSE 0 END), 0) AS total_tax,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'ok' THEN rows.total_hpp ELSE 0 END), 0) AS total_hpp,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'ok' THEN 1 ELSE 0 END), 0) AS hpp_ok_count,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'mapping_missing' THEN 1 ELSE 0 END), 0) AS hpp_mapping_missing_count,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'mapping_ambiguous' THEN 1 ELSE 0 END), 0) AS hpp_mapping_ambiguous_count,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'hpp_missing' THEN 1 ELSE 0 END), 0) AS hpp_hpp_missing_count,
+                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status IS NULL THEN 1 ELSE 0 END), 0) AS hpp_no_allocation_count,
                 COALESCE(SUM(CASE WHEN {$isSettled} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS settled_sales,
                 COALESCE(SUM(CASE WHEN {$isUnmatched} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS pending_sales,
                 COALESCE(SUM(CASE WHEN {$isSettled} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS settled_profit,
@@ -188,16 +207,25 @@ class MarketplaceReconciliationService
         $netSales = (float) $aggregate->net_sales;
         $totalFee = (float) $aggregate->total_fee;
         $totalTax = (float) $aggregate->total_tax;
+        $totalHpp = (float) $aggregate->total_hpp;
         $grossProfit = $netSales - $totalFee - $totalTax;
+        $netProfit = $grossProfit - $totalHpp;
+        $netMargin = $netSales == 0.0 ? 0.0 : $netProfit / $netSales * 100;
 
         return [
             'gross_sales' => (float) $aggregate->gross_sales,
             'net_sales' => (float) $aggregate->net_sales,
             'total_fee' => $totalFee,
             'total_tax' => $totalTax,
-            'total_hpp' => 0.0,
+            'total_hpp' => $totalHpp,
             'gross_profit' => $grossProfit,
-            'net_profit' => $grossProfit,
+            'net_profit' => $netProfit,
+            'net_margin' => $netMargin,
+            'hpp_ok_count' => (int) $aggregate->hpp_ok_count,
+            'hpp_mapping_missing_count' => (int) $aggregate->hpp_mapping_missing_count,
+            'hpp_mapping_ambiguous_count' => (int) $aggregate->hpp_mapping_ambiguous_count,
+            'hpp_hpp_missing_count' => (int) $aggregate->hpp_hpp_missing_count,
+            'hpp_no_allocation_count' => (int) $aggregate->hpp_no_allocation_count,
             'settled_sales' => (float) $aggregate->settled_sales,
             'pending_sales' => (float) $aggregate->pending_sales,
             'settled_profit' => (float) $aggregate->settled_profit,
@@ -450,6 +478,10 @@ class MarketplaceReconciliationService
                     ->on('order_group.product_key', '=', 'orders.product_key')
                     ->on('order_group.item_index', '=', 'orders.item_index');
             })
+            ->leftJoin('order_cost_allocations as cost_alloc', function ($join): void {
+                $join->on('cost_alloc.user_id', '=', 'orders.user_id')
+                    ->on('cost_alloc.order_line_identity', '=', 'orders.line_identity');
+            })
             ->where('orders.user_id', $userId)
             ->when(! $includeAll, function (Builder $query): void {
                 $this->withTrackingNumber($query)
@@ -472,6 +504,13 @@ class MarketplaceReconciliationService
                 DB::raw("{$refundAmount} AS refund_amount"),
                 DB::raw("CASE WHEN {$refundEvidence} THEN CASE WHEN ABS({$refundAmount}) >= COALESCE(orders.discounted_price, 0) * COALESCE(orders.quantity, 0) THEN 'Full' ELSE 'Partial' END END AS refund_type"),
                 DB::raw("{$settlementStatus} AS settlement_status"),
+                'cost_alloc.total_hpp',
+                'cost_alloc.cost_status',
+                'cost_alloc.effective_hpp_record_id',
+                'cost_alloc.hpp_per_base_unit AS cost_hpp_per_base_unit',
+                'cost_alloc.quantity_base_unit AS cost_quantity_base_unit',
+                'cost_alloc.master_product_id AS cost_master_product_id',
+                'cost_alloc.master_unit_id AS cost_master_unit_id',
             ]);
     }
 
@@ -497,7 +536,9 @@ class MarketplaceReconciliationService
         $feeSubtotal = $admin + $shipping + $promo;
         $totalFee = $feeSubtotal + $processing;
         $earnings = $subtotal + ($totalFee + $tax);
-        $hpp = 0.0;
+        $costStatus = trim((string) ($row->cost_status ?? ''));
+        $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
+        $hpp = $hppStatus === 'ok' ? (float) ($row->total_hpp ?? 0) : 0.0;
 
         $row->net_quantity = $net;
         $row->order_subtotal = $subtotal;
@@ -510,6 +551,7 @@ class MarketplaceReconciliationService
         $row->tax = $tax;
         $row->penghasilan = $earnings;
         $row->hpp = $hpp;
+        $row->hpp_status = $hppStatus;
         $row->laba = $earnings - $hpp;
 
         return $row;

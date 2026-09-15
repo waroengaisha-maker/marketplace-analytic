@@ -2,13 +2,19 @@
 
 namespace App\Services;
 
+use App\Models\OrderCostAllocation;
 use Carbon\Carbon;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Throwable;
 
 class OrderReportImporter
 {
+    public function __construct(
+        private readonly OrderCostAllocationService $allocation,
+    ) {}
+
     public function import(string $path, int $userId): int
     {
         $rows = IOFactory::load($path)->getSheetByName('orders')->toArray(null, true, true, false);
@@ -82,13 +88,108 @@ class OrderReportImporter
         }
 
         $orderNumbers = array_values(array_unique(array_column($payload, 'order_number')));
+
+        $replacedIdentities = DB::table('marketplace_orders')
+            ->where('user_id', $userId)
+            ->whereIn('order_number', $orderNumbers)
+            ->pluck('line_identity');
+
+        OrderCostAllocation::query()
+            ->where('user_id', $userId)
+            ->whereIn('order_line_identity', $replacedIdentities)
+            ->delete();
+
         DB::table('marketplace_orders')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
 
         foreach (array_chunk($payload, 500) as $chunk) {
             DB::table('marketplace_orders')->insert($chunk);
         }
 
-        return count($payload);
+        foreach ($payload as $line) {
+            $transactionAt = $this->allocationDate($line);
+            if ($transactionAt === null) {
+                continue;
+            }
+
+            $this->allocation->allocateForOrderLine(
+                $userId,
+                $line['line_identity'],
+                $transactionAt,
+                [
+                    'shopee_product_id' => $line['parent_sku'],
+                    'shopee_variant_id' => $line['sku_reference'],
+                    'shopee_product_name' => $line['product_name'],
+                    'shopee_variant_name' => $line['variation_name'],
+                ],
+                $line['quantity'] ?? 0,
+                $line['returned_quantity'] ?? 0,
+            );
+        }
+
+        return $this->persist($payload, $userId);
+    }
+
+    /**
+     * Persists pre-built order line rows with the same replace-per-order-number
+     * semantics the Excel import uses. Reused by the Shopee API promotion path
+     * so external callers share this exact persistence contract.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    public function persist(array $rows, int $userId): int
+    {
+        $orderNumbers = array_values(array_unique(array_column($rows, 'order_number')));
+
+        $replacedIdentities = DB::table('marketplace_orders')
+            ->where('user_id', $userId)
+            ->whereIn('order_number', $orderNumbers)
+            ->pluck('line_identity');
+
+        OrderCostAllocation::query()
+            ->where('user_id', $userId)
+            ->whereIn('order_line_identity', $replacedIdentities)
+            ->delete();
+
+        DB::table('marketplace_orders')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
+
+        foreach (array_chunk($rows, 500) as $chunk) {
+            DB::table('marketplace_orders')->insert($chunk);
+        }
+
+        foreach ($rows as $line) {
+            $transactionAt = $this->allocationDate($line);
+            if ($transactionAt === null) {
+                continue;
+            }
+
+            $this->allocation->allocateForOrderLine(
+                $userId,
+                $line['line_identity'],
+                $transactionAt,
+                [
+                    'shopee_product_id' => $line['parent_sku'],
+                    'shopee_variant_id' => $line['sku_reference'],
+                    'shopee_product_name' => $line['product_name'],
+                    'shopee_variant_name' => $line['variation_name'],
+                ],
+                $line['quantity'] ?? 0,
+                $line['returned_quantity'] ?? 0,
+            );
+        }
+
+        return count($rows);
+    }
+
+    private function allocationDate(array $line): ?CarbonImmutable
+    {
+        foreach (['order_created_at', 'payment_at', 'shipped_at', 'completed_at'] as $column) {
+            $value = $line[$column] ?? null;
+            if ($value !== null) {
+                return CarbonImmutable::parse($value);
+            }
+        }
+
+        return null;
     }
 
     private function row(array $headers, array $values): array

@@ -18,45 +18,73 @@ use Inertia\Response;
 
 class UserController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
         abort_unless(request()->user()?->isSuperAdmin(), 403);
 
         return Inertia::render('Admin/Users/Index', [
-            ...$this->userProps(UserRole::Admin),
+            ...$this->userProps(UserRole::Admin, $request),
             'canManageRoles' => true,
         ]);
     }
 
-    public function access(): Response
+    public function access(Request $request): Response
     {
-        return Inertia::render('Admin/Users/Access', $this->userProps(UserRole::User));
+        return Inertia::render('Admin/Users/Access', $this->userProps(UserRole::User, $request));
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function userProps(UserRole $role): array
+    private function userProps(UserRole $role, Request $request): array
     {
+        $query = User::query()->where('role', $role->value);
+        $search = trim((string) $request->query('search'));
+
+        if ($search !== '') {
+            $like = '%'.addcslashes($search, '%_\\').'%';
+            $query->where(function ($query) use ($like): void {
+                foreach (['name', 'email', 'username', 'phone'] as $field) {
+                    $query->orWhere($field, 'like', $like);
+                }
+
+                $query->orWhere('role', 'like', $like);
+            });
+        }
+
+        $sortField = match ((string) $request->query('sort_field')) {
+            'email' => 'email',
+            'username' => 'username',
+            'role' => 'role',
+            'status' => 'account_status',
+            'subscription_status' => 'subscription_status',
+            'payment_status' => 'payment_status',
+            'trial_ends_at' => 'trial_ends_at',
+            default => 'name',
+        };
+        $sortOrder = strtolower((string) $request->query('sort_order')) === 'desc' ? 'desc' : 'asc';
+        $perPage = min(max((int) $request->query('per_page', 25), 10), 100);
+
+        $users = $query
+            ->orderBy($sortField, $sortOrder)
+            ->paginate($perPage)
+            ->withQueryString();
+
         return [
-            'users' => User::query()
-                ->where('role', $role->value)
-                ->latest()
-                ->paginate(25)
-                ->through(fn (User $user): array => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'username' => $user->username,
-                    'phone' => $user->phone,
-                    'role' => $user->role->value,
-                    'status' => $user->account_status->value,
-                    'subscription_status' => $user->subscription_status->value,
-                    'payment_status' => $user->payment_status->value,
-                    'trial_ends_at' => $user->trial_ends_at?->toIso8601String(),
-                    'subscription_ends_at' => $user->subscription_ends_at?->toIso8601String(),
-                    'is_admin' => $user->isAdmin(),
-                ]),
+            'users' => $users->through(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'username' => $user->username,
+                'phone' => $user->phone,
+                'role' => $user->role->value,
+                'status' => $user->account_status->value,
+                'subscription_status' => $user->subscription_status->value,
+                'payment_status' => $user->payment_status->value,
+                'trial_ends_at' => $user->trial_ends_at?->toIso8601String(),
+                'subscription_ends_at' => $user->subscription_ends_at?->toIso8601String(),
+                'is_admin' => $user->isAdmin(),
+            ]),
             'trialDays' => config('subscriptions.trial_days'),
         ];
     }

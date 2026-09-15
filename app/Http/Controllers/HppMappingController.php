@@ -4,8 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\MasterProduct;
 use App\Models\ShopeeProductMapping;
+use App\Services\MasterProductCatalogService;
+use App\Services\OrderHppSyncService;
 use App\Services\ShopeeProductMappingService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -14,44 +18,41 @@ class HppMappingController extends Controller
 {
     public function index(Request $request, ShopeeProductMappingService $mappingService)
     {
-        $templateOptions = MasterProduct::query()
-            ->forUser($request->user()->id)
-            ->active()
-            ->with([
-                'units' => fn ($query) => $query->orderBy('conversion_to_base'),
-                'hppRecords' => fn ($query) => $query->orderByDesc('effective_from'),
-            ])
-            ->orderBy('template_name')
-            ->orderBy('template_item_code')
-            ->get()
-            ->map(function (MasterProduct $product): array {
-                $units = $product->units
-                    ->map(function ($unit): array {
-                        $latestHpp = $product->hppRecords->firstWhere('master_unit_id', $unit->id);
+        $templateOptions = $this->buildTemplateOptions($request->user()->id);
 
-                        return [
-                            'value' => $unit->unit_code,
-                            'label' => $unit->unit_code.' / '.($unit->conversion_to_base ?? 1),
-                            'code' => $unit->unit_code,
-                            'conversion' => (float) ($unit->conversion_to_base ?? 1),
-                            'hpp_amount' => $latestHpp !== null ? (float) $latestHpp->hpp_amount : 0,
-                        ];
-                    })
-                    ->values()
-                    ->all();
+        $rows = $this->resolvedRows($request, $mappingService);
+        $rows = $this->filterRows($rows, $request);
+        $rows = $this->sortRows($rows, $request);
 
-                $templateHpp = $product->hppRecords->sortByDesc('effective_from')->first();
+        $total = $rows->count();
+        $perPage = min(max((int) $request->query('per_page', 25), 10), 100);
+        $page = max((int) $request->query('page', 1), 1);
+        $current = $rows->forPage($page, $perPage)->values()->all();
 
-                return [
-                    'value' => $product->template_item_code,
-                    'label' => trim((string) ($product->template_name ?? $product->template_item_code)).' — '.$product->template_item_code,
-                    'hpp_amount' => $templateHpp !== null ? (float) $templateHpp->hpp_amount : 0,
-                    'units' => $units,
-                ];
-            })
-            ->values()
-            ->all();
+        return Inertia::render('Products/HppMapping', [
+            'templateOptions' => $templateOptions,
+            'rows' => $current,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page' => $perPage,
+                'last_page' => max((int) ceil($total / $perPage), 1),
+                'total' => $total,
+            ],
+        ]);
+    }
 
+    public function reallocate(Request $request, OrderHppSyncService $service): JsonResponse
+    {
+        $counts = $service->sync($request->user()->id);
+
+        return response()->json($counts);
+    }
+
+    /**
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function resolvedRows(Request $request, ShopeeProductMappingService $mappingService): Collection
+    {
         $orderRows = DB::table('marketplace_orders')
             ->selectRaw('MAX(id) as id, product_name as shopee_product_name, variation_name as shopee_variant_name, parent_sku as shopee_product_id, sku_reference as shopee_variant_id')
             ->where('user_id', $request->user()->id)
@@ -84,7 +85,7 @@ class HppMappingController extends Controller
             ->with(['product', 'unit'])
             ->get();
 
-        $rows = $resolvedRows->map(function ($entry): array {
+        return $resolvedRows->map(function ($entry): array {
             $orderRow = $entry['orderRow'];
             $resolved = $entry['resolved'];
             $mapping = $resolved['mapping'] ?? null;
@@ -125,12 +126,106 @@ class HppMappingController extends Controller
                 'confidence' => (float) ($mapping?->match_confidence ?? 0),
                 'status' => $status,
             ];
-        })->values()->all();
+        });
+    }
 
-        return Inertia::render('Products/HppMapping', [
-            'templateOptions' => $templateOptions,
-            'rows' => $rows,
+    /**
+     * @param  Collection<int, array<string, mixed>>  $rows
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function filterRows(Collection $rows, Request $request): Collection
+    {
+        $search = strtolower(trim((string) $request->query('search')));
+        $status = (string) $request->query('status');
+
+        if ($search !== '') {
+            $rows = $rows->filter(function (array $row) use ($search): bool {
+                return str_contains(strtolower(implode(' ', [
+                    $row['productName'],
+                    $row['variationName'],
+                    $row['shopeeProductId'],
+                    $row['shopeeVariantId'],
+                    $row['candidate'],
+                ])), $search);
+            })->values();
+        }
+
+        if ($status !== '' && $status !== 'all') {
+            $rows = $rows->filter(fn (array $row): bool => $row['autoMatch'] === $status)->values();
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  Collection<int, array<string, mixed>>  $rows
+     * @return Collection<int, array<string, mixed>>
+     */
+    private function sortRows(Collection $rows, Request $request): Collection
+    {
+        $allowed = ['productName', 'variationName', 'autoMatch', 'candidate', 'unit'];
+        $field = (string) $request->query('sort_field', 'productName');
+        $descending = strtolower((string) $request->query('sort_order', 'asc')) === 'desc';
+
+        if (! in_array($field, $allowed, true)) {
+            $field = 'productName';
+        }
+
+        return $rows->sortBy(fn (array $row): string => (string) ($row[$field] ?? ''), SORT_STRING, $descending)->values();
+    }
+
+    public function syncTemplateCatalog(Request $request, MasterProductCatalogService $catalog): JsonResponse
+    {
+        $result = $catalog->syncFromTemplateRows($request->user()->id);
+
+        return response()->json([
+            'ok' => $result['ok'],
+            'created' => $result['created'],
+            'existing' => $result['existing'],
+            'errors' => $result['errors'],
+            'templateOptions' => $this->buildTemplateOptions($request->user()->id),
         ]);
+    }
+
+    private function buildTemplateOptions(int $userId): array
+    {
+        return MasterProduct::query()
+            ->forUser($userId)
+            ->active()
+            ->with([
+                'units' => fn ($query) => $query->orderBy('conversion_to_base'),
+                'hppRecords' => fn ($query) => $query->orderByDesc('effective_from'),
+            ])
+            ->orderBy('template_name')
+            ->orderBy('template_item_code')
+            ->get()
+            ->map(function (MasterProduct $product): array {
+                $units = $product->units
+                    ->map(function ($unit) use ($product): array {
+                        $latestHpp = $product->hppRecords->firstWhere('master_unit_id', $unit->id);
+
+                        return [
+                            'value' => $unit->unit_code,
+                            'label' => $unit->unit_code.' / '.($unit->conversion_to_base ?? 1),
+                            'code' => $unit->unit_code,
+                            'conversion' => (float) ($unit->conversion_to_base ?? 1),
+                            'hpp_amount' => $latestHpp !== null ? (float) $latestHpp->hpp_amount : 0,
+                        ];
+                    })
+                    ->values()
+                    ->all();
+
+                $templateHpp = $product->hppRecords->sortByDesc('effective_from')->first();
+
+                return [
+                    'value' => $product->template_item_code,
+                    'label' => trim((string) ($product->template_name ?? $product->template_item_code)).' — '.$product->template_item_code,
+                    'hpp_amount' => $templateHpp !== null ? (float) $templateHpp->hpp_amount : 0,
+                    'units' => $units,
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     public function store(Request $request, ShopeeProductMappingService $mappingService)

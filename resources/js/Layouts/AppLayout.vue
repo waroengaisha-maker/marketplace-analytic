@@ -136,6 +136,12 @@ const navigation = computed(() => [
         ],
     },
     {
+        label: 'Integrations',
+        items: [
+            { name: 'Shopee API', href: '/integrations/shopee-api', icon: 'pi pi-link', color: 'text-slate-400' },
+        ],
+    },
+    {
         label: 'Analytics',
         items: [
             { name: 'Sales', href: '/analytics/sales', icon: 'pi pi-chart-bar', color: 'text-slate-400' },

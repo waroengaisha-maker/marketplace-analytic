@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\OrderCostAllocation;
 use App\Models\ShopeeProductMapping;
 use App\Models\User;
 use App\Services\MasterProductCatalogService;
@@ -452,6 +453,81 @@ class MasterHppDomainTest extends TestCase
         $this->assertSame($productB->id, $resolvedB['mapping']->master_product_id);
     }
 
+    public function test_truncated_identity_is_deterministic_when_unique(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->registerProduct($user, 'IT7001', 'Produk Nama Sangat Panjang Sekali');
+
+        $longName = str_repeat('X', 400);
+        $longVariant = str_repeat('Y', 400);
+
+        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+            'shopee_product_name' => $longName,
+            'shopee_variant_name' => $longVariant,
+            'manual_override_by' => $user->id,
+        ]);
+
+        $stored = ShopeeProductMapping::query()->forUser($user->id)->first();
+        $this->assertSame(255, mb_strlen($stored->normalized_shopee_name));
+        $this->assertNotSame($longName.'|'.$longVariant, $stored->normalized_shopee_name);
+
+        $resolved = $this->mapping->resolve($user->id, [
+            'shopee_product_name' => $longName,
+            'shopee_variant_name' => $longVariant,
+        ]);
+
+        $this->assertSame('matched', $resolved['status']);
+        $this->assertSame('manual', $resolved['match_method']);
+        $this->assertSame($product->id, $resolved['mapping']->master_product_id);
+    }
+
+    public function test_truncated_identity_collision_returns_ambiguous_not_arbitrary(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT7002', 'Produk A Collision');
+        $productB = $this->registerProduct($user, 'IT7003', 'Produk B Collision');
+
+        $longName = str_repeat('X', 400);
+
+        ShopeeProductMapping::query()->create([
+            'user_id' => $user->id,
+            'master_product_id' => $productA->id,
+            'master_unit_id' => $productA->baseUnit->id,
+            'shopee_product_id' => 'SP-COLLIDE-1',
+            'shopee_variant_id' => 'SV-COLLIDE-1',
+            'shopee_product_name' => $longName,
+            'shopee_variant_name' => 'Varian Alpha Panjang Sekali',
+            'normalized_shopee_name' => mb_substr(strtolower($longName), 0, 255),
+            'match_method' => 'manual',
+            'match_confidence' => 1.00,
+            'is_active' => true,
+            'ambiguous' => false,
+        ]);
+
+        ShopeeProductMapping::query()->create([
+            'user_id' => $user->id,
+            'master_product_id' => $productB->id,
+            'master_unit_id' => $productB->baseUnit->id,
+            'shopee_product_id' => 'SP-COLLIDE-2',
+            'shopee_variant_id' => 'SV-COLLIDE-2',
+            'shopee_product_name' => $longName,
+            'shopee_variant_name' => 'Varian Beta Panjang Sekali Berbeda',
+            'normalized_shopee_name' => mb_substr(strtolower($longName), 0, 255),
+            'match_method' => 'manual',
+            'match_confidence' => 1.00,
+            'is_active' => true,
+            'ambiguous' => false,
+        ]);
+
+        $resolved = $this->mapping->resolve($user->id, [
+            'shopee_product_name' => $longName,
+        ]);
+
+        $this->assertSame('ambiguous', $resolved['status']);
+        $this->assertNull($resolved['mapping'] ?? null);
+        $this->assertCount(2, $resolved['candidates']);
+    }
+
     public function test_manual_override_has_priority_over_exact_and_normalized_matches(): void
     {
         $user = User::factory()->create();
@@ -530,5 +606,477 @@ class MasterHppDomainTest extends TestCase
         $this->assertSame('ok', $allocation->cost_status);
         $this->assertSame('36000.00', (string) $allocation->total_hpp);
         $this->assertSame($allocation->id, $sameAllocation->id);
+    }
+
+    public function test_end_to_end_exact_mapping_allocates_hpp(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->registerProduct($user, 'IT-E2E-1', 'Teh Botol E2E');
+
+        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+            'shopee_product_id' => 'SP-E2E-1',
+            'shopee_variant_id' => 'SV-E2E-1',
+            'shopee_product_name' => 'Teh Botol E2E',
+            'shopee_variant_name' => 'Original',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-E2E-1', CarbonImmutable::parse('2026-08-10 10:00:00'), [
+            'shopee_product_id' => 'SP-E2E-1',
+            'shopee_variant_id' => 'SV-E2E-1',
+            'shopee_product_name' => 'Teh Botol E2E',
+            'shopee_variant_name' => 'Original',
+        ], 3, 1);
+
+        $this->assertSame('ok', $allocation->cost_status);
+        $this->assertSame('LINE-E2E-1', $allocation->order_line_identity);
+        $this->assertSame($product->id, $allocation->master_product_id);
+        $this->assertSame($product->baseUnit->id, $allocation->master_unit_id);
+        $this->assertSame('2.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('20000.00', (string) $allocation->total_hpp);
+        $this->assertSame($product->hppRecords()->first()->id, $allocation->effective_hpp_record_id);
+    }
+
+    public function test_end_to_end_manual_mapping_normalized_fallback_allocates_hpp(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->registerProduct($user, 'IT-E2E-2', 'Susu Kedelai E2E');
+
+        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+            'shopee_product_name' => 'Susu Kedelai E2E',
+            'shopee_variant_name' => 'Vanilla',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-E2E-2', CarbonImmutable::parse('2026-08-10 10:00:00'), [
+            'shopee_product_name' => 'SUSU KEDELAI E2E !!!',
+            'shopee_variant_name' => 'VANILLA.',
+        ], 2, 0);
+
+        $this->assertSame('ok', $allocation->cost_status);
+        $this->assertSame($product->id, $allocation->master_product_id);
+        $this->assertSame('20000.00', (string) $allocation->total_hpp);
+    }
+
+    public function test_end_to_end_ambiguous_mapping_produces_no_hpp(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT-E2E-3A', 'Kopi E2E');
+        $productB = $this->registerProduct($user, 'IT-E2E-3B', 'Kopi E2E Lain');
+
+        $identityA = ['shopee_product_name' => 'Kopi E2E', 'shopee_variant_name' => 'Original', 'manual_override_by' => $user->id];
+        $identityB = ['shopee_product_name' => 'Kopi E2E', 'shopee_variant_name' => 'Melati', 'manual_override_by' => $user->id];
+        $this->mapping->createManualMapping($user->id, $productA, $productA->baseUnit->id, $identityA);
+        $this->mapping->createManualMapping($user->id, $productB, $productB->baseUnit->id, $identityB);
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-E2E-3', CarbonImmutable::parse('2026-08-10 10:00:00'), [
+            'shopee_product_name' => 'Kopi E2E',
+        ], 4, 0);
+
+        $this->assertSame('mapping_ambiguous', $allocation->cost_status);
+        $this->assertNull($allocation->master_product_id);
+        $this->assertNull($allocation->master_unit_id);
+        $this->assertNull($allocation->effective_hpp_record_id);
+        $this->assertSame('0.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('0.00', (string) $allocation->total_hpp);
+    }
+
+    public function test_end_to_end_missing_mapping_produces_no_hpp(): void
+    {
+        $user = User::factory()->create();
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-E2E-4', CarbonImmutable::parse('2026-08-10 10:00:00'), [
+            'shopee_product_name' => 'Item Tidak Terdaftar',
+            'shopee_variant_name' => 'Ukuran Kecil',
+        ], 4, 0);
+
+        $this->assertSame('mapping_missing', $allocation->cost_status);
+        $this->assertNull($allocation->master_product_id);
+        $this->assertSame('0.00', (string) $allocation->total_hpp);
+    }
+
+    public function test_end_to_end_missing_hpp_sets_hpp_missing(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->catalog->registerTemplateItem($user->id, [
+            'template_item_code' => 'IT-E2E-5',
+            'template_name' => 'Produk Tanpa HPP',
+            'units' => [[
+                'unit_code' => 'PCS',
+                'unit_name' => 'PCS',
+                'conversion_to_base' => 1,
+            ]],
+        ]);
+
+        $this->assertNull($product->hppRecords()->first());
+
+        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+            'shopee_product_id' => 'SP-E2E-5',
+            'shopee_variant_id' => 'SV-E2E-5',
+            'shopee_product_name' => 'Produk Tanpa HPP',
+            'shopee_variant_name' => 'Regular',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-E2E-5', CarbonImmutable::parse('2026-08-10 10:00:00'), [
+            'shopee_product_id' => 'SP-E2E-5',
+            'shopee_variant_id' => 'SV-E2E-5',
+            'shopee_product_name' => 'Produk Tanpa HPP',
+            'shopee_variant_name' => 'Regular',
+        ], 2, 0);
+
+        $this->assertSame('hpp_missing', $allocation->cost_status);
+        $this->assertSame($product->id, $allocation->master_product_id);
+        $this->assertSame($product->baseUnit->id, $allocation->master_unit_id);
+        $this->assertNull($allocation->effective_hpp_record_id);
+        $this->assertSame('0.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('0.00', (string) $allocation->total_hpp);
+    }
+
+    public function test_zero_hpp_is_valid_and_not_missing(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->catalog->registerTemplateItem($user->id, [
+            'template_item_code' => 'IT-E2E-6',
+            'template_name' => 'Produk Gratis HPP Nol',
+            'units' => [[
+                'unit_code' => 'PCS',
+                'unit_name' => 'PCS',
+                'conversion_to_base' => 1,
+                'hpp_amount' => 0,
+                'effective_from' => '2026-08-01 00:00:00',
+            ]],
+        ]);
+
+        $this->assertNotNull($product->hppRecords()->first());
+        $this->assertSame('0.00', (string) $product->hppRecords()->first()->hpp_amount);
+
+        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+            'shopee_product_id' => 'SP-E2E-6',
+            'shopee_variant_id' => 'SV-E2E-6',
+            'shopee_product_name' => 'Produk Gratis HPP Nol',
+            'shopee_variant_name' => 'Regular',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-E2E-6', CarbonImmutable::parse('2026-08-10 10:00:00'), [
+            'shopee_product_id' => 'SP-E2E-6',
+            'shopee_variant_id' => 'SV-E2E-6',
+            'shopee_product_name' => 'Produk Gratis HPP Nol',
+            'shopee_variant_name' => 'Regular',
+        ], 5, 0);
+
+        $this->assertSame('ok', $allocation->cost_status);
+        $this->assertSame('5.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNotNull($allocation->effective_hpp_record_id);
+    }
+
+    public function test_hpp_effective_to_boundary_is_inclusive(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->registerProduct($user, 'IT-E2E-7', 'Boundary Product');
+
+        $this->catalog->persistHppVersion($product, $product->baseUnit, [
+            'hpp_amount' => 5000,
+            'effective_from' => '2026-08-10 00:00:00',
+            'effective_to' => '2026-08-31 23:59:59',
+            'source_type' => 'template',
+        ]);
+
+        $resolved = $this->catalog->resolveEffectiveHpp($user->id, $product->id, $product->baseUnit->id, CarbonImmutable::parse('2026-08-31 23:59:59'));
+
+        $this->assertNotNull($resolved);
+        $this->assertSame('5000.00', (string) $resolved->hpp_amount);
+
+        $after = $this->catalog->resolveEffectiveHpp($user->id, $product->id, $product->baseUnit->id, CarbonImmutable::parse('2026-09-01 00:00:00'));
+        $this->assertNull($after);
+    }
+
+    public function test_hpp_effective_from_boundary_is_inclusive(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->registerProduct($user, 'IT-E2E-8', 'Boundary From');
+
+        $resolved = $this->catalog->resolveEffectiveHpp($user->id, $product->id, $product->baseUnit->id, CarbonImmutable::parse('2026-08-01 00:00:00'));
+
+        $this->assertNotNull($resolved);
+        $this->assertSame('10000.00', (string) $resolved->hpp_amount);
+    }
+
+    public function test_hpp_version_change_preserves_historical_allocation(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->registerProduct($user, 'IT-E2E-9', 'Produk Historis');
+
+        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+            'shopee_product_id' => 'SP-E2E-9',
+            'shopee_variant_id' => 'SV-E2E-9',
+            'shopee_product_name' => 'Produk Historis',
+            'shopee_variant_name' => 'Regular',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $identity = [
+            'shopee_product_id' => 'SP-E2E-9',
+            'shopee_variant_id' => 'SV-E2E-9',
+            'shopee_product_name' => 'Produk Historis',
+            'shopee_variant_name' => 'Regular',
+        ];
+
+        $historical = $this->allocation->allocateForOrderLine($user->id, 'LINE-HIST-1', CarbonImmutable::parse('2026-08-05 10:00:00'), $identity, 2, 0);
+        $this->assertSame('20000.00', (string) $historical->total_hpp);
+
+        $this->catalog->persistHppVersion($product, $product->baseUnit, [
+            'hpp_amount' => 25000,
+            'effective_from' => '2026-08-20 00:00:00',
+            'source_type' => 'template',
+        ]);
+
+        $reprocessed = $this->allocation->allocateForOrderLine($user->id, 'LINE-HIST-1', CarbonImmutable::parse('2026-08-05 10:00:00'), $identity, 2, 0);
+
+        $this->assertSame($historical->id, $reprocessed->id);
+        $this->assertSame('20000.00', (string) $reprocessed->total_hpp);
+        $this->assertSame($historical->effective_hpp_record_id, $reprocessed->effective_hpp_record_id);
+
+        $newLine = $this->allocation->allocateForOrderLine($user->id, 'LINE-HIST-2', CarbonImmutable::parse('2026-08-25 10:00:00'), $identity, 2, 0);
+        $this->assertSame('50000.00', (string) $newLine->total_hpp);
+    }
+
+    public function test_conversion_calculation_uses_base_quantity(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->catalog->registerTemplateItem($user->id, [
+            'template_item_code' => 'IT-E2E-10',
+            'template_name' => 'Multi Unit E2E',
+            'units' => [
+                [
+                    'unit_code' => 'PAK',
+                    'unit_name' => 'PAK',
+                    'conversion_to_base' => 14,
+                    'hpp_amount' => 140000,
+                    'effective_from' => '2026-08-01 00:00:00',
+                ],
+                [
+                    'unit_code' => 'PCS',
+                    'unit_name' => 'PCS',
+                    'conversion_to_base' => 1,
+                    'hpp_amount' => 10000,
+                    'effective_from' => '2026-08-01 00:00:00',
+                ],
+            ],
+        ]);
+
+        $pak = $product->units()->where('unit_code', 'PAK')->first();
+
+        $this->mapping->createManualMapping($user->id, $product, $pak->id, [
+            'shopee_product_id' => 'SP-E2E-10',
+            'shopee_variant_id' => 'SV-E2E-10',
+            'shopee_product_name' => 'Multi Unit E2E',
+            'shopee_variant_name' => 'Grosir',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $allocation = $this->allocation->allocate($user->id, 'LINE-E2E-10', $product->id, $pak->id, $pak->hppRecords()->first()->id, 2, 1);
+
+        $this->assertSame('14.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('140000.00', (string) $allocation->total_hpp);
+        $this->assertSame('10000.000000', (string) $allocation->hpp_per_base_unit);
+    }
+
+    public function test_decimal_precision_preserves_partial_base_amounts(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->catalog->registerTemplateItem($user->id, [
+            'template_item_code' => 'IT-E2E-11',
+            'template_name' => 'Presisi E2E',
+            'units' => [
+                [
+                    'unit_code' => 'BOX',
+                    'unit_name' => 'BOX',
+                    'conversion_to_base' => 3,
+                    'hpp_amount' => 100,
+                    'effective_from' => '2026-08-01 00:00:00',
+                ],
+                [
+                    'unit_code' => 'PCS',
+                    'unit_name' => 'PCS',
+                    'conversion_to_base' => 1,
+                    'hpp_amount' => 33.333333,
+                    'effective_from' => '2026-08-01 00:00:00',
+                ],
+            ],
+        ]);
+
+        $box = $product->units()->where('unit_code', 'BOX')->first();
+        $boxHpp = $box->hppRecords()->first();
+
+        $this->assertSame('33.333333', (string) $boxHpp->hpp_per_base_unit);
+
+        $allocation = $this->allocation->allocate($user->id, 'LINE-E2E-11', $product->id, $box->id, $boxHpp->id, 2, 0);
+
+        $this->assertSame('6.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('200.00', (string) $allocation->total_hpp);
+    }
+
+    public function test_reprocessing_is_idempotent_and_does_not_duplicate(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->registerProduct($user, 'IT-E2E-12', 'Produk Idempoten');
+
+        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+            'shopee_product_id' => 'SP-E2E-12',
+            'shopee_variant_id' => 'SV-E2E-12',
+            'shopee_product_name' => 'Produk Idempoten',
+            'shopee_variant_name' => 'Regular',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $identity = [
+            'shopee_product_id' => 'SP-E2E-12',
+            'shopee_variant_id' => 'SV-E2E-12',
+            'shopee_product_name' => 'Produk Idempoten',
+            'shopee_variant_name' => 'Regular',
+        ];
+
+        $first = $this->allocation->allocateForOrderLine($user->id, 'LINE-E2E-12', CarbonImmutable::parse('2026-08-10 10:00:00'), $identity, 2, 0);
+        $second = $this->allocation->allocateForOrderLine($user->id, 'LINE-E2E-12', CarbonImmutable::parse('2026-08-10 10:00:00'), $identity, 2, 0);
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame(1, OrderCostAllocation::query()->forUser($user->id)->count());
+    }
+
+    public function test_allocation_is_isolated_per_tenant(): void
+    {
+        $userA = User::factory()->create();
+        $userB = User::factory()->create();
+        $productA = $this->registerProduct($userA, 'IT-E2E-13A', 'Aqua E2E');
+        $productB = $this->registerProduct($userB, 'IT-E2E-13B', 'Aqua E2E');
+
+        $identity = [
+            'shopee_product_id' => 'SP-E2E-13',
+            'shopee_variant_id' => 'SV-E2E-13',
+            'shopee_product_name' => 'Aqua E2E',
+            'shopee_variant_name' => 'Regular',
+        ];
+
+        $this->mapping->createManualMapping($userA->id, $productA, $productA->baseUnit->id, $identity + ['manual_override_by' => $userA->id]);
+        $this->mapping->createManualMapping($userB->id, $productB, $productB->baseUnit->id, $identity + ['manual_override_by' => $userB->id]);
+
+        $allocationA = $this->allocation->allocateForOrderLine($userA->id, 'LINE-TENANT-A', CarbonImmutable::parse('2026-08-10 10:00:00'), $identity, 1, 0);
+        $allocationB = $this->allocation->allocateForOrderLine($userB->id, 'LINE-TENANT-B', CarbonImmutable::parse('2026-08-10 10:00:00'), $identity, 1, 0);
+
+        $this->assertSame($productA->id, $allocationA->master_product_id);
+        $this->assertSame($productB->id, $allocationB->master_product_id);
+        $this->assertSame($userA->id, $allocationA->user_id);
+        $this->assertSame($userB->id, $allocationB->user_id);
+        $this->assertSame(1, OrderCostAllocation::query()->forUser($userA->id)->count());
+        $this->assertSame(1, OrderCostAllocation::query()->forUser($userB->id)->count());
+    }
+
+    public function test_mapping_pointing_to_foreign_product_is_not_trusted(): void
+    {
+        $user = User::factory()->create();
+        $otherUser = User::factory()->create();
+        $foreignProduct = $this->registerProduct($otherUser, 'IT-E2E-14C', 'Produk Milik User Lain');
+
+        ShopeeProductMapping::query()->create([
+            'user_id' => $user->id,
+            'master_product_id' => $foreignProduct->id,
+            'master_unit_id' => $foreignProduct->baseUnit->id,
+            'shopee_product_id' => 'SP-E2E-14',
+            'shopee_variant_id' => 'SV-E2E-14',
+            'shopee_product_name' => 'Produk B E2E',
+            'shopee_variant_name' => 'Regular',
+            'normalized_shopee_name' => 'produk b e2e|regular',
+            'match_method' => 'manual',
+            'match_confidence' => 1.00,
+            'is_active' => true,
+            'ambiguous' => false,
+        ]);
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-FOREIGN', CarbonImmutable::parse('2026-08-10 10:00:00'), [
+            'shopee_product_id' => 'SP-E2E-14',
+            'shopee_variant_id' => 'SV-E2E-14',
+            'shopee_product_name' => 'Produk B E2E',
+            'shopee_variant_name' => 'Regular',
+        ], 2, 0);
+
+        $this->assertSame('mapping_missing', $allocation->cost_status);
+        $this->assertNull($allocation->master_product_id);
+        $this->assertNull($allocation->master_unit_id);
+        $this->assertSame('0.00', (string) $allocation->total_hpp);
+    }
+
+    public function test_mapping_with_foreign_unit_is_not_trusted(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT-E2E-15A', 'Kopi A E2E');
+        $productB = $this->registerProduct($user, 'IT-E2E-15B', 'Kopi B E2E');
+
+        ShopeeProductMapping::query()->create([
+            'user_id' => $user->id,
+            'master_product_id' => $productA->id,
+            'master_unit_id' => $productB->baseUnit->id,
+            'shopee_product_id' => 'SP-E2E-15',
+            'shopee_variant_id' => 'SV-E2E-15',
+            'shopee_product_name' => 'Kopi A E2E',
+            'shopee_variant_name' => 'Panjang',
+            'normalized_shopee_name' => 'kopi a e2e|panjang',
+            'match_method' => 'manual',
+            'match_confidence' => 1.00,
+            'is_active' => true,
+            'ambiguous' => false,
+        ]);
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-FOREIGN-UNIT', CarbonImmutable::parse('2026-08-10 10:00:00'), [
+            'shopee_product_id' => 'SP-E2E-15',
+            'shopee_variant_id' => 'SV-E2E-15',
+            'shopee_product_name' => 'Kopi A E2E',
+            'shopee_variant_name' => 'Panjang',
+        ], 2, 0);
+
+        $this->assertSame('mapping_missing', $allocation->cost_status);
+        $this->assertNull($allocation->master_product_id);
+        $this->assertSame('0.00', (string) $allocation->total_hpp);
+    }
+
+    public function test_allocate_rejects_hpp_record_not_belonging_to_product_and_unit(): void
+    {
+        $user = User::factory()->create();
+        $productA = $this->registerProduct($user, 'IT-E2E-16A', 'Item A Cross');
+        $productB = $this->registerProduct($user, 'IT-E2E-16B', 'Item B Cross');
+
+        $foreignHpp = $productB->hppRecords()->first();
+
+        $this->expectException(InvalidArgumentException::class);
+        $this->allocation->allocate($user->id, 'LINE-CROSS', $productA->id, $productA->baseUnit->id, $foreignHpp->id, 1, 0);
+    }
+
+    public function test_refund_returns_product_reduce_allocated_quantity(): void
+    {
+        $user = User::factory()->create();
+        $product = $this->registerProduct($user, 'IT-E2E-17', 'Produk Retur');
+
+        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+            'shopee_product_id' => 'SP-E2E-17',
+            'shopee_variant_id' => 'SV-E2E-17',
+            'shopee_product_name' => 'Produk Retur',
+            'shopee_variant_name' => 'Regular',
+            'manual_override_by' => $user->id,
+        ]);
+
+        $identity = [
+            'shopee_product_id' => 'SP-E2E-17',
+            'shopee_variant_id' => 'SV-E2E-17',
+            'shopee_product_name' => 'Produk Retur',
+            'shopee_variant_name' => 'Regular',
+        ];
+
+        $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-RETUR', CarbonImmutable::parse('2026-08-10 10:00:00'), $identity, 10, 4);
+
+        $this->assertSame('ok', $allocation->cost_status);
+        $this->assertSame('6.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('60000.00', (string) $allocation->total_hpp);
     }
 }

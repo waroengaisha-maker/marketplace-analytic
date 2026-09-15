@@ -58,7 +58,7 @@ class MasterProductHpp extends Model
         return $query
             ->where('effective_from', '<=', $date)
             ->where(function ($subQuery) use ($date): void {
-                $subQuery->whereNull('effective_to')->orWhere('effective_to', '>', $date);
+                $subQuery->whereNull('effective_to')->orWhere('effective_to', '>=', $date);
             });
     }
 }

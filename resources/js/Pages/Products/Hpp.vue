@@ -1,12 +1,11 @@
 <script setup lang="ts">
-import { Head } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
-import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import InputText from 'primevue/inputtext'
 import Tag from 'primevue/tag'
+import { AppDataTable, AppDataTableToolbar, useDataTableContract, type TableColumnMeta } from '@/Components/DataTable'
 
 type ProductRow = {
     code: string
@@ -18,30 +17,58 @@ type ProductRow = {
     match: string
 }
 
+type Pagination = {
+    current_page: number
+    per_page: number
+    last_page: number
+    total: number
+}
+
 const props = defineProps<{
     products: ProductRow[]
+    pagination: Pagination
+    summary: { total: number; active: number; ambiguous: number; missing: number }
 }>()
 
-const search = ref('')
+const allColumns = [
+    ['code', 'Kode Item'],
+    ['name', 'Nama Produk'],
+    ['baseUnit', 'Base Unit'],
+    ['units', 'Multi Satuan'],
+    ['hpp', 'HPP Saat Ini'],
+    ['status', 'Status Mapping'],
+    ['match', 'Match'],
+] as const satisfies readonly TableColumnMeta[]
 
-const filteredProducts = computed(() => {
-    const value = search.value.trim().toLowerCase()
+const { globalFilter, multiSortMeta, isLoading } = useDataTableContract()
+const selectedColumns = ref<TableColumnMeta[]>([...allColumns])
 
-    if (!value) {
-        return props.products
-    }
+function loadData(params: Record<string, unknown> = {}) {
+    router.get('/products/hpp', {
+        page: params.page ?? undefined,
+        per_page: params.per_page ?? undefined,
+        search: globalFilter.value || undefined,
+        sort_field: params.sort_field ?? multiSortMeta.value[0]?.field ?? 'code',
+        sort_order: params.sort_order ?? (multiSortMeta.value[0]?.order === -1 ? 'desc' : 'asc'),
+    }, { preserveScroll: true })
+}
 
-    return props.products.filter((product) => {
-        return [product.code, product.name, product.baseUnit].some((field) => field.toLowerCase().includes(value))
-    })
-})
+function onPage(event: { first: number; rows: number }) {
+    loadData({ page: Math.floor(event.first / event.rows) + 1, per_page: event.rows })
+}
 
-const summary = computed(() => ({
-    total: props.products.length,
-    active: props.products.filter((product) => product.status === 'active').length,
-    ambiguous: props.products.filter((product) => product.status === 'ambiguous').length,
-    missing: props.products.filter((product) => product.status === 'missing').length,
-}))
+function onSort() {
+    loadData({ page: 1 })
+}
+
+function onFilter() {
+    loadData({ page: 1 })
+}
+
+const summary = computed(() => props.summary)
+const totalRecords = computed(() => props.pagination.total)
+const currentPage = computed(() => props.pagination.current_page)
+const perPage = computed(() => props.pagination.per_page)
 
 const statusSeverity = (status: ProductRow['status']) => {
     if (status === 'active') {
@@ -138,51 +165,54 @@ const statusLabel = (status: ProductRow['status']) => {
         </div>
 
         <Card>
-            <template #title>
-                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h2 class="text-xl font-semibold">Produk & HPP</h2>
-                    </div>
-                    <div class="w-full max-w-sm">
-                        <span class="p-input-icon-left w-full">
-                            <i class="pi pi-search" />
-                            <InputText v-model="search" placeholder="Cari KodeItem / NamaItem" class="w-full" />
-                        </span>
-                    </div>
-                </div>
-            </template>
-
             <template #content>
-                <DataTable :value="filteredProducts" striped-rows table-style="min-width: 100%" class="text-sm">
-                    <Column field="code" header="KodeItem" />
-                    <Column field="name" header="Nama Produk" />
-                    <Column field="baseUnit" header="Base Unit" />
-                    <Column header="Multi Satuan">
-                        <template #body="slotProps">
-                            <div class="flex flex-wrap gap-1">
-                                <Tag v-for="unit in slotProps.data.units" :key="`${slotProps.data.code}-${unit.code}`" :value="`${unit.code} (${unit.conversion})`" severity="secondary" />
-                            </div>
-                        </template>
-                    </Column>
-                    <Column field="hpp" header="HPP Saat Ini" />
-                    <Column header="Status Mapping">
-                        <template #body="slotProps">
-                            <Tag :value="statusLabel(slotProps.data.status)" :severity="statusSeverity(slotProps.data.status)" />
-                        </template>
-                    </Column>
-                    <Column header="Match">
-                        <template #body="slotProps">
-                            {{ slotProps.data.match }}
-                        </template>
-                    </Column>
-                    <Column header="Aksi">
-                        <template #body>
-                            <Button severity="secondary" outlined size="small">
-                                Detail
-                            </Button>
-                        </template>
-                    </Column>
-                </DataTable>
+                <AppDataTableToolbar
+                    v-model:global-filter="globalFilter"
+                    v-model:selected-columns="selectedColumns"
+                    :all-columns="allColumns"
+                    search-placeholder="Cari KodeItem / NamaItem..."
+                    @filter="onFilter"
+                />
+                <div class="overflow-hidden rounded-xl border border-surface-200 shadow-sm dark:border-surface-700" style="height: min(70vh, 48rem)">
+                    <AppDataTable
+                        :loading="isLoading"
+                        :value="props.products"
+                        v-model:multi-sort-meta="multiSortMeta"
+                        lazy
+                        :total-records="totalRecords"
+                        :first="(currentPage - 1) * perPage"
+                        data-key="code"
+                        @page="onPage"
+                        @sort="onSort"
+                        @filter="onFilter"
+                        paginator
+                        :rows="perPage"
+                        :rows-per-page-options="[10, 25, 50]"
+                        paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                        current-page-report-template="{first}–{last} dari {totalRecords}"
+                        table-style-min-width="88rem"
+                    >
+                        <template #empty>Tidak ada produk.</template>
+                        <Column v-for="[field, header] in selectedColumns" :key="field" :field="field" :header="header" sortable>
+                            <template #body="slotProps">
+                                <template v-if="field === 'units'">
+                                    <div class="flex flex-wrap gap-1">
+                                        <Tag v-for="unit in slotProps.data.units" :key="`${slotProps.data.code}-${unit.code}`" :value="`${unit.code} (${unit.conversion})`" severity="secondary" />
+                                    </div>
+                                </template>
+                                <Tag v-else-if="field === 'status'" :value="statusLabel(slotProps.data.status)" :severity="statusSeverity(slotProps.data.status)" />
+                                <template v-else>{{ slotProps.data[field] }}</template>
+                            </template>
+                        </Column>
+                        <Column header="Aksi">
+                            <template #body>
+                                <Button severity="secondary" outlined size="small">
+                                    Detail
+                                </Button>
+                            </template>
+                        </Column>
+                    </AppDataTable>
+                </div>
             </template>
         </Card>
     </div>
