@@ -25,7 +25,6 @@ type Pagination = { current_page: number; per_page: number; total: number; last_
 const props = defineProps<{ rows: Row[]; summaryRows: Row[]; pagination: Pagination; hasAppliedFilter: boolean; appliedFrom?: string | null; appliedTo?: string | null }>()
 const hasAppliedFilter = ref(props.hasAppliedFilter)
 const dataTable = ref<DataTableInstance | null>(null)
-const isFullscreen = ref(false)
 const { isLoading } = useDataTableContract()
 const parseDate = (value?: string | null) => value ? new Date(`${value}T00:00:00`) : null
 const fromDate = ref<Date | null>(parseDate(props.appliedFrom))
@@ -343,9 +342,6 @@ async function exportExcel() {
     const toLabel = appliedToDate.value ? localDateKey(appliedToDate.value) : 'akhir'
     XLSX.writeFile(workbook, buildAnalyticsExportFilename(fromLabel, toLabel))
 }
-function toggleFullscreen() {
-    isFullscreen.value = !isFullscreen.value
-}
 function setTotalFeePopoverRef(ref: { toggle: (event: Event) => void } | null, key: string) {
     totalFeePopoverRefs.value[key] = ref
 }
@@ -383,8 +379,8 @@ function onFilter() {
 <template>
     <Head title="Reconciliation" />
     <div class="flex flex-col gap-6">
-        <div v-if="!isFullscreen"><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
-        <Card v-if="!isFullscreen">
+        <div><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
+        <Card>
             <template #content>
                 <div class="flex flex-col gap-4">
                     <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
@@ -455,7 +451,7 @@ function onFilter() {
                 </div>
             </template>
         </Card>
-        <div v-if="!isFullscreen && hasAppliedFilter" class="flex flex-col gap-4">
+        <div v-if="hasAppliedFilter" class="flex flex-col gap-4">
             <section class="flex flex-col gap-3">
                 <div class="flex items-center gap-2">
                     <Tag severity="info" value="Total Semua Status" icon="pi pi-chart-bar" />
@@ -562,32 +558,14 @@ function onFilter() {
                 </div>
             </section>
         </div>
-        <Card v-else-if="!isFullscreen">
+        <Card v-else>
             <template #content>
                 <div class="py-8 text-center text-color-secondary">
                     Pilih periode tanggal, lalu klik <strong>Terapkan</strong> untuk menampilkan data rekonsiliasi.
                 </div>
             </template>
         </Card>
-        <div
-            v-if="hasAppliedFilter"
-            class="min-w-0"
-            :class="isFullscreen ? 'fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-0 p-3 shadow-2xl dark:bg-surface-950 sm:p-4' : 'relative'"
-        >
-            <div v-if="isFullscreen" class="mb-3 flex h-12 shrink-0 items-center justify-between rounded-lg border border-surface-200 bg-surface-0 px-3 dark:border-surface-700 dark:bg-surface-950">
-                <div class="flex items-center gap-2">
-                    <i class="pi pi-window-maximize text-sm text-color-secondary" aria-hidden="true"></i>
-                    <span class="text-sm font-semibold text-color">Fullscreen Rekonsiliasi</span>
-                </div>
-                <Button
-                    label="Keluar Fullscreen"
-                    icon="pi pi-window-minimize"
-                    severity="secondary"
-                    outlined
-                    size="small"
-                    @click="toggleFullscreen"
-                />
-            </div>
+        <div v-if="hasAppliedFilter" class="min-w-0">
             <Toolbar class="mb-3 shrink-0 flex-wrap gap-3 rounded-xl border border-surface-200 bg-surface-0 px-3 py-2 shadow-sm dark:border-surface-700 dark:bg-surface-950">
                 <template #start>
                     <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -640,14 +618,12 @@ function onFilter() {
                 <template #end>
                     <div class="ml-auto flex w-full max-w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
                         <Button label="Export Excel" icon="pi pi-download" severity="secondary" outlined class="h-11 px-3" :disabled="filteredRows.length === 0" @click="exportExcel" />
-                        <!-- <Button label="Export CSV" icon="pi pi-download" severity="secondary" outlined class="h-11 px-3" :disabled="filteredRows.length === 0" @click="exportCsv" /> -->
-                        <!-- <Button :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'" :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'" severity="secondary" outlined class="h-11 px-3" @click="toggleFullscreen" /> -->
                     </div>
                 </template>
             </Toolbar>
             <div
                 class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg  border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-950"
-                :style="{ height: isFullscreen ? '100%' : 'min(70vh, 48rem)' }"
+                style="height: min(70vh, 48rem)"
             >
                 <AppDataTable
                     ref="dataTable"

@@ -11,7 +11,9 @@ use App\Services\IncomeReportImporter;
 use App\Services\MarketplaceReconciliationService;
 use App\Services\OrderReportImporter;
 use App\Services\ReportImportService;
+use App\Services\ReportLineIdentity;
 use App\Services\UploadReportsService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Http\Testing\File;
@@ -629,7 +631,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $userA = User::factory()->create();
         $userB = User::factory()->create();
-        $lineIdentity = \App\Services\ReportLineIdentity::make('ORDER-LINE', str_repeat('x', 64), hash('sha256', 'variant-a'), 250.0, 2);
+        $lineIdentity = ReportLineIdentity::make('ORDER-LINE', str_repeat('x', 64), hash('sha256', 'variant-a'), 250.0, 2);
 
         DB::table('marketplace_orders')->insert($this->order($userA->id, [
             'order_number' => 'ORDER-LINE',
@@ -649,7 +651,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'line_identity' => $lineIdentity,
         ]));
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
 
         DB::table('marketplace_orders')->insert($this->order($userA->id, [
             'order_number' => 'ORDER-LINE-DUPLICATE',
@@ -666,7 +668,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $user = User::factory()->create();
         $productKey = str_repeat('f', 64);
         $variationKey = hash('sha256', 'variant-p');
-        $lineIdentity = \App\Services\ReportLineIdentity::make('ORDER-CANONICAL', $productKey, $variationKey, 100.0, 1);
+        $lineIdentity = ReportLineIdentity::make('ORDER-CANONICAL', $productKey, $variationKey, 100.0, 1);
 
         DB::table('marketplace_orders')->insert($this->order($user->id, [
             'order_number' => 'ORDER-CANONICAL',
@@ -1250,6 +1252,132 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $request->validateResolved();
 
         unlink($path);
+    }
+
+    public function test_consolidated_single_line_income_settles_by_price_identity_without_quantity(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('c', 64);
+        $orderIdentity = ReportLineIdentity::make('26080180C4F1GR', $productKey, null, 12850.0, 4);
+        $incomeIdentity = ReportLineIdentity::make('26080180C4F1GR', $productKey, null, 51400.0, 1);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => '26080180C4F1GR',
+            'product_key' => $productKey,
+            'item_index' => 1936861656,
+            'discounted_price' => 12850,
+            'unit_price' => 12850,
+            'quantity' => 4,
+            'returned_quantity' => 0,
+            'line_identity' => $orderIdentity,
+            'order_created_at' => '2026-08-01 16:21:00',
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => '26080180C4F1GR',
+            'product_key' => $productKey,
+            'item_index' => 1936861656,
+            'variation_key' => null,
+            'product_price' => 51400,
+            'quantity' => 1,
+            'total_income' => 41026,
+            'refund_to_buyer' => 0,
+            'platform_fee' => -3470,
+            'free_shipping_xtra_fee' => -3084,
+            'promo_xtra_service_fee' => -2313,
+            'order_processing_fee' => -1250,
+            'pph22' => -257,
+            'line_identity' => $incomeIdentity,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', '26080180C4F1GR')
+            ->first();
+
+        $this->assertSame('Settled', $row->business_status);
+        $this->assertSame('Grouped Match', $row->settlement_status);
+        $this->assertSame('Grouped', $row->match_method);
+        $this->assertSame(41026.0, (float) $row->total_income);
+        $this->assertSame(51400.0, (float) $row->order_subtotal);
+        $this->assertSame(-3470.0, (float) $row->platform_fee);
+    }
+
+    public function test_multi_variation_order_with_single_income_settles_as_grouped_per_unit_match(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('p', 64);
+        $variationA = str_repeat('v', 64);
+        $variationB = str_repeat('w', 64);
+        $orderIdentityA = ReportLineIdentity::make('2608017GDRU3TU', $productKey, $variationA, 8200.0, 1);
+        $orderIdentityB = ReportLineIdentity::make('2608017GDRU3TU', $productKey, $variationB, 8200.0, 1);
+        $incomeIdentity = ReportLineIdentity::make('2608017GDRU3TU', $productKey, null, 8200.0, 1);
+
+        DB::table('marketplace_orders')->insert([
+
+            $this->order($user->id, [
+                'order_number' => '2608017GDRU3TU',
+                'product_name' => 'Tepung Bumbu Sasa Aneka Varian 210 gr rev4',
+                'product_key' => $productKey,
+                'variation_key' => $variationA,
+                'variation_name' => 'Ayam Krispi',
+                'item_index' => 3783606273,
+                'discounted_price' => 8200,
+                'unit_price' => 8200,
+                'quantity' => 1,
+                'line_identity' => $orderIdentityA,
+                'order_created_at' => '2026-08-01 11:35:00',
+            ]),
+            $this->order($user->id, [
+                'order_number' => '2608017GDRU3TU',
+                'product_name' => 'Tepung Bumbu Sasa Aneka Varian 210 gr rev4',
+                'product_key' => $productKey,
+                'variation_key' => $variationB,
+                'variation_name' => 'Pisang Goreng',
+                'item_index' => 3783606273,
+                'discounted_price' => 8200,
+                'unit_price' => 8200,
+                'quantity' => 1,
+                'line_identity' => $orderIdentityB,
+                'order_created_at' => '2026-08-01 11:35:00',
+            ]),
+        ]);
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => '2608017GDRU3TU',
+            'product_name' => 'Tepung Bumbu Sasa Aneka Varian 210 gr rev4',
+            'product_key' => $productKey,
+            'item_index' => 3783606273,
+            'variation_key' => null,
+            'product_price' => 8200,
+            'quantity' => 1,
+            'total_income' => 6636,
+            'refund_to_buyer' => 0,
+            'platform_fee' => -929,
+            'free_shipping_xtra_fee' => -400,
+            'promo_xtra_service_fee' => -135,
+            'order_processing_fee' => -100,
+            'pph22' => 0,
+            'line_identity' => $incomeIdentity,
+        ]));
+
+        $rows = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', '2608017GDRU3TU')
+            ->orderBy('orders.variation_key')
+            ->get();
+
+        $this->assertCount(2, $rows);
+
+        foreach ($rows as $row) {
+            $this->assertSame('Settled', $row->business_status);
+            $this->assertSame('Grouped Match', $row->settlement_status);
+            $this->assertSame('Grouped', $row->match_method);
+            $this->assertSame('Grouped', $row->match_confidence);
+            $this->assertSame(3318.0, (float) $row->total_income);
+            $this->assertSame(8200.0, (float) $row->order_subtotal);
+            $this->assertSame(-464.5, (float) $row->platform_fee);
+        }
     }
 
     private function order(int $userId, array $overrides = []): array

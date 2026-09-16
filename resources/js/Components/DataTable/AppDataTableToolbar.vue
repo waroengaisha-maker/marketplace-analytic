@@ -66,6 +66,7 @@ const clearButtonClass = 'absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-
                         }"
                     />
                 </div>
+                <slot name="filters" />
                 <slot name="start" />
             </div>
         </template>

@@ -10,13 +10,12 @@ let routerListenersRegistered = false
 
 /**
  * Contract: datatable pages should behave as the Finance/Reconciliation
- * reference page — server-side (lazy) with a fullscreen toggle, multi-sort,
- * and an overlay loading state that follows Inertia visits.
+ * reference page — server-side (lazy) with multi-sort and an overlay loading
+ * state that follows Inertia visits.
  */
 export function useDataTableContract() {
     const globalFilter = ref<string | null>(null)
     const multiSortMeta = ref<{ field: string; order: number }[]>([])
-    const isFullscreen = ref(false)
     const selectedRows = ref<unknown[]>([])
     const isLoading = ref(false)
 
@@ -31,10 +30,6 @@ export function useDataTableContract() {
         router.on('error', () => {
             isLoading.value = false
         })
-    }
-
-    const toggleFullscreen = () => {
-        isFullscreen.value = !isFullscreen.value
     }
 
     const clearGlobalFilter = () => {
@@ -57,10 +52,8 @@ export function useDataTableContract() {
     return {
         globalFilter,
         multiSortMeta,
-        isFullscreen,
         selectedRows,
         isLoading,
-        toggleFullscreen,
         clearGlobalFilter,
         pageToWindow,
         buildGlobalFilters,

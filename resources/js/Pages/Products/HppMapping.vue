@@ -66,7 +66,7 @@ const allColumns = [
     ['note', 'Catatan'],
 ] as const satisfies readonly TableColumnMeta[]
 
-const { globalFilter, multiSortMeta, isLoading, isFullscreen, toggleFullscreen } = useDataTableContract()
+const { globalFilter, multiSortMeta, isLoading, selectedRows } = useDataTableContract()
 const selectedColumns = ref<TableColumnMeta[]>([...allColumns])
 
 const selectedTemplate = ref<Record<number, string | null>>({})
@@ -158,6 +158,9 @@ const csrfToken = () => {
     const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)
     return match ? decodeURIComponent(match[1]) : ''
 }
+
+const syncTemplateTooltip = 'Sinkronkan katalog template item dari template_item_rows (import template item) ke master produk. Item baru dibuat, item yang sudah ada dipertahankan.'
+const reallocateTooltip = 'Terapkan HPP dari template ke seluruh baris order yang sudah punya mapping, sehingga nilai HPP masuk ke perhitungan laba di halaman Rekonsiliasi. Baris tanpa mapping/catatan tidak ikut.'
 
 const syncTemplateCatalog = async () => {
     if (syncingCatalog.value) return
@@ -366,22 +369,29 @@ const visibleRows = computed(() => props.rows || [])
     <Head title="HPP Mapping" />
 
     <div class="flex w-full min-w-0 flex-col gap-6">
-        <div v-if="!isFullscreen" class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Master HPP</p>
                 <h1 class="mt-1 text-3xl font-bold text-slate-900">Manual Mapping Shopee</h1>
             </div>
             <div class="flex flex-wrap items-center gap-2">
-                <Button size="small" severity="secondary" outlined :loading="syncingCatalog" :disabled="syncingCatalog" @click="syncTemplateCatalog">
-                    {{ syncingCatalog ? 'Menyinkronkan...' : 'Sync Template Items' }}
-                </Button>
+                <div class="flex items-center gap-1.5">
+                    <Button size="small" severity="secondary" outlined :loading="syncingCatalog" :disabled="syncingCatalog" @click="syncTemplateCatalog">
+                        {{ syncingCatalog ? 'Menyinkronkan...' : 'Sync Template Items' }}
+                    </Button>
+                    <i
+                        v-tooltip.left="syncTemplateTooltip"
+                        class="pi pi-question-circle text-base text-slate-400 transition-colors hover:text-slate-600"
+                        aria-hidden="true"
+                    />
+                </div>
                 <Button @click="saveMappings(props.rows)" :loading="saving" :disabled="saving">
                     Simpan Manual Override
                 </Button>
             </div>
         </div>
 
-        <Card v-if="!isFullscreen">
+        <Card>
             <template #content>
                 <div v-if="catalogSyncMessage" class="mb-3 text-sm">{{ catalogSyncMessage }}</div>
                 <div v-if="reallocationMessage" class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">{{ reallocationMessage }}</div>
@@ -391,50 +401,15 @@ const visibleRows = computed(() => props.rows || [])
                 <div v-if="templateOptionsList.length === 0" class="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
                     Belum ada template item. Periksa hasil import template item (baris pada template_item_rows) untuk akun ini.
                 </div>
-                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                     <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                         <span class="rounded-full bg-slate-100 px-2.5 py-1 font-medium">{{ props.pagination.total }} baris</span>
-                    </div>
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-end">
-                        <div class="w-full sm:w-52">
-                            <label class="mb-1 block text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Status Match</label>
-                            <Select
-                                v-model="statusFilter"
-                                :options="statusFilterOptions"
-                                option-label="label"
-                                option-value="value"
-                                class="w-full"
-                                @change="onFilter"
-                            />
-                        </div>
-                        <div class="flex items-end gap-2">
-                            <Button size="small" severity="secondary" :loading="reallocating" :disabled="reallocating" @click="reallocateHpp">
-                                {{ reallocating ? 'Menerapkan HPP...' : 'Terapkan HPP ke Order' }}
-                            </Button>
-                        </div>
                     </div>
                 </div>
             </template>
         </Card>
 
-        <div
-            class="min-w-0"
-            :class="isFullscreen ? 'fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-0 p-3 shadow-2xl dark:bg-surface-950 sm:p-4' : 'relative'"
-        >
-            <div v-if="isFullscreen" class="mb-3 flex h-12 shrink-0 items-center justify-between rounded-lg border border-surface-200 bg-surface-0 px-3 dark:border-surface-700 dark:bg-surface-950">
-                <div class="flex items-center gap-2">
-                    <i class="pi pi-window-maximize text-sm text-color-secondary" aria-hidden="true"></i>
-                    <span class="text-sm font-semibold text-color">Fullscreen HPP Mapping</span>
-                </div>
-                <Button
-                    label="Keluar Fullscreen"
-                    icon="pi pi-window-minimize"
-                    severity="secondary"
-                    outlined
-                    size="small"
-                    @click="toggleFullscreen"
-                />
-            </div>
+        <div class="min-w-0">
             <AppDataTableToolbar
                 v-model:global-filter="globalFilter"
                 v-model:selected-columns="selectedColumns"
@@ -442,25 +417,48 @@ const visibleRows = computed(() => props.rows || [])
                 search-placeholder="Cari nama produk / variasi / SKU..."
                 @filter="onFilter"
             >
+                <template #filters>
+                    <div class="w-full sm:w-56">
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Status Match</label>
+                        <Select
+                            v-model="statusFilter"
+                            :options="statusFilterOptions"
+                            option-label="label"
+                            option-value="value"
+                            class="w-full"
+                            @change="onFilter"
+                        />
+                    </div>
+                </template>
                 <template #actions>
+                    <div class="flex items-center gap-1.5">
+                        <Button
+                            size="small"
+                            severity="secondary"
+                            :loading="reallocating"
+                            :disabled="reallocating"
+                            @click="reallocateHpp"
+                        >
+                            {{ reallocating ? 'Menerapkan HPP...' : 'Terapkan HPP ke Order' }}
+                        </Button>
+                        <i
+                            v-tooltip.left="reallocateTooltip"
+                            class="pi pi-question-circle text-base text-slate-400 transition-colors hover:text-slate-600"
+                            aria-hidden="true"
+                        />
+                    </div>
                     <Button label="Export Excel" icon="pi pi-download" severity="secondary" outlined class="h-11 px-3" :disabled="visibleRows.length === 0" @click="exportExcel" />
-                    <Button
-                        :label="isFullscreen ? 'Keluar Fullscreen' : 'Fullscreen'"
-                        :icon="isFullscreen ? 'pi pi-window-minimize' : 'pi pi-window-maximize'"
-                        severity="secondary"
-                        outlined
-                        class="h-11 px-3"
-                        @click="toggleFullscreen"
-                    />
                 </template>
             </AppDataTableToolbar>
             <div
                 class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border-surface-200 bg-surface-0 dark:border-surface-700 dark:bg-surface-950"
-                :style="{ height: isFullscreen ? '100%' : 'min(70vh, 48rem)' }"
+                style="height: min(70vh, 48rem)"
             >
                 <AppDataTable
                     :loading="isLoading"
                     :value="visibleRows"
+                    v-model:selection="selectedRows"
+                    selection-mode="multiple"
                     v-model:multi-sort-meta="multiSortMeta"
                     lazy
                     :total-records="props.pagination.total"
