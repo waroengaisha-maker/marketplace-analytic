@@ -204,7 +204,7 @@ class MarketplaceReconciliationService
     }
 
     /**
-     * Aggregated totals (subtotal, total_fee, penghasilan, hpp, laba) across
+     * Aggregated totals (subtotal, total_fee, tax, penghasilan, hpp, laba) across
      * all filtered orders, ignoring pagination. Used for summary cards that
      * must reflect the active date range / search.
      *
@@ -218,6 +218,7 @@ class MarketplaceReconciliationService
             ->selectRaw('
                 COALESCE(SUM(g.subtotal), 0) AS subtotal,
                 COALESCE(SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing), 0) AS total_fee,
+                COALESCE(SUM(g.tax), 0) AS tax,
                 COALESCE(SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax), 0) AS penghasilan,
                 COALESCE(SUM(g.hpp), 0) AS hpp,
                 COALESCE((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp), 0) AS laba
@@ -227,6 +228,7 @@ class MarketplaceReconciliationService
         return [
             'subtotal' => (float) ($totals->subtotal ?? 0),
             'total_fee' => (float) ($totals->total_fee ?? 0),
+            'tax' => (float) ($totals->tax ?? 0),
             'penghasilan' => (float) ($totals->penghasilan ?? 0),
             'hpp' => (float) ($totals->hpp ?? 0),
             'laba' => (float) ($totals->laba ?? 0),
@@ -261,6 +263,15 @@ class MarketplaceReconciliationService
                 SUM(g.tax) AS tax,
                 SUM(g.hpp) AS hpp,
                 GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') AS statuses,
+                (CASE
+                    WHEN GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') LIKE '%Invalid%' THEN 0
+                    WHEN GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') LIKE '%Cancelled%' THEN 1
+                    WHEN GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') LIKE '%Returned%' THEN 2
+                    WHEN GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') LIKE '%Refunded%' THEN 3
+                    WHEN GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') LIKE '%Partially Refunded%' THEN 4
+                    WHEN GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') LIKE '%Unmatched%' THEN 5
+                    ELSE 6
+                END) AS status_rank,
                 (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
                 (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
                 ((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
@@ -270,12 +281,16 @@ class MarketplaceReconciliationService
         $allowlist = [
             'order_number' => 'g.order_number',
             'order_created_at' => 'order_created_at',
+            'buyer_username' => 'buyer_username',
+            'business_status' => 'status_rank',
             'line_count' => 'line_count',
+            'net_quantity' => 'net_quantity',
             'subtotal' => 'subtotal',
             'admin' => 'admin',
             'shipping' => 'shipping',
             'promo' => 'promo',
             'processing' => 'processing',
+            'total_fee' => 'total_fee',
             'tax' => 'tax',
             'hpp' => 'hpp',
             'penghasilan' => 'penghasilan',
@@ -358,6 +373,72 @@ class MarketplaceReconciliationService
             })
             ->values()
             ->all();
+    }
+
+    /**
+     * Per-item export rows for every filtered order (used by the Excel
+     * "Detail Per Item" sheet). Reuses lineScope so dates, search, and
+     * status filters match the list page exactly.
+     *
+     * @param  array<string, mixed>  $parameters
+     * @return array<int, array<string, mixed>>
+     */
+    public function orderExportLines(int $userId, ?string $from, ?string $to, array $parameters): array
+    {
+        $lines = DB::query()
+            ->fromSub($this->lineScope($userId, $from, $to, $parameters), 'l')
+            ->selectRaw('
+                l.order_number,
+                l.order_created_at,
+                l.buyer_username,
+                l.order_product_name,
+                l.variation_name,
+                l.item_index,
+                l.quantity,
+                l.returned_quantity,
+                (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
+                l.discounted_price,
+                (COALESCE(l.discounted_price, 0) * (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END)) AS subtotal,
+                (-ABS(COALESCE(l.platform_fee, 0))) AS admin,
+                (-ABS(COALESCE(l.free_shipping_xtra_fee, 0))) AS shipping,
+                (-ABS(COALESCE(l.promo_xtra_service_fee, 0))) AS promo,
+                (-ABS(COALESCE(l.order_processing_fee, 0))) AS processing,
+                (-ABS(COALESCE(l.pph22, 0))) AS tax,
+                l.cost_status,
+                l.total_hpp
+            ')
+            ->orderBy('l.order_number')
+            ->orderBy('l.item_index')
+            ->get();
+
+        return $lines->map(function (object $row): array {
+            $costStatus = trim((string) ($row->cost_status ?? ''));
+            $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
+            $totalFee = (float) $row->admin + (float) $row->shipping + (float) $row->promo + (float) $row->processing;
+            $penghasilan = (float) $row->subtotal + $totalFee + (float) $row->tax;
+            $hpp = $hppStatus === 'ok' ? (float) ($row->total_hpp ?? 0) : 0.0;
+
+            return [
+                'order_number' => (string) $row->order_number,
+                'order_created_at' => $row->order_created_at,
+                'buyer_username' => $row->buyer_username,
+                'order_product_name' => $row->order_product_name,
+                'variation_name' => $row->variation_name,
+                'net_quantity' => (float) $row->net_quantity,
+                'discounted_price' => (float) ($row->discounted_price ?? 0),
+                'order_subtotal' => (float) $row->subtotal,
+                'admin' => (float) $row->admin,
+                'shipping' => (float) $row->shipping,
+                'promo' => (float) $row->promo,
+                'processing' => (float) $row->processing,
+                'tax' => (float) $row->tax,
+                'total_fee' => $totalFee,
+                'penghasilan' => $penghasilan,
+                'hpp' => $hpp,
+                'hpp_status' => $hppStatus,
+                'laba' => $penghasilan - $hpp,
+            ];
+        })->all();
     }
 
     public function dashboardStats(int $userId, ?string $from = null, ?string $to = null): array

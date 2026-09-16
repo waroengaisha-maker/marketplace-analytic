@@ -29,9 +29,46 @@ Konsep utama: **selalu server-side** (DataTable `lazy`). Pola:
 1. **Pencarian global** — `AppDataTableToolbar` dengan `v-model:global-filter` + `@filter`.
 2. **Column picker** — `allColumns` (`[field, header][]`) + `selectedColumns` ref; render kolom lewat `v-for="[field, header] in selectedColumns"`.
 3. **Pagination** — `paginator`, `:rows`, `:rows-per-page-options`, `paginator-template` dan `current-page-report-template` seperti referensi.
-4. **Export Excel** yang konsisten dengan halaman referensi (tombol di slot `actions` toolbar).
+4. **Export Excel** — konten Wajib persis model halaman referensi Reconciliation (lihat bagian "Export Excel").
 5. **Empty state** — slot `#empty` dengan pesan jelas.
 6. Kolom aksi memakai `:exportable="false"` bila tidak ikut export.
+
+> **Varian "filter card + toolbar minimal" (pola Orders):** halaman boleh memindahkan seluruh filter (pencarian, filter domain, column picker) ke satu Card bersama filter periode, dan memuat data **hanya setelah** tombol "Terapkan" diklik (bukan otomatis per perubahan input). Dalam pola ini toolbar DataTable cukup berisi tombol Export Excel. Aturan tetap: pakai `useDataTableContract()` untuk `globalFilter`/`multiSortMeta`, dan pisahkan state "draft" (input) dari state "applied" (yang benar-benar dikirim ke loadData).
+
+## Export Excel (wajib)
+
+Export Wajib mengikuti persis model halaman referensi Finance/Reconciliation:
+
+- Nilai baris adalah **nilai mentah/raw** (`row[field] ?? ''`), bukan string terformat (`formatNominal` hanya untuk tampilan di tabel).
+- Sheet pertama memakai header dari kolom yang dipilih user (`selectedColumns`).
+- Kolom status HPP diexport memakai label (via `hppStatusLabel`).
+- Jika ada data rincian per item, tambahkan **satu sheet tambahan** (mis. "Detail Per Item") berisi baris per item dari semua baris terfilter; data berasal dari endpoint server yang memakai filter yang sama (date + search + statuses).
+- Nama file dipakai `buildAnalyticsExportFilename(fromLabel, toLabel)`.
+
+Contoh pola:
+
+```ts
+const exportColumns = [
+    ['order_number', 'No. Pesanan'],
+    // ... kolom per item
+    ['hpp_status', 'Status HPP'],
+    ['laba', 'Laba Bersih'],
+] as const satisfies readonly TableColumnMeta[]
+
+async function exportExcel() {
+    const XLSX = await import('xlsx')
+    const data = props.orders.map((row) => Object.fromEntries(
+        selectedColumns.value.map(([field, header]) => [header, row[field as keyof OrderRow] ?? '']),
+    ))
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders')
+    // ... fetch endpoint export-lines dengan filter yang sama, lalu:
+    const detailWorksheet = XLSX.utils.json_to_sheet(detailData)
+    XLSX.utils.book_append_sheet(workbook, detailWorksheet, 'Detail Per Item')
+    XLSX.writeFile(workbook, buildAnalyticsExportFilename(fromLabel, toLabel))
+}
+```
 
 ## Kartu ringkasan (summary cards) — wajib
 
@@ -66,13 +103,14 @@ Alasan: mekanisme ekspansi baris bawaan DataTable PrimeVue runtime dan interaksi
 import Dialog from 'primevue/dialog'
 
 <Dialog v-model:visible="detailVisible" modal :header="`Detail ${activeOrderNumber ?? ''}`"
-    :style="{ width: 'min(76rem, 96vw)' }" :maximizable="true" @hide="closeDetail">
+    :style="{ width: 'min(76rem, 96vw)' }" :maximizable="true" :dismissable-mask="true" @hide="closeDetail">
     <!-- kolom aksi memakai tombol :icon="'pi pi-eye'" @click="openDetail(data.order_number)" -->
 </Dialog>
 ```
 
 Aturan:
 - Tombol buka detail di kolom aksi memakai ikon `pi pi-eye`.
+- **Setiap modal WAJIB ditutup saat klik area luar mask** — selalu pasang `:dismissable-mask="true"` pada `Dialog`.
 - State modal dari halaman (ref lokal), sedangkan data detail difetch via `router.get(url, params, { only: ['details'], preserveState: true })` dengan indikator loading.
 - Akhiri dengan tombol/`@hide` yang me-reset state & menutup modal.
 
@@ -143,6 +181,7 @@ function loadData(params: Record<string, unknown> = {}) {
 
 - `Finance/Reconciliation.vue` (referensi, server-side + overlay loading, tanpa gridlines)
 - `Admin/Users/Index.vue`, `Admin/Users/Access.vue` (server-side lazy)
+- `Orders/Index.vue` (filter card + toolbar minimal, export 2 sheet, modal detail)
 - `Products/Hpp.vue`, `Products/HppMapping.vue` (server-side lazy + export Excel)
 
 Catatan: halaman dengan filter domain sendiri boleh menambah kontrol filter di luar toolbar, asalkan pencarian global & pagination tetap lewat komponen kontrak.

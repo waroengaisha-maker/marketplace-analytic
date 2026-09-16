@@ -5,6 +5,9 @@ import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
+import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import MultiSelect from 'primevue/multiselect'
 import ProgressSpinner from 'primevue/progressspinner'
@@ -62,8 +65,30 @@ type DetailRow = {
 type OrderSummaries = {
     subtotal: number
     total_fee: number
+    tax: number
     penghasilan: number
     hpp: number
+    laba: number
+}
+
+type ExportLineRow = {
+    order_number: string
+    order_created_at: string | null
+    buyer_username: string | null
+    order_product_name: string
+    variation_name: string | null
+    net_quantity: number
+    discounted_price: number
+    order_subtotal: number
+    admin: number
+    shipping: number
+    promo: number
+    processing: number
+    tax: number
+    total_fee: number
+    penghasilan: number
+    hpp: number
+    hpp_status: string
     laba: number
 }
 
@@ -102,7 +127,7 @@ const allColumns = [
     ['laba', 'Laba Bersih'],
 ] as const satisfies readonly TableColumnMeta[]
 
-const sortableFields = new Set(['order_number', 'order_created_at', 'line_count', 'subtotal', 'admin', 'shipping', 'promo', 'processing', 'tax', 'hpp', 'penghasilan', 'laba'])
+const sortableFields = new Set(allColumns.map(([field]) => field))
 const moneyFields = new Set(['subtotal', 'admin', 'shipping', 'promo', 'processing', 'tax', 'total_fee', 'penghasilan', 'hpp', 'laba'])
 
 const detailColumns = [
@@ -125,12 +150,35 @@ const detailColumns = [
 
 const detailMoneyFields = new Set(['discounted_price', 'order_subtotal', 'admin', 'shipping', 'promo', 'processing', 'tax', 'total_fee', 'penghasilan', 'hpp', 'laba'])
 
+const exportColumns = [
+    ['order_number', 'No. Pesanan'],
+    ['order_created_at', 'Tanggal'],
+    ['buyer_username', 'Customer'],
+    ['order_product_name', 'Nama Produk'],
+    ['variation_name', 'Variasi'],
+    ['net_quantity', 'Qty Bersih'],
+    ['discounted_price', 'Harga (@)'],
+    ['order_subtotal', 'Subtotal'],
+    ['admin', 'Biaya Admin'],
+    ['shipping', 'Gratis Ongkir'],
+    ['promo', 'Promo XTRA'],
+    ['processing', 'Biaya Proses'],
+    ['total_fee', 'Total Biaya'],
+    ['tax', 'Pajak'],
+    ['penghasilan', 'Penghasilan'],
+    ['hpp', 'HPP'],
+    ['hpp_status', 'Status HPP'],
+    ['laba', 'Laba Bersih'],
+] as const satisfies readonly TableColumnMeta[]
+
 const { globalFilter, multiSortMeta, isLoading, selectedRows } = useDataTableContract()
 const selectedColumns = ref<TableColumnMeta[]>([...allColumns])
 const selectedDetailColumns = ref<TableColumnMeta[]>([...detailColumns])
 
 const statusOptions = ['Settled', 'Refunded', 'Partially Refunded', 'Returned', 'Unmatched', 'Cancelled', 'Invalid']
 const selectedStatuses = ref<string[]>([...statusOptions])
+const appliedStatuses = ref<string[]>([...statusOptions])
+const appliedSearch = ref('')
 
 const parseDate = (value?: string | null) => (value ? new Date(`${value}T00:00:00`) : null)
 const fromDate = ref<Date | null>(parseDate(props.appliedFrom))
@@ -163,6 +211,7 @@ const detailTotals = computed(() => {
 const summaryCards = [
     { key: 'subtotal', label: 'Total Transaksi (Subtotal)' },
     { key: 'total_fee', label: 'Total Biaya' },
+    { key: 'tax', label: 'Total Pajak' },
     { key: 'penghasilan', label: 'Total Penghasilan' },
     { key: 'hpp', label: 'Total HPP' },
     { key: 'laba', label: 'Total Laba Bersih' },
@@ -177,19 +226,6 @@ const statusSeverity = (status: string) => {
     if (status === 'Refunded') return 'danger'
     if (status === 'Cancelled') return 'danger'
     return 'secondary'
-}
-
-const statusLabel = (status: string) => {
-    const labels: Record<string, string> = {
-        Settled: 'Settled',
-        Unmatched: 'Belum Settlement',
-        Refunded: 'Refunded',
-        'Partially Refunded': 'Partially Refunded',
-        Returned: 'Returned',
-        Cancelled: 'Batal',
-        Invalid: 'Tidak Valid',
-    }
-    return labels[status] ?? status
 }
 
 const hppStatusLabel = (status: string) => {
@@ -213,7 +249,7 @@ const currentParams = () => {
     const params: Record<string, string | string[]> = {}
     if (appliedFromDate.value) params.from = localDateKey(appliedFromDate.value)
     if (appliedToDate.value) params.to = localDateKey(appliedToDate.value)
-    params.statuses = selectedStatuses.value
+    params.statuses = appliedStatuses.value
 
     return params
 }
@@ -231,7 +267,7 @@ function loadData(params: Record<string, unknown> = {}) {
     router.get('/orders', {
         page: params.page ?? undefined,
         per_page: params.per_page ?? undefined,
-        search: globalFilter.value || undefined,
+        search: appliedSearch.value || undefined,
         sort_field: params.sort_field ?? multiSortMeta.value[0]?.field ?? 'order_created_at',
         sort_order: params.sort_order ?? (multiSortMeta.value[0]?.order === -1 ? 'desc' : 'asc'),
         ...currentParams(),
@@ -246,15 +282,7 @@ function onSort() {
     loadData({ page: 1 })
 }
 
-function onFilter() {
-    loadData({ page: 1 })
-}
-
-function onStatusFilterChange() {
-    onFilter()
-}
-
-function applyDateFilter() {
+function applyFilters() {
     if (!fromDate.value || !toDate.value) {
         dateValidationError.value = 'Tanggal belum ditentukan.'
         return
@@ -267,18 +295,26 @@ function applyDateFilter() {
     dateValidationError.value = null
     appliedFromDate.value = fromDate.value
     appliedToDate.value = toDate.value
+    appliedStatuses.value = [...selectedStatuses.value]
+    appliedSearch.value = globalFilter.value || ''
     hasAppliedFilter.value = true
     loadData({ page: 1 })
 }
 
 function resetDateFilter() {
-    fromDate.value = null
-    toDate.value = null
-    appliedFromDate.value = null
-    appliedToDate.value = null
-    hasAppliedFilter.value = false
+    const today = new Date()
+    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+
+    fromDate.value = monthStart
+    toDate.value = today
+    appliedFromDate.value = monthStart
+    appliedToDate.value = today
+    hasAppliedFilter.value = true
     selectedStatuses.value = [...statusOptions]
-    router.get('/orders', { statuses: selectedStatuses.value }, { preserveScroll: true, preserveState: true })
+    appliedStatuses.value = [...statusOptions]
+    globalFilter.value = ''
+    appliedSearch.value = ''
+    loadData({ page: 1 })
 }
 
 function openDetail(orderNumber: string) {
@@ -288,7 +324,7 @@ function openDetail(orderNumber: string) {
 
     router.get('/orders', {
         ...currentParams(),
-        search: globalFilter.value || undefined,
+        search: appliedSearch.value || undefined,
         order: orderNumber,
     }, {
         preserveScroll: true,
@@ -322,11 +358,28 @@ function formatQuantity(value: number | null | undefined) {
 const exportExcel = async () => {
     const XLSX = await import('xlsx')
     const data = props.orders.map((row) => Object.fromEntries(
-        selectedColumns.value.map(([field, header]) => [header, moneyFields.has(field) ? formatNominal(row[field as keyof OrderRow]) : row[field as keyof OrderRow]]),
+        selectedColumns.value.map(([field, header]) => [header, row[field as keyof OrderRow] ?? '']),
     ))
     const worksheet = XLSX.utils.json_to_sheet(data)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders')
+
+    const params = new URLSearchParams()
+    if (appliedFromDate.value) params.set('from', localDateKey(appliedFromDate.value))
+    if (appliedToDate.value) params.set('to', localDateKey(appliedToDate.value))
+    if (appliedSearch.value) params.set('search', appliedSearch.value)
+    appliedStatuses.value.forEach((status) => params.append('statuses[]', status))
+
+    const response = await fetch(`/orders/export-lines?${params.toString()}`)
+    if (!response.ok) throw new Error('Gagal memuat data export detail per item.')
+    const payload = (await response.json()) as { rows: ExportLineRow[] }
+
+    const detailData = payload.rows.map((row) => Object.fromEntries(
+        exportColumns.map(([field, header]) => [header, field === 'hpp_status' ? hppStatusLabel(row.hpp_status) : row[field as keyof ExportLineRow] ?? '']),
+    ))
+    const detailWorksheet = XLSX.utils.json_to_sheet(detailData)
+    XLSX.utils.book_append_sheet(workbook, detailWorksheet, 'Detail Per Item')
+
     const fromLabel = appliedFromDate.value ? localDateKey(appliedFromDate.value) : 'semua'
     const toLabel = appliedToDate.value ? localDateKey(appliedToDate.value) : 'semua'
     XLSX.writeFile(workbook, buildAnalyticsExportFilename(fromLabel, toLabel))
@@ -348,17 +401,82 @@ const exportExcel = async () => {
                 <div class="flex flex-col gap-4">
                     <div class="flex items-center gap-2">
                         <i class="pi pi-filter text-color-secondary" aria-hidden="true"></i>
-                        <span class="text-sm font-semibold">Filter periode</span>
+                        <span class="text-sm font-semibold">Filter data</span>
                     </div>
-                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(15rem,1.4fr)_auto] lg:items-end">
-                        <DateRangeFilter id-prefix="orders" v-model:from="fromDate" v-model:to="toDate" />
-                        <div class="flex flex-wrap items-center gap-2">
-                            <Message v-if="dateValidationError" severity="error" :closable="false" class="w-full">
-                                {{ dateValidationError }}
-                            </Message>
-                            <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
-                            <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-[minmax(15rem,1.3fr)_minmax(11rem,1fr)_minmax(11rem,1fr)_minmax(14rem,1.2fr)_minmax(12rem,1fr)]">
+                        <DateRangeFilter id-prefix="orders" v-model:from="fromDate" v-model:to="toDate" class="md:col-span-2 xl:col-span-2" />
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="orders-search" class="text-xs font-medium text-color-secondary">Cari</label>
+                            <div class="relative w-full">
+                                <IconField icon-position="left" class="w-full">
+                                    <InputIcon class="pi pi-search text-sm text-color-secondary" />
+                                    <InputText
+                                        id="orders-search"
+                                        v-model="globalFilter"
+                                        placeholder="Cari nomor order / produk / variasi / status..."
+                                        class="h-11 w-full pl-10 pr-10 text-sm"
+                                    />
+                                </IconField>
+                                <button
+                                    v-if="globalFilter"
+                                    type="button"
+                                    aria-label="Hapus pencarian"
+                                    class="absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full border-0 bg-transparent p-0 text-color-secondary transition-colors hover:bg-surface-200 hover:text-color dark:hover:bg-surface-700"
+                                    @click="globalFilter = null"
+                                >
+                                    <i class="pi pi-times text-xs" aria-hidden="true"></i>
+                                </button>
+                            </div>
                         </div>
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="orders-status" class="text-xs font-medium text-color-secondary">Status</label>
+                            <MultiSelect
+                                input-id="orders-status"
+                                v-model="selectedStatuses"
+                                :options="statusOptions"
+                                :max-selected-labels="1"
+                                selected-items-label="{0} status dipilih"
+                                placeholder="Semua status"
+                                display="comma"
+                                class="h-11 w-full text-sm"
+                                :pt="{
+                                    root: { class: 'h-11 rounded-md shadow-none' },
+                                    trigger: { class: 'rounded-md border-surface-300 bg-surface-0 transition-colors hover:border-primary dark:bg-surface-950' },
+                                    panel: { class: 'text-sm' },
+                                    item: { class: 'py-2' },
+                                    header: { class: 'px-3 py-2' },
+                                }"
+                            />
+                        </div>
+                        <div class="flex min-w-0 flex-col gap-1">
+                            <label for="orders-columns" class="text-xs font-medium text-color-secondary">Kolom tampil</label>
+                            <MultiSelect
+                                input-id="orders-columns"
+                                v-model="selectedColumns"
+                                :options="allColumns"
+                                option-label="1"
+                                :placeholder="`Pilih kolom (${selectedColumns.length})`"
+                                display="comma"
+                                filter
+                                :max-selected-labels="2"
+                                selected-items-label="{0} kolom dipilih"
+                                class="h-11 w-full text-sm"
+                                :pt="{
+                                    root: { class: 'h-11 rounded-md shadow-none' },
+                                    trigger: { class: 'rounded-md border-surface-300 bg-surface-0 transition-colors hover:border-primary dark:bg-surface-950' },
+                                    panel: { class: 'text-sm' },
+                                    item: { class: 'py-2' },
+                                    header: { class: 'px-3 py-2' },
+                                }"
+                            />
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <Message v-if="dateValidationError" severity="error" :closable="false" class="w-full">
+                            {{ dateValidationError }}
+                        </Message>
+                        <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyFilters" />
+                        <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
                     </div>
                 </div>
             </template>
@@ -372,7 +490,7 @@ const exportExcel = async () => {
                         <span class="text-sm font-semibold">Ringkasan pesanan terfilter</span>
                         <span class="text-xs text-color-secondary">Total dari seluruh halaman sesuai rentang tanggal & pencarian aktif.</span>
                     </div>
-                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                         <Card v-for="card in summaryCards" :key="card.key" class="[&_.p-card-body]:!p-3 [&_.p-card-content]:!p-0">
                             <template #content>
                                 <p class="text-xs font-semibold text-color-secondary">{{ card.label }}</p>
@@ -385,32 +503,7 @@ const exportExcel = async () => {
         </Card>
 
         <div class="min-w-0">
-            <AppDataTableToolbar
-                v-model:global-filter="globalFilter"
-                v-model:selected-columns="selectedColumns"
-                :all-columns="allColumns"
-                search-placeholder="Cari nomor order / produk / variasi / status..."
-                @filter="onFilter"
-            >
-                <template #filters>
-                    <MultiSelect
-                        v-model="selectedStatuses"
-                        :options="statusOptions"
-                        :max-selected-labels="1"
-                        selected-items-label="{0} status dipilih"
-                        placeholder="Semua status"
-                        display="comma"
-                        class="h-11 w-full text-sm sm:w-[16rem]"
-                        :pt="{
-                            root: { class: 'h-11 rounded-md shadow-none' },
-                            trigger: { class: 'rounded-md border-surface-300 bg-surface-0 transition-colors hover:border-primary dark:bg-surface-950' },
-                            panel: { class: 'text-sm' },
-                            item: { class: 'py-2' },
-                            header: { class: 'px-3 py-2' },
-                        }"
-                        @change="onStatusFilterChange"
-                    />
-                </template>
+            <AppDataTableToolbar>
                 <template #actions>
                     <Button label="Export Excel" icon="pi pi-download" severity="secondary" outlined class="h-11 px-3" :disabled="orders.length === 0" @click="exportExcel" />
                 </template>
@@ -430,7 +523,6 @@ const exportExcel = async () => {
                     selection-mode="multiple"
                     @page="onPage"
                     @sort="onSort"
-                    @filter="onFilter"
                     @row-dblclick="onRowDblclick"
                     paginator
                     :rows="pagination.per_page"
@@ -447,6 +539,8 @@ const exportExcel = async () => {
                         :field="field"
                         :header="header"
                         :sortable="sortableFields.has(field)"
+                        :frozen="field === 'order_number'"
+                        align-frozen="left"
                     >
                         <template #body="{ data }">
                             <template v-if="field === 'order_number'">
@@ -454,7 +548,7 @@ const exportExcel = async () => {
                             </template>
                             <template v-else-if="field === 'order_created_at'">{{ formatDate(data.order_created_at) }}</template>
                             <template v-else-if="field === 'buyer_username'">{{ data.buyer_username || '—' }}</template>
-                            <Tag v-else-if="field === 'business_status'" :value="statusLabel(data.business_status)" :severity="statusSeverity(data.business_status)" />
+                            <Tag v-else-if="field === 'business_status'" :value="data.business_status" :severity="statusSeverity(data.business_status)" />
                             <template v-else-if="moneyFields.has(field)">{{ formatNominal(data[field]) }}</template>
                             <template v-else>{{ formatQuantity(data[field]) }}</template>
                         </template>
@@ -483,6 +577,7 @@ const exportExcel = async () => {
         :header="`Detail ${activeOrderNumber ?? ''}`"
         :style="{ width: 'min(76rem, 96vw)' }"
         :maximizable="true"
+        :dismissable-mask="true"
         @hide="closeDetail"
     >
         <div class="flex flex-col gap-3">
@@ -495,7 +590,7 @@ const exportExcel = async () => {
                 <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                     <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{{ activeOrderNumber }}</span>
                     <span class="rounded-full bg-slate-100 px-3 py-1">{{ detailRows.length }} baris item</span>
-                    <Tag v-if="activeOrderStatus" :value="statusLabel(activeOrderStatus)" :severity="statusSeverity(activeOrderStatus)" />
+                    <Tag v-if="activeOrderStatus" :value="activeOrderStatus" :severity="statusSeverity(activeOrderStatus)" />
                     <span class="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800">Laba Bersih {{ formatNominal(detailTotals.laba) }}</span>
                 </div>
 

@@ -10,6 +10,7 @@ use App\Services\ReportLineIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class OrderSummaryPageTest extends TestCase
@@ -125,7 +126,7 @@ class OrderSummaryPageTest extends TestCase
                 'pagination' => ['current_page', 'per_page', 'total', 'last_page'],
                 'appliedFrom',
                 'appliedTo',
-                'summaries' => ['subtotal', 'total_fee', 'penghasilan', 'hpp', 'laba'],
+                'summaries' => ['subtotal', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba'],
                 'details',
             ],
         ]);
@@ -137,6 +138,7 @@ class OrderSummaryPageTest extends TestCase
 
         $this->assertEquals(1700.0, data_get($response->json(), 'props.summaries.subtotal'));
         $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.total_fee'));
+        $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.tax'));
         $this->assertEquals(1700.0, data_get($response->json(), 'props.summaries.penghasilan'));
         $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.hpp'));
         $this->assertEquals(1700.0, data_get($response->json(), 'props.summaries.laba'));
@@ -275,7 +277,7 @@ class OrderSummaryPageTest extends TestCase
             'X-Inertia-Version' => $version,
             'X-Requested-With' => 'XMLHttpRequest',
             'Accept' => 'text/html, application/xhtml+xml',
-        ])->get(route('orders.index', ['order' => 'DET-ORDER']));
+        ])->get(route('orders.index', ['order' => 'DET-ORDER', 'from' => '2026-08-01', 'to' => '2026-08-31']));
 
         $response->assertOk();
 
@@ -402,7 +404,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(810.0, $order['laba']);
     }
 
-    public function test_orders_without_date_range_returns_all(): void
+    public function test_orders_without_date_range_defaults_to_current_month_through_today(): void
     {
         $user = User::factory()->create([
             'account_status' => AccountStatus::Active,
@@ -410,21 +412,17 @@ class OrderSummaryPageTest extends TestCase
         ]);
 
         DB::table('marketplace_orders')->insert([
-            $this->order($user->id, ['order_number' => 'NO-FILTER-1', 'item_index' => 1, 'order_created_at' => '2026-06-01 10:00:00']),
-            $this->order($user->id, ['order_number' => 'NO-FILTER-2', 'item_index' => 2, 'order_created_at' => '2026-09-15 10:00:00']),
+            $this->order($user->id, ['order_number' => 'NO-FILTER-1', 'item_index' => 1, 'order_created_at' => now()->subMonth()->startOfMonth()->format('Y-m-d 10:00:00')]),
+            $this->order($user->id, ['order_number' => 'NO-FILTER-2', 'item_index' => 2, 'order_created_at' => now()->format('Y-m-d 10:00:00')]),
         ]);
 
-        $version = app(HandleInertiaRequests::class)->version(Request::create(route('orders.index')));
-
-        $response = $this->actingAs($user)->withHeaders([
-            'X-Inertia' => 'true',
-            'X-Inertia-Version' => $version,
-            'X-Requested-With' => 'XMLHttpRequest',
-            'Accept' => 'text/html, application/xhtml+xml',
-        ])->get(route('orders.index'));
+        $response = $this->ordersRequest($user);
 
         $response->assertOk();
-        $this->assertSame(2, data_get($response->json(), 'props.pagination.total'));
+        $this->assertSame(1, data_get($response->json(), 'props.pagination.total'));
+        $this->assertSame('NO-FILTER-2', data_get($response->json(), 'props.orders.0.order_number'));
+        $this->assertSame(now()->startOfMonth()->format('Y-m-d'), data_get($response->json(), 'props.appliedFrom'));
+        $this->assertSame(now()->format('Y-m-d'), data_get($response->json(), 'props.appliedTo'));
     }
 
     public function test_orders_statuses_filter_limits_orders_and_totals(): void
@@ -462,7 +460,7 @@ class OrderSummaryPageTest extends TestCase
             'X-Inertia-Version' => $version,
             'X-Requested-With' => 'XMLHttpRequest',
             'Accept' => 'text/html, application/xhtml+xml',
-        ])->get(route('orders.index', ['statuses' => ['Unmatched']]));
+        ])->get(route('orders.index', ['statuses' => ['Unmatched'], 'from' => '2026-08-01', 'to' => '2026-08-31']));
 
         $response->assertOk();
 
@@ -493,6 +491,7 @@ class OrderSummaryPageTest extends TestCase
             'discounted_price' => 100,
             'quantity' => 5,
             'line_identity' => $lineIdentity,
+            'order_created_at' => '2026-08-10 09:00:00',
         ]));
 
         DB::table('marketplace_income')->insert($this->income($user->id, [
@@ -523,7 +522,7 @@ class OrderSummaryPageTest extends TestCase
             'X-Inertia-Version' => $version,
             'X-Requested-With' => 'XMLHttpRequest',
             'Accept' => 'text/html, application/xhtml+xml',
-        ])->get(route('orders.index', ['order' => 'HPP-DETAIL']));
+        ])->get(route('orders.index', ['order' => 'HPP-DETAIL', 'from' => '2026-08-01', 'to' => '2026-08-31']));
 
         $response->assertOk();
 
@@ -531,6 +530,137 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame('ok', $row['hpp_status']);
         $this->assertEquals(100.0, $row['hpp']);
         $this->assertEquals(400.0, $row['laba']);
+    }
+
+    public function test_orders_export_lines_returns_item_rows_for_filtered_orders(): void
+    {
+        $user = User::factory()->create([
+            'account_status' => AccountStatus::Active,
+            'trial_ends_at' => now()->addDay(),
+        ]);
+        $productKey = str_repeat('e', 64);
+
+        DB::table('marketplace_orders')->insert([
+            $this->order($user->id, [
+                'order_number' => 'EXP-ORDER',
+                'product_key' => $productKey,
+                'variation_key' => str_repeat('v', 64),
+                'variation_name' => 'Size XL',
+                'item_index' => 1,
+                'discounted_price' => 500,
+                'unit_price' => 500,
+                'quantity' => 3,
+                'returned_quantity' => 1,
+                'buyer_username' => 'aina.putri',
+                'order_created_at' => '2026-08-15 10:00:00',
+            ]),
+            $this->order($user->id, [
+                'order_number' => 'EXP-OTHER',
+                'item_index' => 2,
+                'order_created_at' => '2026-09-10 10:00:00',
+            ]),
+        ]);
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'EXP-ORDER',
+            'product_key' => $productKey,
+            'item_index' => 1,
+            'product_price' => 500,
+            'quantity' => 3,
+            'total_income' => 1310,
+            'platform_fee' => -100,
+            'free_shipping_xtra_fee' => -50,
+            'promo_xtra_service_fee' => -25,
+            'order_processing_fee' => -10,
+            'pph22' => -5,
+        ]));
+
+        $response = $this->actingAs($user)->get(route('orders.export-lines', [
+            'from' => '2026-08-01',
+            'to' => '2026-08-31',
+        ]));
+
+        $response->assertOk()->assertJsonStructure([
+            'rows' => [[
+                'order_number',
+                'order_created_at',
+                'buyer_username',
+                'order_product_name',
+                'variation_name',
+                'net_quantity',
+                'discounted_price',
+                'order_subtotal',
+                'admin',
+                'shipping',
+                'promo',
+                'processing',
+                'tax',
+                'total_fee',
+                'penghasilan',
+                'hpp',
+                'hpp_status',
+                'laba',
+            ]],
+        ]);
+
+        $rows = data_get($response->json(), 'rows');
+        $this->assertCount(1, $rows);
+
+        $row = $rows[0];
+        $this->assertSame('EXP-ORDER', $row['order_number']);
+        $this->assertSame('aina.putri', $row['buyer_username']);
+        $this->assertSame('Size XL', $row['variation_name']);
+        $this->assertSame(2, $row['net_quantity']);
+        $this->assertEquals(1000.0, $row['order_subtotal']);
+        $this->assertEquals(-100.0, $row['admin']);
+        $this->assertEquals(-50.0, $row['shipping']);
+        $this->assertEquals(-25.0, $row['promo']);
+        $this->assertEquals(-10.0, $row['processing']);
+        $this->assertEquals(-5.0, $row['tax']);
+        $this->assertEquals(-185.0, $row['total_fee']);
+        $this->assertEquals(810.0, $row['penghasilan']);
+        $this->assertEquals(0.0, $row['hpp']);
+        $this->assertSame('no_allocation', $row['hpp_status']);
+        $this->assertEquals(810.0, $row['laba']);
+    }
+
+    public function test_orders_supports_sorting_by_every_column(): void
+    {
+        $user = User::factory()->create([
+            'account_status' => AccountStatus::Active,
+            'trial_ends_at' => now()->addDay(),
+        ]);
+
+        DB::table('marketplace_orders')->insert([
+            $this->order($user->id, ['order_number' => 'SORT-2', 'item_index' => 1, 'quantity' => 1, 'discounted_price' => 100, 'unit_price' => 100, 'order_created_at' => now()->subWeek()->format('Y-m-d H:i:s')]),
+            $this->order($user->id, ['order_number' => 'SORT-1', 'item_index' => 2, 'quantity' => 3, 'discounted_price' => 200, 'unit_price' => 200, 'order_created_at' => now()->format('Y-m-d H:i:s')]),
+        ]);
+
+        $response = $this->ordersRequest($user, ['sort_field' => 'net_quantity', 'sort_order' => 'asc']);
+        $response->assertOk();
+        $orders = data_get($response->json(), 'props.orders');
+        $this->assertSame(['SORT-2', 'SORT-1'], collect($orders)->pluck('order_number')->all());
+
+        $response = $this->ordersRequest($user, ['sort_field' => 'business_status', 'sort_order' => 'asc']);
+        $response->assertOk();
+
+        $response = $this->ordersRequest($user, ['sort_field' => 'buyer_username', 'sort_order' => 'desc']);
+        $response->assertOk();
+
+        $response = $this->ordersRequest($user, ['sort_field' => 'total_fee', 'sort_order' => 'asc']);
+        $response->assertOk();
+    }
+
+    private function ordersRequest(User $user, array $params = []): TestResponse
+    {
+        $version = app(HandleInertiaRequests::class)->version(Request::create(route('orders.index')));
+
+        return $this->actingAs($user)->withHeaders([
+            'X-Inertia' => 'true',
+            'X-Inertia-Version' => $version,
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Accept' => 'text/html, application/xhtml+xml',
+        ])->get(route('orders.index', $params));
     }
 
     private function order(int $userId, array $overrides = []): array
@@ -544,6 +674,7 @@ class OrderSummaryPageTest extends TestCase
             'product_name' => 'Product',
             'product_key' => str_repeat('f', 64),
             'variation_key' => null,
+            'variation_name' => null,
             'discounted_price' => 100,
             'unit_price' => 100,
             'quantity' => 1,
