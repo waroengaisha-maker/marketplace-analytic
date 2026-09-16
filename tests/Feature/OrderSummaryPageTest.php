@@ -624,6 +624,65 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(810.0, $row['laba']);
     }
 
+    public function test_orders_search_matches_buyer_username(): void
+    {
+        $user = User::factory()->create([
+            'account_status' => AccountStatus::Active,
+            'trial_ends_at' => now()->addDay(),
+        ]);
+
+        DB::table('marketplace_orders')->insert([
+            $this->order($user->id, ['order_number' => 'BUYER-HIT', 'item_index' => 1, 'buyer_username' => 'siti.rahayu', 'order_created_at' => '2026-08-15 10:00:00']),
+            $this->order($user->id, ['order_number' => 'BUYER-MISS', 'item_index' => 2, 'buyer_username' => 'budy.andika', 'order_created_at' => '2026-08-16 10:00:00']),
+        ]);
+
+        $response = $this->ordersRequest($user, ['from' => '2026-08-01', 'to' => '2026-08-31', 'search' => 'siti.rahayu']);
+
+        $response->assertOk();
+
+        $orders = data_get($response->json(), 'props.orders');
+        $this->assertCount(1, $orders);
+        $this->assertSame('BUYER-HIT', $orders[0]['order_number']);
+    }
+
+    public function test_orders_export_data_returns_all_orders_within_date_range(): void
+    {
+        $user = User::factory()->create([
+            'account_status' => AccountStatus::Active,
+            'trial_ends_at' => now()->addDay(),
+        ]);
+
+        $rows = [];
+        for ($i = 1; $i <= 30; $i++) {
+            $rows[] = $this->order($user->id, [
+                'order_number' => 'EXP-ALL-'.str_pad((string) $i, 2, '0', STR_PAD_LEFT),
+                'item_index' => $i,
+                'order_created_at' => '2026-08-'.str_pad((string) (($i % 28) + 1), 2, '0', STR_PAD_LEFT).' 10:00:00',
+            ]);
+        }
+        $rows[] = $this->order($user->id, [
+            'order_number' => 'EXP-OUTSIDE',
+            'item_index' => 31,
+            'order_created_at' => '2026-09-10 10:00:00',
+        ]);
+        DB::table('marketplace_orders')->insert($rows);
+
+        $response = $this->actingAs($user)->get(route('orders.export-data', [
+            'from' => '2026-08-01',
+            'to' => '2026-08-31',
+        ]));
+
+        $response->assertOk()->assertJsonStructure(['orders']);
+
+        $orders = data_get($response->json(), 'orders');
+        $this->assertCount(30, $orders);
+
+        $numbers = collect($orders)->pluck('order_number')->all();
+        $this->assertNotContains('EXP-OUTSIDE', $numbers);
+        $this->assertContains('EXP-ALL-01', $numbers);
+        $this->assertContains('EXP-ALL-30', $numbers);
+    }
+
     public function test_orders_supports_sorting_by_every_column(): void
     {
         $user = User::factory()->create([

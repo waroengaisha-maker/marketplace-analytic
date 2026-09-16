@@ -62,6 +62,7 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::post('/imports/upload', [UploadReportsController::class, 'store'])->name('imports.upload.store');
     Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
     Route::get('/orders/export-lines', [OrdersController::class, 'exportLines'])->name('orders.export-lines');
+    Route::get('/orders/export-data', [OrdersController::class, 'exportData'])->name('orders.export-data');
     Route::get('/finance/reconciliation', [ReconciliationController::class, 'index'])->name('finance.reconciliation');
     Route::get('/finance/income-reconciliation', [IncomeReconciliationController::class, 'index'])->name('finance.income-reconciliation');
     Route::get('/products/hpp', [HppController::class, 'index'])->name('products.hpp');

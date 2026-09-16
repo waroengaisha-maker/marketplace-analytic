@@ -191,6 +191,7 @@ const dateValidationError = ref<string | null>(null)
 const detailVisible = ref(false)
 const activeOrderNumber = ref<string | null>(null)
 const detailLoading = ref(false)
+const detailGlobalFilter = ref<string | null>(null)
 
 const activeDetailsReady = computed(() => props.details?.order_number === activeOrderNumber.value && !detailLoading.value)
 const activeOrderStatus = computed(() => props.orders.find((order) => order.order_number === activeOrderNumber.value)?.business_status ?? '')
@@ -218,6 +219,14 @@ const summaryCards = [
 ] as const
 
 const summaryValue = (key: keyof OrderSummaries) => Number(props.summaries?.[key] ?? 0)
+
+const periodLabel = computed(() => {
+    const format = (value: Date | null) => value?.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+    const from = format(appliedFromDate.value)
+    const to = format(appliedToDate.value)
+
+    return from && to ? `Periode: ${from} – ${to}` : null
+})
 
 const statusSeverity = (status: string) => {
     if (status === 'Settled') return 'success'
@@ -321,6 +330,7 @@ function openDetail(orderNumber: string) {
     activeOrderNumber.value = orderNumber
     detailVisible.value = true
     detailLoading.value = true
+    detailGlobalFilter.value = null
 
     router.get('/orders', {
         ...currentParams(),
@@ -357,12 +367,6 @@ function formatQuantity(value: number | null | undefined) {
 
 const exportExcel = async () => {
     const XLSX = await import('xlsx')
-    const data = props.orders.map((row) => Object.fromEntries(
-        selectedColumns.value.map(([field, header]) => [header, row[field as keyof OrderRow] ?? '']),
-    ))
-    const worksheet = XLSX.utils.json_to_sheet(data)
-    const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders')
 
     const params = new URLSearchParams()
     if (appliedFromDate.value) params.set('from', localDateKey(appliedFromDate.value))
@@ -370,11 +374,24 @@ const exportExcel = async () => {
     if (appliedSearch.value) params.set('search', appliedSearch.value)
     appliedStatuses.value.forEach((status) => params.append('statuses[]', status))
 
-    const response = await fetch(`/orders/export-lines?${params.toString()}`)
-    if (!response.ok) throw new Error('Gagal memuat data export detail per item.')
-    const payload = (await response.json()) as { rows: ExportLineRow[] }
+    const [summaryResponse, linesResponse] = await Promise.all([
+        fetch(`/orders/export-data?${params.toString()}`),
+        fetch(`/orders/export-lines?${params.toString()}`),
+    ])
+    if (!summaryResponse.ok || !linesResponse.ok) throw new Error('Gagal memuat data export.')
+    const [summaryPayload, linesPayload] = await Promise.all([
+        summaryResponse.json() as Promise<{ orders: OrderRow[] }>,
+        linesResponse.json() as Promise<{ rows: ExportLineRow[] }>,
+    ])
 
-    const detailData = payload.rows.map((row) => Object.fromEntries(
+    const data = summaryPayload.orders.map((row) => Object.fromEntries(
+        selectedColumns.value.map(([field, header]) => [header, row[field as keyof OrderRow] ?? '']),
+    ))
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders')
+
+    const detailData = linesPayload.rows.map((row) => Object.fromEntries(
         exportColumns.map(([field, header]) => [header, field === 'hpp_status' ? hppStatusLabel(row.hpp_status) : row[field as keyof ExportLineRow] ?? '']),
     ))
     const detailWorksheet = XLSX.utils.json_to_sheet(detailData)
@@ -485,10 +502,10 @@ const exportExcel = async () => {
         <Card>
             <template #content>
                 <div class="flex flex-col gap-3">
-                    <div class="flex items-center gap-2">
+<div class="flex flex-wrap items-center gap-2">
                         <i class="pi pi-chart-line text-color-secondary" aria-hidden="true"></i>
                         <span class="text-sm font-semibold">Ringkasan pesanan terfilter</span>
-                        <span class="text-xs text-color-secondary">Total dari seluruh halaman sesuai rentang tanggal & pencarian aktif.</span>
+                        <Tag v-if="periodLabel" :value="periodLabel" severity="info" />
                     </div>
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
                         <Card v-for="card in summaryCards" :key="card.key" class="[&_.p-card-body]:!p-3 [&_.p-card-content]:!p-0">
@@ -502,73 +519,82 @@ const exportExcel = async () => {
             </template>
         </Card>
 
-        <div class="min-w-0">
-            <AppDataTableToolbar>
-                <template #actions>
-                    <Button label="Export Excel" icon="pi pi-download" severity="secondary" outlined class="h-11 px-3" :disabled="orders.length === 0" @click="exportExcel" />
-                </template>
-            </AppDataTableToolbar>
+        <Card>
+            <template #content>
+                <div class="flex flex-col gap-3">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <i class="pi pi-table text-color-secondary" aria-hidden="true"></i>
+                        <span class="text-sm font-semibold">Data pesanan</span>
+                    </div>
 
-            <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg bg-surface-0 dark:bg-surface-950" style="height: min(70vh, 48rem)">
-                <AppDataTable
-                    :loading="isLoading"
-                    :value="orders"
-                    v-model:multi-sort-meta="multiSortMeta"
-                    sort-mode="multiple"
-                    lazy
-                    :total-records="pagination.total"
-                    :first="(pagination.current_page - 1) * pagination.per_page"
-                    data-key="order_number"
-                    v-model:selection="selectedRows"
-                    selection-mode="multiple"
-                    @page="onPage"
-                    @sort="onSort"
-                    @row-dblclick="onRowDblclick"
-                    paginator
-                    :rows="pagination.per_page"
-                    :rows-per-page-options="[25, 50, 100]"
-                    paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-                    current-page-report-template="{first}–{last} dari {totalRecords}"
-                    table-style-min-width="130rem"
-                >
-                    <template #empty>Belum ada transaksi. Import laporan order terlebih dahulu.</template>
-
-                    <Column
-                        v-for="[field, header] in selectedColumns"
-                        :key="field"
-                        :field="field"
-                        :header="header"
-                        :sortable="sortableFields.has(field)"
-                        :frozen="field === 'order_number'"
-                        align-frozen="left"
-                    >
-                        <template #body="{ data }">
-                            <template v-if="field === 'order_number'">
-                                <span class="font-semibold text-slate-800">{{ data.order_number }}</span>
-                            </template>
-                            <template v-else-if="field === 'order_created_at'">{{ formatDate(data.order_created_at) }}</template>
-                            <template v-else-if="field === 'buyer_username'">{{ data.buyer_username || '—' }}</template>
-                            <Tag v-else-if="field === 'business_status'" :value="data.business_status" :severity="statusSeverity(data.business_status)" />
-                            <template v-else-if="moneyFields.has(field)">{{ formatNominal(data[field]) }}</template>
-                            <template v-else>{{ formatQuantity(data[field]) }}</template>
+                    <AppDataTableToolbar :hide-search="true">
+                        <template #actions>
+                            <Button label="Export Excel" icon="pi pi-download" severity="secondary" outlined class="h-11 px-3" :disabled="orders.length === 0" @click="exportExcel" />
                         </template>
-                    </Column>
+                    </AppDataTableToolbar>
 
-                    <Column header="" :exportable="false" frozen align-frozen="right" style="min-width: 4rem">
-                        <template #body="{ data }">
-                            <Button
-                                icon="pi pi-eye"
-                                rounded
-                                text
-                                size="small"
-                                :aria-label="`Lihat detail ${data.order_number}`"
-                                @click="openDetail(data.order_number)"
-                            />
-                        </template>
-                    </Column>
-                </AppDataTable>
-            </div>
-        </div>
+                    <div class="flex min-h-0 flex-col overflow-hidden rounded-lg bg-surface-0 dark:bg-surface-950" style="height: min(70vh, 48rem)">
+                        <AppDataTable
+                            :loading="isLoading"
+                            :value="orders"
+                            v-model:multi-sort-meta="multiSortMeta"
+                            sort-mode="multiple"
+                            lazy
+                            :total-records="pagination.total"
+                            :first="(pagination.current_page - 1) * pagination.per_page"
+                            data-key="order_number"
+                            v-model:selection="selectedRows"
+                            selection-mode="multiple"
+                            @page="onPage"
+                            @sort="onSort"
+                            @row-dblclick="onRowDblclick"
+                            paginator
+                            :rows="pagination.per_page"
+                            :rows-per-page-options="[25, 50, 100]"
+                            paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+                            current-page-report-template="{first}–{last} dari {totalRecords}"
+                            table-style-min-width="130rem"
+                        >
+                            <template #empty>Belum ada transaksi. Import laporan order terlebih dahulu.</template>
+
+                            <Column
+                                v-for="[field, header] in selectedColumns"
+                                :key="field"
+                                :field="field"
+                                :header="header"
+                                :sortable="sortableFields.has(field)"
+                                :frozen="field === 'order_number'"
+                                align-frozen="left"
+                            >
+                                <template #body="{ data }">
+                                    <template v-if="field === 'order_number'">
+                                        <span class="font-semibold text-slate-800">{{ data.order_number }}</span>
+                                    </template>
+                                    <template v-else-if="field === 'order_created_at'">{{ formatDate(data.order_created_at) }}</template>
+                                    <template v-else-if="field === 'buyer_username'">{{ data.buyer_username || '—' }}</template>
+                                    <Tag v-else-if="field === 'business_status'" :value="data.business_status" :severity="statusSeverity(data.business_status)" />
+                                    <template v-else-if="moneyFields.has(field)">{{ formatNominal(data[field]) }}</template>
+                                    <template v-else>{{ formatQuantity(data[field]) }}</template>
+                                </template>
+                            </Column>
+
+                            <Column header="" :exportable="false" frozen align-frozen="right" style="min-width: 4rem">
+                                <template #body="{ data }">
+                                    <Button
+                                        icon="pi pi-eye"
+                                        rounded
+                                        text
+                                        size="small"
+                                        :aria-label="`Lihat detail ${data.order_number}`"
+                                        @click="openDetail(data.order_number)"
+                                    />
+                                </template>
+                            </Column>
+                        </AppDataTable>
+                    </div>
+                </div>
+            </template>
+        </Card>
     </div>
 
     <Dialog
@@ -595,8 +621,10 @@ const exportExcel = async () => {
                 </div>
 
                 <AppDataTableToolbar
+                    v-model:global-filter="detailGlobalFilter"
                     v-model:selected-columns="selectedDetailColumns"
                     :all-columns="detailColumns"
+                    search-placeholder="Cari produk / variasi / status HPP..."
                     :columns-label="`Kolom detail (${selectedDetailColumns.length})`"
                 >
                     <template #start>
@@ -609,7 +637,7 @@ const exportExcel = async () => {
                 </AppDataTableToolbar>
 
                 <div class="overflow-auto rounded-lg bg-surface-0 dark:bg-surface-950">
-                    <AppDataTable :value="detailRows" paginator :rows="10" :rows-per-page-options="[5, 10, 25]"
+                    <AppDataTable :value="detailRows" :global-filter="detailGlobalFilter ?? undefined" paginator :rows="10" :rows-per-page-options="[5, 10, 25]"
                         paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                         current-page-report-template="{first}–{last} dari {totalRecords}" table-style-min-width="110rem">
                         <template #empty>Detail tidak ditemukan.</template>

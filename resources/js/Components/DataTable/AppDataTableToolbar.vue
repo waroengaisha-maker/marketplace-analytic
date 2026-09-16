@@ -10,6 +10,7 @@ defineProps<{
     searchLabel?: string
     searchPlaceholder?: string
     columnsLabel?: string
+    hideSearch?: boolean
 }>()
 
 const globalFilter = defineModel<string | null>('globalFilter', { default: null })
@@ -24,7 +25,7 @@ const clearButtonClass = 'absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-
     <Toolbar class="mb-3 shrink-0 flex-wrap gap-3 rounded-xl border border-surface-200 bg-surface-0 px-3 py-2 shadow-sm dark:border-surface-700 dark:bg-surface-950">
         <template #start>
             <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-                <div class="relative w-full min-w-0 sm:w-[20rem] lg:w-[22rem]">
+                <div v-if="!hideSearch" class="relative w-full min-w-0 sm:w-[20rem] lg:w-[22rem]">
                     <IconField icon-position="left" class="w-full">
                         <InputIcon class="pi pi-search text-sm text-color-secondary" />
                         <InputText

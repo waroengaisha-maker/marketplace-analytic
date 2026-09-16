@@ -84,6 +84,33 @@ class OrdersController extends Controller
     }
 
     /**
+     * All filtered order summaries without pagination (Excel "Orders" sheet),
+     * so the export includes every order in the date range, not just the
+     * currently visible page.
+     */
+    public function exportData(Request $request, MarketplaceReconciliationService $service): JsonResponse
+    {
+        $filters = $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'statuses' => ['nullable', 'array'],
+            'statuses.*' => ['string', 'in:Settled,Unsettled,Batal,Tidak Valid,Refunded,Partially Refunded,Returned,Unmatched,Cancelled,Invalid'],
+        ]);
+
+        [$from, $to] = $this->resolveDateRange($filters);
+
+        return response()->json([
+            'orders' => $service->orderSummariesAll(
+                $request->user()->id,
+                $from,
+                $to,
+                $filters,
+            ),
+        ]);
+    }
+
+    /**
      * Orders page defaults to the current month (1st of month through today)
      * when no explicit date range is provided, so both the filter and the
      * rendered data share the same default.

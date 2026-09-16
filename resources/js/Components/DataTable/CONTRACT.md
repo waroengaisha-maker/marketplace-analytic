@@ -33,7 +33,9 @@ Konsep utama: **selalu server-side** (DataTable `lazy`). Pola:
 5. **Empty state** — slot `#empty` dengan pesan jelas.
 6. Kolom aksi memakai `:exportable="false"` bila tidak ikut export.
 
-> **Varian "filter card + toolbar minimal" (pola Orders):** halaman boleh memindahkan seluruh filter (pencarian, filter domain, column picker) ke satu Card bersama filter periode, dan memuat data **hanya setelah** tombol "Terapkan" diklik (bukan otomatis per perubahan input). Dalam pola ini toolbar DataTable cukup berisi tombol Export Excel. Aturan tetap: pakai `useDataTableContract()` untuk `globalFilter`/`multiSortMeta`, dan pisahkan state "draft" (input) dari state "applied" (yang benar-benar dikirim ke loadData).
+> **Varian "filter card + toolbar minimal" (pola Orders):** halaman boleh memindahkan seluruh filter (pencarian, filter domain, column picker) ke satu Card bersama filter periode, dan memuat data **hanya setelah** tombol "Terapkan" diklik (bukan otomatis per perubahan input). Dalam pola ini toolbar DataTable cukup berisi tombol Export Excel dan Wajib pasang `:hide-search="true"` pada `AppDataTableToolbar` (komponen secara default selalu merender input pencarian). Aturan tetap: pakai `useDataTableContract()` untuk `globalFilter`/`multiSortMeta`, dan pisahkan state "draft" (input) dari state "applied" (yang benar-benar dikirim ke loadData).
+
+> **Search di modal detail (client-side, pola Orders):** jika tabel di dalam `Dialog` memuat seluruh baris sekaligus (tidak lazy), pencarian di toolbar modal wajib di-wire client-side — `v-model:global-filter` pada `AppDataTableToolbar` modal *dan* `:global-filter` pada `AppDataTable` modal (PrimeVue memfilter baris yang sudah ada di value).
 
 ## Export Excel (wajib)
 

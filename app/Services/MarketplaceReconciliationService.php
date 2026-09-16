@@ -119,7 +119,7 @@ class MarketplaceReconciliationService
         if ($search !== '') {
             $like = '%'.addcslashes($search, '%_\\').'%';
             $query->where(function (Builder $query) use ($like, $statusExpression): void {
-                foreach (['order_number', 'order_product_name', 'variation_name', 'tracking_number'] as $field) {
+                foreach (['order_number', 'order_product_name', 'variation_name', 'tracking_number', 'buyer_username', 'sku_reference'] as $field) {
                     $query->orWhere("rows.{$field}", 'like', $like);
                 }
 
@@ -306,6 +306,44 @@ class MarketplaceReconciliationService
         $page->setCollection($page->getCollection()->map(fn (object $row): array => $this->orderSummary($row)));
 
         return $page;
+    }
+
+    /**
+     * All filtered order summaries without pagination — used by the
+     * Orders export (sheet 1) to include every row in the date range.
+     *
+     * @param  array<string, mixed>  $parameters
+     * @return array<int, array<string, mixed>>
+     */
+    public function orderSummariesAll(int $userId, ?string $from, ?string $to, array $parameters): array
+    {
+        $lines = $this->orderSummaryLines($userId, $from, $to, $parameters);
+
+        $query = DB::query()->fromSub($lines, 'g')
+            ->selectRaw("
+                g.order_number,
+                MIN(g.order_created_at) AS order_created_at,
+                MIN(g.buyer_username) AS buyer_username,
+                COUNT(*) AS line_count,
+                SUM(g.quantity) AS quantity,
+                SUM(g.net_quantity) AS net_quantity,
+                SUM(g.subtotal) AS subtotal,
+                SUM(g.admin) AS admin,
+                SUM(g.shipping) AS shipping,
+                SUM(g.promo) AS promo,
+                SUM(g.processing) AS processing,
+                SUM(g.tax) AS tax,
+                SUM(g.hpp) AS hpp,
+                GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') AS statuses,
+                (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
+                (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
+                ((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+            ")
+            ->groupBy('g.order_number')
+            ->orderBy('order_created_at', 'desc')
+            ->orderBy('g.order_number');
+
+        return $query->get()->map(fn (object $row): array => $this->orderSummary($row))->all();
     }
 
     /**
