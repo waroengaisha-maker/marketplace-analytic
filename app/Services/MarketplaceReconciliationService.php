@@ -432,6 +432,7 @@ class MarketplaceReconciliationService
             ->selectRaw('
                 l.order_number,
                 l.order_created_at,
+                l.business_status,
                 l.buyer_username,
                 l.order_product_name,
                 l.variation_name,
@@ -463,6 +464,7 @@ class MarketplaceReconciliationService
             return [
                 'order_number' => (string) $row->order_number,
                 'order_created_at' => $row->order_created_at,
+                'business_status' => (string) ($row->business_status ?? ''),
                 'buyer_username' => $row->buyer_username,
                 'order_product_name' => $row->order_product_name,
                 'variation_name' => $row->variation_name,

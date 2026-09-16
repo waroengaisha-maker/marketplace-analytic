@@ -587,6 +587,7 @@ class OrderSummaryPageTest extends TestCase
             'rows' => [[
                 'order_number',
                 'order_created_at',
+                'business_status',
                 'buyer_username',
                 'order_product_name',
                 'variation_name',

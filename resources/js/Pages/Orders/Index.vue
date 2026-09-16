@@ -75,6 +75,7 @@ type OrderSummaries = {
 type ExportLineRow = {
     order_number: string
     order_created_at: string | null
+    business_status: string
     buyer_username: string | null
     order_product_name: string
     variation_name: string | null
@@ -417,6 +418,8 @@ const exportExcel = async () => {
 
     const recapGroups = new Map<string, { order_product_name: string; variation_name: string; net_quantity: number; discounted_price: number }>()
     for (const row of linesPayload.rows) {
+        if (row.business_status !== 'Settled' || row.net_quantity <= 0) continue
+
         const key = `${row.order_product_name}\u0000${row.variation_name ?? ''}\u0000${row.discounted_price ?? 0}`
         const existing = recapGroups.get(key)
         if (existing) {

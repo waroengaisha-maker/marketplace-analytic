@@ -46,6 +46,7 @@ Export Wajib mengikuti persis model halaman referensi Finance/Reconciliation:
 - Kolom status HPP diexport memakai label (via `hppStatusLabel`).
 - Jika ada data rincian per item, tambahkan **sheet "Detail Per Item"** berisi baris per item dari semua baris terfilter; data berasal dari endpoint server yang memakai filter yang sama (date + search + statuses).
 - Jika data item bisa di-group ulang, tambahkan **satu sheet recap tambahan** (mis. "Detail Per Item Rekap") berisi baris yang sama tetapi diurutkan berdasarkan field domain (mis. nama produk → variasi → harga), diurutkan client-side sebelum ditulis ke sheet.
+- **Sheet recap untuk input ke sistem accounting WAJIB menyaring data yang eligible** — hanya baris `business_status === 'Settled'` dan `net_quantity > 0` (status lain = Cancelled/Refunded/Returned/Partial/Unmatched/Invalid TIDAK boleh masuk). `business_status` wajib diekspos oleh endpoint export-lines. Grup dengan `SUM(net_quantity)` per (produk, variasi, harga).
 - Nama file dipakai `buildAnalyticsExportFilename(fromLabel, toLabel)`.
 
 Contoh pola:
