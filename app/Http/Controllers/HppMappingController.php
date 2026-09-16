@@ -41,6 +41,15 @@ class HppMappingController extends Controller
         ]);
     }
 
+    public function exportData(Request $request, ShopeeProductMappingService $mappingService): JsonResponse
+    {
+        $rows = $this->resolvedRows($request, $mappingService);
+        $rows = $this->filterRows($rows, $request);
+        $rows = $this->sortRows($rows, $request);
+
+        return response()->json($rows->values()->all());
+    }
+
     public function reallocate(Request $request, OrderHppSyncService $service): JsonResponse
     {
         $counts = $service->sync($request->user()->id);

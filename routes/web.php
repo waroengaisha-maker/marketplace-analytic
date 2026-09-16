@@ -67,6 +67,7 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::get('/finance/income-reconciliation', [IncomeReconciliationController::class, 'index'])->name('finance.income-reconciliation');
     Route::get('/products/hpp', [HppController::class, 'index'])->name('products.hpp');
     Route::get('/products/hpp-mapping', [HppMappingController::class, 'index'])->name('products.hpp-mapping');
+    Route::get('/products/hpp-mapping/export-data', [HppMappingController::class, 'exportData'])->name('products.hpp-mapping.export-data');
     Route::post('/products/hpp-mapping', [HppMappingController::class, 'store'])->name('products.hpp-mapping.store');
     Route::post('/products/hpp-mapping/sync-template-catalog', [HppMappingController::class, 'syncTemplateCatalog'])->name('products.hpp-mapping.sync-template-catalog');
 

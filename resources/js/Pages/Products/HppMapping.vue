@@ -333,20 +333,45 @@ const saveMappings = (rows: MappingRow[] = props.rows) => {
 
 const saveManualOverride = (row: MappingRow) => saveMappings([row])
 
+const hppExportValue = (row: MappingRow): string => {
+    const templateCode = row.templateItemCode
+    const unitCode = row.templateUnitCode
+
+    if (!templateCode || !unitCode) return '—'
+
+    const template = templateChoices.value.find((item) => item.value === templateCode)
+    const unit = template?.units.find((u) => u.value === unitCode)
+
+    if (unit && typeof unit.hpp_amount !== 'undefined' && unit.hpp_amount !== null) {
+        return formatCurrency(unit.hpp_amount)
+    }
+
+    return '—'
+}
+
 const exportExcel = async () => {
     const XLSX = await import('xlsx')
-    const data = props.rows.map((row) => Object.fromEntries(
+
+    const params = new URLSearchParams()
+    if (globalFilter.value) params.set('search', globalFilter.value)
+    if (statusFilter.value && statusFilter.value !== 'all') params.set('status', statusFilter.value)
+
+    const query = params.toString()
+    const response = await fetch(`/products/hpp-mapping/export-data${query ? '?' + query : ''}`)
+    const allRows: MappingRow[] = await response.json()
+
+    const data = allRows.map((row) => Object.fromEntries(
         selectedColumns.value.map(([field, header]) => {
             let value: unknown
 
             if (field === 'autoMatch') {
                 value = matchLabel(row.autoMatch)
             } else if (field === 'hpp') {
-                value = hppDisplayValue(row)
+                value = hppExportValue(row)
             } else if (field === 'templateItemCode') {
-                value = selectedTemplate.value[row.id] ?? ''
+                value = selectedTemplate.value[row.id] ?? row.templateItemCode ?? ''
             } else if (field === 'unit') {
-                value = selectedUnit.value[row.id] ?? ''
+                value = selectedUnit.value[row.id] ?? row.templateUnitCode ?? ''
             } else if (field === 'note') {
                 value = note.value[row.id] ?? ''
             } else {

@@ -22,6 +22,10 @@ import {
 import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
 import { formatNominal } from '@/utils/formatters'
 
+function roundMoney(value: number): number {
+    return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
 type OrderRow = {
     order_number: string
     order_created_at: string | null
@@ -414,6 +418,7 @@ const exportExcel = async () => {
         ['variation_name', 'Nama Variasi'],
         ['net_quantity', 'Qty Bersih'],
         ['discounted_price', 'Harga Setelah Diskon'],
+        ['subtotal', 'Subtotal'],
     ] as const satisfies readonly TableColumnMeta[]
 
     const recapGroups = new Map<string, { order_product_name: string; variation_name: string; net_quantity: number; discounted_price: number }>()
@@ -443,7 +448,7 @@ const exportExcel = async () => {
             return a.discounted_price - b.discounted_price
         })
         .map((row) => Object.fromEntries(
-            recapColumns.map(([field, header]) => [header, row[field]]),
+            recapColumns.map(([field, header]) => [header, field === 'subtotal' ? roundMoney(row.net_quantity * row.discounted_price) : row[field]]),
         ))
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(recapRows), 'Detail Per Item Rekap')
 
@@ -452,6 +457,7 @@ const exportExcel = async () => {
         ['variation_name', 'Nama Variasi'],
         ['net_quantity', 'Qty Bersih'],
         ['discounted_price', 'Harga Setelah Diskon'],
+        ['subtotal', 'Subtotal'],
         ['business_status', 'Status'],
     ] as const satisfies readonly TableColumnMeta[]
 
@@ -483,7 +489,7 @@ const exportExcel = async () => {
             return a.discounted_price - b.discounted_price
         })
         .map((row) => Object.fromEntries(
-            provisionalColumns.map(([field, header]) => [header, row[field]]),
+            provisionalColumns.map(([field, header]) => [header, field === 'subtotal' ? roundMoney(row.net_quantity * row.discounted_price) : row[field]]),
         ))
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(provisionalRows), 'Provisional Revenue')
 

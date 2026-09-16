@@ -76,6 +76,7 @@ class IncomeReportImporter
             ];
         }
 
+        $payload = $this->uniqueRows($payload);
         $orderNumbers = array_values(array_unique(array_column($payload, 'order_number')));
         DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
 
@@ -94,6 +95,7 @@ class IncomeReportImporter
      */
     public function persist(array $rows, int $userId): int
     {
+        $rows = $this->uniqueRows($rows);
         $orderNumbers = array_values(array_unique(array_column($rows, 'order_number')));
 
         DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
@@ -103,6 +105,29 @@ class IncomeReportImporter
         }
 
         return count($rows);
+    }
+
+    /**
+     * Removes duplicate rows that share the same user + line identity, keeping
+     * the first occurrence. Guards against re-uploads colliding with the
+     * `income_user_line_identity_unique` key when a file lists a line twice.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function uniqueRows(array $rows): array
+    {
+        $seen = [];
+
+        return array_values(array_filter($rows, static function (array $row) use (&$seen): bool {
+            $key = $row['user_id'].'|'.$row['line_identity'];
+            if (isset($seen[$key])) {
+                return false;
+            }
+            $seen[$key] = true;
+
+            return true;
+        }));
     }
 
     private function row(array $headers, array $values): array
