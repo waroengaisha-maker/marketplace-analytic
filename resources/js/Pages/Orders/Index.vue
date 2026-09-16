@@ -447,6 +447,46 @@ const exportExcel = async () => {
         ))
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(recapRows), 'Detail Per Item Rekap')
 
+    const provisionalColumns = [
+        ['order_product_name', 'Nama Produk'],
+        ['variation_name', 'Nama Variasi'],
+        ['net_quantity', 'Qty Bersih'],
+        ['discounted_price', 'Harga Setelah Diskon'],
+        ['business_status', 'Status'],
+    ] as const satisfies readonly TableColumnMeta[]
+
+    const provisionalGroups = new Map<string, { order_product_name: string; variation_name: string; net_quantity: number; discounted_price: number; business_status: string }>()
+    for (const row of linesPayload.rows) {
+        if (!['Unmatched', 'Partially Refunded'].includes(row.business_status) || row.net_quantity <= 0) continue
+
+        const key = `${row.order_product_name}\u0000${row.variation_name ?? ''}\u0000${row.discounted_price ?? 0}`
+        const existing = provisionalGroups.get(key)
+        if (existing) {
+            existing.net_quantity += Number(row.net_quantity ?? 0)
+        } else {
+            provisionalGroups.set(key, {
+                order_product_name: row.order_product_name,
+                variation_name: row.variation_name ?? '',
+                net_quantity: Number(row.net_quantity ?? 0),
+                discounted_price: Number(row.discounted_price ?? 0),
+                business_status: row.business_status,
+            })
+        }
+    }
+
+    const provisionalRows = [...provisionalGroups.values()]
+        .sort((a, b) => {
+            const name = a.order_product_name.localeCompare(b.order_product_name)
+            if (name !== 0) return name
+            const variation = a.variation_name.localeCompare(b.variation_name)
+            if (variation !== 0) return variation
+            return a.discounted_price - b.discounted_price
+        })
+        .map((row) => Object.fromEntries(
+            provisionalColumns.map(([field, header]) => [header, row[field]]),
+        ))
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(provisionalRows), 'Provisional Revenue')
+
     const fromLabel = appliedFromDate.value ? localDateKey(appliedFromDate.value) : 'semua'
     const toLabel = appliedToDate.value ? localDateKey(appliedToDate.value) : 'semua'
     XLSX.writeFile(workbook, buildAnalyticsExportFilename(fromLabel, toLabel))
