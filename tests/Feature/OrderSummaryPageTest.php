@@ -112,6 +112,7 @@ class OrderSummaryPageTest extends TestCase
                     'line_count',
                     'quantity',
                     'net_quantity',
+                    'discounted_price',
                     'subtotal',
                     'admin',
                     'shipping',
@@ -148,6 +149,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(1, $orderA['line_count']);
         $this->assertSame(3, $orderA['quantity']);
         $this->assertSame(2, $orderA['net_quantity']);
+        $this->assertEquals(500.0, $orderA['discounted_price']);
         $this->assertEquals(1000.0, $orderA['subtotal']);
         $this->assertEquals(1000.0, $orderA['penghasilan']);
         $this->assertEquals(0.0, $orderA['hpp']);
@@ -156,6 +158,7 @@ class OrderSummaryPageTest extends TestCase
         $orderB = $ordersByNumber->get('SUM-B');
         $this->assertSame(2, $orderB['line_count']);
         $this->assertSame(3, $orderB['net_quantity']);
+        $this->assertEquals(233.33, $orderB['discounted_price']);
         $this->assertEquals(700.0, $orderB['subtotal']);
         $this->assertEquals(700.0, $orderB['penghasilan']);
         $this->assertEquals(0.0, $orderB['hpp']);

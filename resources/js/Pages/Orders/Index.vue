@@ -30,6 +30,7 @@ type OrderRow = {
     line_count: number
     quantity: number
     net_quantity: number
+    discounted_price: number
     subtotal: number
     admin: number
     shipping: number
@@ -115,6 +116,7 @@ const allColumns = [
     ['business_status', 'Status'],
     ['line_count', 'Jml Baris'],
     ['net_quantity', 'Qty Bersih'],
+    ['discounted_price', 'Harga Setelah Diskon'],
     ['subtotal', 'Total Transaksi'],
     ['admin', 'Biaya Admin'],
     ['shipping', 'Gratis Ongkir'],
@@ -128,7 +130,7 @@ const allColumns = [
 ] as const satisfies readonly TableColumnMeta[]
 
 const sortableFields = new Set(allColumns.map(([field]) => field))
-const moneyFields = new Set(['subtotal', 'admin', 'shipping', 'promo', 'processing', 'tax', 'total_fee', 'penghasilan', 'hpp', 'laba'])
+const moneyFields = new Set(['subtotal', 'admin', 'shipping', 'promo', 'processing', 'tax', 'total_fee', 'penghasilan', 'hpp', 'laba', 'discounted_price'])
 
 const detailColumns = [
     ['order_product_name', 'Nama Produk'],
@@ -196,6 +198,15 @@ const detailGlobalFilter = ref<string | null>(null)
 const activeDetailsReady = computed(() => props.details?.order_number === activeOrderNumber.value && !detailLoading.value)
 const activeOrderStatus = computed(() => props.orders.find((order) => order.order_number === activeOrderNumber.value)?.business_status ?? '')
 const detailRows = computed<DetailRow[]>(() => (activeDetailsReady.value ? props.details?.rows ?? [] : []))
+
+const detailFilteredRows = computed<DetailRow[]>(() => {
+    const query = (detailGlobalFilter.value ?? '').trim().toLowerCase()
+    if (!query) return detailRows.value
+
+    return detailRows.value.filter((row) =>
+        `${Object.values(row).join(' ')} ${hppStatusLabel(row.hpp_status)}`.toLowerCase().includes(query),
+    )
+})
 
 const detailTotals = computed(() => {
     const sum = (field: keyof DetailRow) => detailRows.value.reduce((acc, row) => acc + Number(row[field] ?? 0), 0)
@@ -396,6 +407,42 @@ const exportExcel = async () => {
     ))
     const detailWorksheet = XLSX.utils.json_to_sheet(detailData)
     XLSX.utils.book_append_sheet(workbook, detailWorksheet, 'Detail Per Item')
+
+    const recapColumns = [
+        ['order_product_name', 'Nama Produk'],
+        ['variation_name', 'Nama Variasi'],
+        ['net_quantity', 'Qty Bersih'],
+        ['discounted_price', 'Harga Setelah Diskon'],
+    ] as const satisfies readonly TableColumnMeta[]
+
+    const recapGroups = new Map<string, { order_product_name: string; variation_name: string; net_quantity: number; discounted_price: number }>()
+    for (const row of linesPayload.rows) {
+        const key = `${row.order_product_name}\u0000${row.variation_name ?? ''}\u0000${row.discounted_price ?? 0}`
+        const existing = recapGroups.get(key)
+        if (existing) {
+            existing.net_quantity += Number(row.net_quantity ?? 0)
+        } else {
+            recapGroups.set(key, {
+                order_product_name: row.order_product_name,
+                variation_name: row.variation_name ?? '',
+                net_quantity: Number(row.net_quantity ?? 0),
+                discounted_price: Number(row.discounted_price ?? 0),
+            })
+        }
+    }
+
+    const recapRows = [...recapGroups.values()]
+        .sort((a, b) => {
+            const name = a.order_product_name.localeCompare(b.order_product_name)
+            if (name !== 0) return name
+            const variation = a.variation_name.localeCompare(b.variation_name)
+            if (variation !== 0) return variation
+            return a.discounted_price - b.discounted_price
+        })
+        .map((row) => Object.fromEntries(
+            recapColumns.map(([field, header]) => [header, row[field]]),
+        ))
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(recapRows), 'Detail Per Item Rekap')
 
     const fromLabel = appliedFromDate.value ? localDateKey(appliedFromDate.value) : 'semua'
     const toLabel = appliedToDate.value ? localDateKey(appliedToDate.value) : 'semua'
@@ -637,7 +684,7 @@ const exportExcel = async () => {
                 </AppDataTableToolbar>
 
                 <div class="overflow-auto rounded-lg bg-surface-0 dark:bg-surface-950">
-                    <AppDataTable :value="detailRows" :global-filter="detailGlobalFilter ?? undefined" paginator :rows="10" :rows-per-page-options="[5, 10, 25]"
+                    <AppDataTable :value="detailFilteredRows" paginator :rows="10" :rows-per-page-options="[5, 10, 25]"
                         paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                         current-page-report-template="{first}–{last} dari {totalRecords}" table-style-min-width="110rem">
                         <template #empty>Detail tidak ditemukan.</template>

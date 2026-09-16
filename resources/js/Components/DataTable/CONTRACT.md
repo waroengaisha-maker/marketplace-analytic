@@ -35,7 +35,7 @@ Konsep utama: **selalu server-side** (DataTable `lazy`). Pola:
 
 > **Varian "filter card + toolbar minimal" (pola Orders):** halaman boleh memindahkan seluruh filter (pencarian, filter domain, column picker) ke satu Card bersama filter periode, dan memuat data **hanya setelah** tombol "Terapkan" diklik (bukan otomatis per perubahan input). Dalam pola ini toolbar DataTable cukup berisi tombol Export Excel dan Wajib pasang `:hide-search="true"` pada `AppDataTableToolbar` (komponen secara default selalu merender input pencarian). Aturan tetap: pakai `useDataTableContract()` untuk `globalFilter`/`multiSortMeta`, dan pisahkan state "draft" (input) dari state "applied" (yang benar-benar dikirim ke loadData).
 
-> **Search di modal detail (client-side, pola Orders):** jika tabel di dalam `Dialog` memuat seluruh baris sekaligus (tidak lazy), pencarian di toolbar modal wajib di-wire client-side — `v-model:global-filter` pada `AppDataTableToolbar` modal *dan* `:global-filter` pada `AppDataTable` modal (PrimeVue memfilter baris yang sudah ada di value).
+> **Search di modal detail (client-side, pola Orders):** jika tabel di dalam `Dialog` memuat seluruh baris sekaligus (tidak lazy), JANGAN andalkan prop `global-filter` DataTable PrimeVue (tidak konsisten). Filter manual pakai `computed` di halaman: `detailGlobalFilter` (ref) → `detailFilteredRows` (`row => Object.values(row).join(' ').toLowerCase().includes(query)`, plus label untuk kolom ber-kode seperti `hpp_status`) → `:value="detailFilteredRows"` di `AppDataTable` modal. `v-model:global-filter` pada `AppDataTableToolbar` tetap dipakai untuk state input.
 
 ## Export Excel (wajib)
 
@@ -44,7 +44,8 @@ Export Wajib mengikuti persis model halaman referensi Finance/Reconciliation:
 - Nilai baris adalah **nilai mentah/raw** (`row[field] ?? ''`), bukan string terformat (`formatNominal` hanya untuk tampilan di tabel).
 - Sheet pertama memakai header dari kolom yang dipilih user (`selectedColumns`).
 - Kolom status HPP diexport memakai label (via `hppStatusLabel`).
-- Jika ada data rincian per item, tambahkan **satu sheet tambahan** (mis. "Detail Per Item") berisi baris per item dari semua baris terfilter; data berasal dari endpoint server yang memakai filter yang sama (date + search + statuses).
+- Jika ada data rincian per item, tambahkan **sheet "Detail Per Item"** berisi baris per item dari semua baris terfilter; data berasal dari endpoint server yang memakai filter yang sama (date + search + statuses).
+- Jika data item bisa di-group ulang, tambahkan **satu sheet recap tambahan** (mis. "Detail Per Item Rekap") berisi baris yang sama tetapi diurutkan berdasarkan field domain (mis. nama produk → variasi → harga), diurutkan client-side sebelum ditulis ke sheet.
 - Nama file dipakai `buildAnalyticsExportFilename(fromLabel, toLabel)`.
 
 Contoh pola:
