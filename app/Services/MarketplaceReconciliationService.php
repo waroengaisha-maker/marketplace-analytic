@@ -190,6 +190,11 @@ class MarketplaceReconciliationService
                 l.order_created_at,
                 l.buyer_username,
                 l.business_status AS status,
+                l.product_key,
+                l.variation_key,
+                l.order_product_name,
+                l.variation_name,
+                l.item_index,
                 l.quantity,
                 l.returned_quantity,
                 (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
@@ -347,6 +352,191 @@ class MarketplaceReconciliationService
             ->orderBy('g.order_number');
 
         return $query->get()->map(fn (object $row): array => $this->orderSummary($row))->all();
+    }
+
+    /**
+     * Aggregated customer totals (order_count, subtotal, hpp, laba) across all
+     * filtered orders, ignoring pagination. Used for the Customers summary
+     * cards that must reflect the active date range / search.
+     *
+     * @param  array<string, mixed>  $parameters
+     * @return array<string, float|int>
+     */
+    public function customerSummariesTotals(int $userId, ?string $from, ?string $to, array $parameters): array
+    {
+        $lines = $this->orderSummaryLines($userId, $from, $to, $parameters);
+
+        $totals = DB::query()
+            ->fromSub($lines, 'g')
+            ->selectRaw('
+                COUNT(DISTINCT g.order_number) AS order_count,
+                COALESCE(SUM(g.subtotal), 0) AS subtotal,
+                COALESCE(SUM(g.hpp), 0) AS hpp,
+                COALESCE((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp), 0) AS laba
+            ')
+            ->first();
+
+        return [
+            'order_count' => (int) ($totals->order_count ?? 0),
+            'subtotal' => (float) ($totals->subtotal ?? 0),
+            'hpp' => (float) ($totals->hpp ?? 0),
+            'laba' => (float) ($totals->laba ?? 0),
+        ];
+    }
+
+    /**
+     * Server-side paginated list grouped per buyer username, reusing the exact
+     * reconciliation financial model (subtotal, fees, tax, penghasilan, HPP,
+     * laba). Rows without a username are grouped under a `(tanpa username)`
+     * fallback so no purchase is silently dropped.
+     *
+     * @param  array<string, mixed>  $parameters
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    public function customerSummariesPage(int $userId, ?string $from, ?string $to, array $parameters): LengthAwarePaginator
+    {
+        $buyerExpression = "COALESCE(NULLIF(TRIM(g.buyer_username), ''), '(tanpa username)')";
+        $lines = $this->orderSummaryLines($userId, $from, $to, $parameters);
+
+        $query = DB::query()->fromSub($lines, 'g')
+            ->selectRaw("
+                {$buyerExpression} AS buyer_username,
+                COUNT(DISTINCT g.order_number) AS order_count,
+                COUNT(*) AS line_count,
+                SUM(g.net_quantity) AS net_quantity,
+                SUM(g.subtotal) AS subtotal,
+                (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
+                (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
+                SUM(g.hpp) AS hpp,
+                ((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+            ")
+            ->groupBy(DB::raw($buyerExpression));
+
+        $allowlist = [
+            'buyer_username' => DB::raw($buyerExpression),
+            'order_count' => 'order_count',
+            'line_count' => 'line_count',
+            'net_quantity' => 'net_quantity',
+            'subtotal' => 'subtotal',
+            'total_fee' => 'total_fee',
+            'penghasilan' => 'penghasilan',
+            'hpp' => 'hpp',
+            'laba' => 'laba',
+        ];
+        $sortField = (string) ($parameters['sort_field'] ?? 'laba');
+        $sortOrder = strtolower((string) ($parameters['sort_order'] ?? 'desc')) === 'desc' ? 'desc' : 'asc';
+        $query->orderBy($allowlist[$sortField] ?? DB::raw($buyerExpression), $sortOrder);
+        $query->orderBy(DB::raw($buyerExpression));
+
+        $perPage = min(max((int) ($parameters['per_page'] ?? 25), 10), 100);
+        $page = $query->paginate($perPage)->withQueryString();
+        $page->setCollection($page->getCollection()->map(fn (object $row): array => $this->customerSummary($row)));
+
+        return $page;
+    }
+
+    /**
+     * All filtered customer summaries without pagination — used by the
+     * Customers export to include every customer in the date range.
+     *
+     * @param  array<string, mixed>  $parameters
+     * @return array<int, array<string, mixed>>
+     */
+    public function customerSummariesAll(int $userId, ?string $from, ?string $to, array $parameters): array
+    {
+        $buyerExpression = "COALESCE(NULLIF(TRIM(g.buyer_username), ''), '(tanpa username)')";
+        $lines = $this->orderSummaryLines($userId, $from, $to, $parameters);
+
+        $query = DB::query()->fromSub($lines, 'g')
+            ->selectRaw("
+                {$buyerExpression} AS buyer_username,
+                COUNT(DISTINCT g.order_number) AS order_count,
+                COUNT(*) AS line_count,
+                SUM(g.net_quantity) AS net_quantity,
+                SUM(g.subtotal) AS subtotal,
+                (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
+                (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
+                SUM(g.hpp) AS hpp,
+                ((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+            ")
+            ->groupBy(DB::raw($buyerExpression))
+            ->orderBy(DB::raw($buyerExpression));
+
+        return $query->get()->map(fn (object $row): array => $this->customerSummary($row))->all();
+    }
+
+    /**
+     * Item-level purchase history for a single buyer within the date range —
+     * the detail modal payload for the Customers page. Lists every line item
+     * per transaction (complete with order number) sorted by order date,
+     * without aggregating across orders.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function customerHistory(int $userId, string $buyer, ?string $from, ?string $to): array
+    {
+        $lines = $this->orderSummaryLines($userId, $from, $to, []);
+
+        $query = DB::query()->fromSub($lines, 'g')
+            ->selectRaw('
+                g.order_number,
+                g.order_created_at,
+                g.item_index,
+                g.status,
+                g.order_product_name AS product_name,
+                g.variation_name,
+                g.net_quantity,
+                g.subtotal,
+                (g.admin + g.shipping + g.promo + g.processing) AS total_fee,
+                (g.subtotal + g.admin + g.shipping + g.promo + g.processing + g.tax) AS penghasilan,
+                g.hpp,
+                ((g.subtotal + g.admin + g.shipping + g.promo + g.processing + g.tax) - g.hpp) AS laba
+            ');
+
+        $query->where(function (Builder $query) use ($buyer): void {
+            if ($buyer === '(tanpa username)') {
+                $query->whereNull('g.buyer_username')->orWhereRaw("TRIM(g.buyer_username) = ''");
+            } else {
+                $query->whereRaw('TRIM(g.buyer_username) = ?', [$buyer]);
+            }
+        });
+
+        return $query->orderBy('g.order_created_at', 'desc')
+            ->orderBy('g.item_index')
+            ->get()
+            ->map(fn (object $row): array => [
+                'order_number' => $row->order_number,
+                'order_created_at' => $row->order_created_at,
+                'business_status' => $row->status,
+                'product_name' => $row->product_name,
+                'variation_name' => $row->variation_name,
+                'net_quantity' => (float) $row->net_quantity,
+                'subtotal' => (float) $row->subtotal,
+                'total_fee' => (float) $row->total_fee,
+                'penghasilan' => (float) $row->penghasilan,
+                'hpp' => (float) $row->hpp,
+                'laba' => (float) $row->laba,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customerSummary(object $row): array
+    {
+        return [
+            'buyer_username' => $row->buyer_username,
+            'order_count' => (int) $row->order_count,
+            'line_count' => (int) $row->line_count,
+            'net_quantity' => (float) ($row->net_quantity ?? 0),
+            'subtotal' => (float) $row->subtotal,
+            'total_fee' => (float) $row->total_fee,
+            'penghasilan' => (float) $row->penghasilan,
+            'hpp' => (float) $row->hpp,
+            'laba' => (float) $row->laba,
+        ];
     }
 
     /**

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HppController;
 use App\Http\Controllers\HppMappingController;
 use App\Http\Controllers\IncomeReconciliationController;
@@ -63,6 +64,8 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
     Route::get('/orders/export-lines', [OrdersController::class, 'exportLines'])->name('orders.export-lines');
     Route::get('/orders/export-data', [OrdersController::class, 'exportData'])->name('orders.export-data');
+    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index');
+    Route::get('/customers/export-data', [CustomerController::class, 'exportData'])->name('customers.export-data');
     Route::get('/finance/reconciliation', [ReconciliationController::class, 'index'])->name('finance.reconciliation');
     Route::get('/finance/income-reconciliation', [IncomeReconciliationController::class, 'index'])->name('finance.income-reconciliation');
     Route::get('/products/hpp', [HppController::class, 'index'])->name('products.hpp');
