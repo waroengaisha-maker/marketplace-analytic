@@ -9,6 +9,14 @@ export type GlobalFilter = { value: string | null; matchMode: string }
 let routerListenersRegistered = false
 
 /**
+ * Module-scoped loading state: the "start"/"finish" listeners are registered
+ * once and must keep driving the SAME ref for every datatable page. A ref
+ * created per `useDataTableContract()` call would only ever be updated for the
+ * first page that invoked it, silently breaking the overlay on subsequent pages.
+ */
+const isLoading = ref(false)
+
+/**
  * Contract: datatable pages should behave as the Finance/Reconciliation
  * reference page — server-side (lazy) with multi-sort and an overlay loading
  * state that follows Inertia visits.
@@ -17,7 +25,6 @@ export function useDataTableContract() {
     const globalFilter = ref<string | null>(null)
     const multiSortMeta = ref<{ field: string; order: number }[]>([])
     const selectedRows = ref<unknown[]>([])
-    const isLoading = ref(false)
 
     if (!routerListenersRegistered) {
         routerListenersRegistered = true

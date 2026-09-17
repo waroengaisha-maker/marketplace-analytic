@@ -45,7 +45,7 @@ defineExpose({ exportCSV })
         </template>
         <template #loading>
             <slot name="loading">
-                <div class="flex items-center justify-center gap-3 p-8 text-color-secondary">
+                <div class="flex h-full min-h-40 w-full items-center justify-center gap-3 bg-surface-0/60 p-8 text-color-secondary backdrop-blur-[1px]">
                     <ProgressSpinner style="width: 2rem; height: 2rem" aria-label="Memuat data" />
                     <span class="text-sm">Memuat data...</span>
                 </div>

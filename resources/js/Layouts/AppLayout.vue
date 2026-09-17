@@ -425,7 +425,7 @@ const submitLogout = () => {
 
                     <div
                         v-if="isNavigating"
-                        class="absolute inset-0 z-10 flex items-start justify-center bg-white/20 pt-16 backdrop-blur-[1px] dark:bg-black/20"
+                        class="absolute inset-0 z-10 flex items-center justify-center bg-white/20 backdrop-blur-[1px] dark:bg-black/20"
                         aria-hidden="true"
                     >
                         <div class="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
