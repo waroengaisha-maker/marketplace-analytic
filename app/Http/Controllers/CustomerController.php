@@ -17,7 +17,7 @@ class CustomerController extends Controller
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:10', 'max:100'],
             'search' => ['nullable', 'string', 'max:255'],
-            'sort_field' => ['nullable', 'string', 'in:buyer_username,order_count,line_count,net_quantity,subtotal,total_fee,penghasilan,hpp,laba'],
+            'sort_field' => ['nullable', 'string', 'in:buyer_username,order_count,revenue_order_count,non_revenue_order_count,line_count,net_quantity,subtotal,revenue_subtotal,non_revenue_subtotal,total_fee,penghasilan,hpp,laba'],
             'sort_order' => ['nullable', 'string', 'in:asc,desc'],
         ]);
         $buyer = $request->query('customer');

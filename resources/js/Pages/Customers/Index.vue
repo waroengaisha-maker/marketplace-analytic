@@ -25,9 +25,13 @@ import { formatNominal } from '@/utils/formatters'
 type CustomerRow = {
     buyer_username: string
     order_count: number
+    revenue_order_count: number
+    non_revenue_order_count: number
     line_count: number
     net_quantity: number
     subtotal: number
+    revenue_subtotal: number
+    non_revenue_subtotal: number
     total_fee: number
     penghasilan: number
     hpp: number
@@ -38,6 +42,7 @@ type HistoryRow = {
     order_number: string
     order_created_at: string | null
     business_status: string
+    order_status: string | null
     product_name: string
     variation_name: string | null
     net_quantity: number
@@ -74,19 +79,24 @@ const props = defineProps<{
 const allColumns = [
     ['buyer_username', 'Username'],
     ['order_count', 'Jml Pesanan'],
+    ['revenue_order_count', 'Jml Order Revenue'],
+    ['non_revenue_order_count', 'Jml Order Non-Revenue'],
     ['net_quantity', 'Qty Beli'],
     ['subtotal', 'Total Belanja'],
+    ['revenue_subtotal', 'Belanja Revenue'],
+    ['non_revenue_subtotal', 'Belanja Non-Revenue'],
     ['hpp', 'Total HPP'],
     ['laba', 'Laba Bersih'],
 ] as const satisfies readonly TableColumnMeta[]
 
 const sortableFields = new Set(allColumns.map(([field]) => field))
-const moneyFields = new Set(['subtotal', 'hpp', 'laba'])
+const moneyFields = new Set(['subtotal', 'revenue_subtotal', 'non_revenue_subtotal', 'hpp', 'laba'])
 
 const historyColumns = [
     ['order_number', 'No. Pesanan'],
     ['order_created_at', 'Tanggal'],
     ['business_status', 'Status'],
+    ['order_status', 'Status Order'],
     ['product_name', 'Produk'],
     ['variation_name', 'Variasi'],
     ['net_quantity', 'Qty Bersih'],
@@ -419,7 +429,7 @@ const exportExcel = async () => {
                             :rows-per-page-options="[25, 50, 100]"
                             paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                             current-page-report-template="{first}–{last} dari {totalRecords}"
-                            table-style-min-width="88rem"
+                            table-style-min-width="96rem"
                         >
                             <template #empty>Belum ada customer. Import laporan order terlebih dahulu.</template>
 
@@ -500,7 +510,7 @@ const exportExcel = async () => {
                 <div class="overflow-auto rounded-lg bg-surface-0 dark:bg-surface-950">
                     <AppDataTable :value="historyFilteredRows" paginator :rows="10" :rows-per-page-options="[10, 25, 50]"
                         paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-                        current-page-report-template="{first}–{last} dari {totalRecords}" table-style-min-width="96rem">
+                        current-page-report-template="{first}–{last} dari {totalRecords}" table-style-min-width="100rem">
                         <template #empty>Histori belanja tidak ditemukan.</template>
                         <Column v-for="[field, header] in selectedHistoryColumns" :key="field" :field="field" :header="header">
                             <template #body="{ data: historyData }">
@@ -509,6 +519,7 @@ const exportExcel = async () => {
                                 </template>
                                 <template v-else-if="field === 'order_created_at'">{{ formatDate(historyData.order_created_at) }}</template>
                                 <Tag v-else-if="field === 'business_status'" :value="historyData.business_status" :severity="statusSeverity(historyData.business_status)" />
+                                <template v-else-if="field === 'order_status'">{{ historyData.order_status || '—' }}</template>
                                 <template v-else-if="field === 'product_name'">
                                     <span class="font-medium text-slate-700">{{ historyData.product_name }}</span>
                                 </template>

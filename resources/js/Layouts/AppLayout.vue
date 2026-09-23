@@ -170,6 +170,11 @@ const navigation = computed(() => [
 
 const currentUrl = computed(() => page.url)
 
+const mainAreaLeft = computed(() => {
+    if (isMobile.value) return '0rem'
+    return sidebarOpen.value ? '16rem' : '5rem'
+})
+
 const isActive = (href: string) => {
     if (href === '/') {
         return currentUrl.value === '/'
@@ -423,11 +428,12 @@ const submitLogout = () => {
                 >
                     <slot />
 
-                    <div
-                        v-if="isNavigating"
-                        class="absolute inset-0 z-10 flex items-center justify-center bg-white/20 backdrop-blur-[1px] dark:bg-black/20"
-                        aria-hidden="true"
-                    >
+<div
+                    v-if="isNavigating"
+                    class="fixed z-40 flex items-center justify-center bg-white/20 backdrop-blur-[1px] dark:bg-black/20"
+                    :style="{ left: mainAreaLeft, top: '3rem', right: '0', bottom: '0' }"
+                    aria-hidden="true"
+                >
                         <div class="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                             <i class="pi pi-spin pi-spinner text-blue-500" />
                             <span>Memuat...</span>

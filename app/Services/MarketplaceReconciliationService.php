@@ -189,6 +189,7 @@ class MarketplaceReconciliationService
                 l.order_number,
                 l.order_created_at,
                 l.buyer_username,
+                l.order_status,
                 l.business_status AS status,
                 l.product_key,
                 l.variation_key,
@@ -396,15 +397,20 @@ class MarketplaceReconciliationService
     public function customerSummariesPage(int $userId, ?string $from, ?string $to, array $parameters): LengthAwarePaginator
     {
         $buyerExpression = "COALESCE(NULLIF(TRIM(g.buyer_username), ''), '(tanpa username)')";
+        $revenueStatus = "g.status NOT IN ('Refunded', 'Cancelled', 'Invalid')";
         $lines = $this->orderSummaryLines($userId, $from, $to, $parameters);
 
         $query = DB::query()->fromSub($lines, 'g')
             ->selectRaw("
                 {$buyerExpression} AS buyer_username,
                 COUNT(DISTINCT g.order_number) AS order_count,
+                COUNT(DISTINCT CASE WHEN {$revenueStatus} AND g.net_quantity > 0 THEN g.order_number END) AS revenue_order_count,
+                (COUNT(DISTINCT g.order_number) - COUNT(DISTINCT CASE WHEN {$revenueStatus} AND g.net_quantity > 0 THEN g.order_number END)) AS non_revenue_order_count,
                 COUNT(*) AS line_count,
                 SUM(g.net_quantity) AS net_quantity,
                 SUM(g.subtotal) AS subtotal,
+                SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END) AS revenue_subtotal,
+                (SUM(g.subtotal) - SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END)) AS non_revenue_subtotal,
                 (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
                 (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
                 SUM(g.hpp) AS hpp,
@@ -415,9 +421,13 @@ class MarketplaceReconciliationService
         $allowlist = [
             'buyer_username' => DB::raw($buyerExpression),
             'order_count' => 'order_count',
+            'revenue_order_count' => 'revenue_order_count',
+            'non_revenue_order_count' => 'non_revenue_order_count',
             'line_count' => 'line_count',
             'net_quantity' => 'net_quantity',
             'subtotal' => 'subtotal',
+            'revenue_subtotal' => 'revenue_subtotal',
+            'non_revenue_subtotal' => 'non_revenue_subtotal',
             'total_fee' => 'total_fee',
             'penghasilan' => 'penghasilan',
             'hpp' => 'hpp',
@@ -445,15 +455,20 @@ class MarketplaceReconciliationService
     public function customerSummariesAll(int $userId, ?string $from, ?string $to, array $parameters): array
     {
         $buyerExpression = "COALESCE(NULLIF(TRIM(g.buyer_username), ''), '(tanpa username)')";
+        $revenueStatus = "g.status NOT IN ('Refunded', 'Cancelled', 'Invalid')";
         $lines = $this->orderSummaryLines($userId, $from, $to, $parameters);
 
         $query = DB::query()->fromSub($lines, 'g')
             ->selectRaw("
                 {$buyerExpression} AS buyer_username,
                 COUNT(DISTINCT g.order_number) AS order_count,
+                COUNT(DISTINCT CASE WHEN {$revenueStatus} AND g.net_quantity > 0 THEN g.order_number END) AS revenue_order_count,
+                (COUNT(DISTINCT g.order_number) - COUNT(DISTINCT CASE WHEN {$revenueStatus} AND g.net_quantity > 0 THEN g.order_number END)) AS non_revenue_order_count,
                 COUNT(*) AS line_count,
                 SUM(g.net_quantity) AS net_quantity,
                 SUM(g.subtotal) AS subtotal,
+                SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END) AS revenue_subtotal,
+                (SUM(g.subtotal) - SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END)) AS non_revenue_subtotal,
                 (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
                 (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
                 SUM(g.hpp) AS hpp,
@@ -483,6 +498,7 @@ class MarketplaceReconciliationService
                 g.order_created_at,
                 g.item_index,
                 g.status,
+                g.order_status,
                 g.order_product_name AS product_name,
                 g.variation_name,
                 g.net_quantity,
@@ -508,6 +524,7 @@ class MarketplaceReconciliationService
                 'order_number' => $row->order_number,
                 'order_created_at' => $row->order_created_at,
                 'business_status' => $row->status,
+                'order_status' => $row->order_status,
                 'product_name' => $row->product_name,
                 'variation_name' => $row->variation_name,
                 'net_quantity' => (float) $row->net_quantity,
@@ -529,9 +546,13 @@ class MarketplaceReconciliationService
         return [
             'buyer_username' => $row->buyer_username,
             'order_count' => (int) $row->order_count,
+            'revenue_order_count' => (int) ($row->revenue_order_count ?? 0),
+            'non_revenue_order_count' => (int) ($row->non_revenue_order_count ?? 0),
             'line_count' => (int) $row->line_count,
             'net_quantity' => (float) ($row->net_quantity ?? 0),
             'subtotal' => (float) $row->subtotal,
+            'revenue_subtotal' => (float) ($row->revenue_subtotal ?? 0),
+            'non_revenue_subtotal' => (float) ($row->non_revenue_subtotal ?? 0),
             'total_fee' => (float) $row->total_fee,
             'penghasilan' => (float) $row->penghasilan,
             'hpp' => (float) $row->hpp,

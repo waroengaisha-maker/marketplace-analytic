@@ -62,6 +62,17 @@ class CustomerSummariesPageTest extends TestCase
                 'order_created_at' => '2026-08-16 11:00:00',
                 'buyer_username' => 'siti.rahayu',
             ]),
+            $this->order($user->id, [
+                'order_number' => 'CUS-C',
+                'product_key' => $productB,
+                'item_index' => 4,
+                'discounted_price' => 100,
+                'unit_price' => 100,
+                'quantity' => 1,
+                'order_status' => 'Dibatalkan',
+                'order_created_at' => '2026-08-17 12:00:00',
+                'buyer_username' => 'budi.santoso',
+            ]),
         ]);
 
         $response = $this->customersRequest($user, [
@@ -75,9 +86,13 @@ class CustomerSummariesPageTest extends TestCase
                 'customers' => [[
                     'buyer_username',
                     'order_count',
+                    'revenue_order_count',
+                    'non_revenue_order_count',
                     'line_count',
                     'net_quantity',
                     'subtotal',
+                    'revenue_subtotal',
+                    'non_revenue_subtotal',
                     'total_fee',
                     'penghasilan',
                     'hpp',
@@ -94,25 +109,33 @@ class CustomerSummariesPageTest extends TestCase
         $customers = collect(data_get($response->json(), 'props.customers'));
 
         $this->assertSame(2, data_get($response->json(), 'props.pagination.total'));
-        $this->assertSame(2, data_get($response->json(), 'props.summaries.order_count'));
-        $this->assertEquals(1700.0, data_get($response->json(), 'props.summaries.subtotal'));
+        $this->assertSame(3, data_get($response->json(), 'props.summaries.order_count'));
+        $this->assertEquals(1800.0, data_get($response->json(), 'props.summaries.subtotal'));
         $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.hpp'));
-        $this->assertEquals(1700.0, data_get($response->json(), 'props.summaries.laba'));
+        $this->assertEquals(1800.0, data_get($response->json(), 'props.summaries.laba'));
 
         $budi = $customers->firstWhere('buyer_username', 'budi.santoso');
-        $this->assertSame(1, $budi['order_count']);
-        $this->assertSame(1, $budi['line_count']);
-        $this->assertEquals(2.0, $budi['net_quantity']);
-        $this->assertEquals(1000.0, $budi['subtotal']);
-        $this->assertEquals(1000.0, $budi['penghasilan']);
+        $this->assertSame(2, $budi['order_count']);
+        $this->assertSame(1, $budi['revenue_order_count']);
+        $this->assertSame(1, $budi['non_revenue_order_count']);
+        $this->assertSame(2, $budi['line_count']);
+        $this->assertEquals(3.0, $budi['net_quantity']);
+        $this->assertEquals(1100.0, $budi['subtotal']);
+        $this->assertEquals(1000.0, $budi['revenue_subtotal']);
+        $this->assertEquals(100.0, $budi['non_revenue_subtotal']);
+        $this->assertEquals(1100.0, $budi['penghasilan']);
         $this->assertEquals(0.0, $budi['hpp']);
-        $this->assertEquals(1000.0, $budi['laba']);
+        $this->assertEquals(1100.0, $budi['laba']);
 
         $siti = $customers->firstWhere('buyer_username', 'siti.rahayu');
         $this->assertSame(1, $siti['order_count']);
+        $this->assertSame(1, $siti['revenue_order_count']);
+        $this->assertSame(0, $siti['non_revenue_order_count']);
         $this->assertSame(2, $siti['line_count']);
         $this->assertEquals(3.0, $siti['net_quantity']);
         $this->assertEquals(700.0, $siti['subtotal']);
+        $this->assertEquals(700.0, $siti['revenue_subtotal']);
+        $this->assertEquals(0.0, $siti['non_revenue_subtotal']);
         $this->assertEquals(700.0, $siti['penghasilan']);
         $this->assertEquals(700.0, $siti['laba']);
     }
