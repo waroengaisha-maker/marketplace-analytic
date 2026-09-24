@@ -39,6 +39,8 @@ class IncomeReportImporterTest extends TestCase
                 'Harga Produk',
                 'Jumlah',
                 'Total Penghasilan',
+                'Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori E)',
+                'Biaya Gratis Ongkir XTRA - Ukuran Khusus (Kategori E)',
                 'Lihat berdasarkan',
             ],
             ...$lines,
@@ -57,8 +59,30 @@ class IncomeReportImporterTest extends TestCase
             $price,
             $quantity,
             $total ?? (string) ($price * $quantity),
+            0,
+            0,
             'Sku',
         ];
+    }
+
+    public function test_income_import_sums_special_category_e_free_shipping_fee_once(): void
+    {
+        $user = User::factory()->create();
+        $line = $this->incomeLine('INC-FEE-E', 'Teh Botol', 'Original');
+        $line[6] = 12.5;
+        $line[7] = 37.5;
+        $path = $this->writeIncomeReport([$line]);
+
+        try {
+            $this->importer->import($path, $user->id);
+        } finally {
+            unlink($path);
+        }
+
+        $this->assertSame(50.0, (float) DB::table('marketplace_income')
+            ->where('user_id', $user->id)
+            ->where('order_number', 'INC-FEE-E')
+            ->value('free_shipping_xtra_fee'));
     }
 
     public function test_income_import_deduplicates_identical_lines_within_file(): void

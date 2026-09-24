@@ -30,10 +30,11 @@ type CustomerRow = {
     line_count: number
     net_quantity: number
     subtotal: number
+    total_fee: number
+    tax: number
+    penghasilan: number
     revenue_subtotal: number
     non_revenue_subtotal: number
-    total_fee: number
-    penghasilan: number
     hpp: number
     laba: number
 }
@@ -48,6 +49,7 @@ type HistoryRow = {
     net_quantity: number
     subtotal: number
     total_fee: number
+    tax: number
     penghasilan: number
     hpp: number
     laba: number
@@ -56,6 +58,9 @@ type HistoryRow = {
 type CustomerSummaries = {
     order_count: number
     subtotal: number
+    total_fee: number
+    tax: number
+    penghasilan: number
     hpp: number
     laba: number
 }
@@ -83,6 +88,9 @@ const allColumns = [
     ['non_revenue_order_count', 'Jml Order Non-Revenue'],
     ['net_quantity', 'Qty Beli'],
     ['subtotal', 'Total Belanja'],
+    ['total_fee', 'Total Biaya'],
+    ['tax', 'Total Pajak'],
+    ['penghasilan', 'Total Penghasilan'],
     ['revenue_subtotal', 'Belanja Revenue'],
     ['non_revenue_subtotal', 'Belanja Non-Revenue'],
     ['hpp', 'Total HPP'],
@@ -90,7 +98,7 @@ const allColumns = [
 ] as const satisfies readonly TableColumnMeta[]
 
 const sortableFields = new Set(allColumns.map(([field]) => field))
-const moneyFields = new Set(['subtotal', 'revenue_subtotal', 'non_revenue_subtotal', 'hpp', 'laba'])
+const moneyFields = new Set(['subtotal', 'total_fee', 'tax', 'penghasilan', 'revenue_subtotal', 'non_revenue_subtotal', 'hpp', 'laba'])
 
 const historyColumns = [
     ['order_number', 'No. Pesanan'],
@@ -101,13 +109,17 @@ const historyColumns = [
     ['variation_name', 'Variasi'],
     ['net_quantity', 'Qty Bersih'],
     ['subtotal', 'Total Belanja'],
+    ['total_fee', 'Total Biaya'],
+    ['tax', 'Total Pajak'],
+    ['penghasilan', 'Total Penghasilan'],
     ['hpp', 'HPP'],
     ['laba', 'Laba Bersih'],
 ] as const satisfies readonly TableColumnMeta[]
 
-const historyMoneyFields = new Set(['subtotal', 'hpp', 'laba'])
+const historyMoneyFields = new Set(['subtotal', 'total_fee', 'tax', 'penghasilan', 'hpp', 'laba'])
 
 const { globalFilter, multiSortMeta, isLoading, selectedRows } = useDataTableContract()
+const historyMultiSortMeta = ref<{ field: string; order: number }[]>([])
 const selectedColumns = ref<TableColumnMeta[]>([...allColumns])
 const selectedHistoryColumns = ref<TableColumnMeta[]>([...historyColumns])
 
@@ -141,6 +153,9 @@ const historyTotals = computed(() => {
 
     return {
         subtotal: sum('subtotal'),
+        total_fee: sum('total_fee'),
+        tax: sum('tax'),
+        penghasilan: sum('penghasilan'),
         hpp: sum('hpp'),
         laba: sum('laba'),
     }
@@ -149,6 +164,9 @@ const historyTotals = computed(() => {
 const summaryCards = [
     { key: 'order_count', label: 'Jumlah Pesanan' },
     { key: 'subtotal', label: 'Total Belanja' },
+    { key: 'total_fee', label: 'Total Biaya' },
+    { key: 'tax', label: 'Total Pajak' },
+    { key: 'penghasilan', label: 'Total Penghasilan' },
     { key: 'hpp', label: 'Total HPP' },
     { key: 'laba', label: 'Total Laba Bersih' },
 ] as const
@@ -502,17 +520,20 @@ const exportExcel = async () => {
                     <template #start>
                         <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
                             <span><span class="text-slate-400">Total Belanja:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.subtotal) }}</strong></span>
+                            <span><span class="text-slate-400">Total Biaya:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.total_fee) }}</strong></span>
+                            <span><span class="text-slate-400">Total Pajak:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.tax) }}</strong></span>
+                            <span><span class="text-slate-400">Total Penghasilan:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.penghasilan) }}</strong></span>
                             <span><span class="text-slate-400">HPP:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.hpp) }}</strong></span>
                         </div>
                     </template>
                 </AppDataTableToolbar>
 
                 <div class="overflow-auto rounded-lg bg-surface-0 dark:bg-surface-950">
-                    <AppDataTable :value="historyFilteredRows" paginator :rows="10" :rows-per-page-options="[10, 25, 50]"
+                    <AppDataTable :value="historyFilteredRows" v-model:multi-sort-meta="historyMultiSortMeta" sort-mode="multiple" paginator :rows="10" :rows-per-page-options="[10, 25, 50]"
                         paginator-template="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
                         current-page-report-template="{first}–{last} dari {totalRecords}" table-style-min-width="100rem">
                         <template #empty>Histori belanja tidak ditemukan.</template>
-                        <Column v-for="[field, header] in selectedHistoryColumns" :key="field" :field="field" :header="header">
+                        <Column v-for="[field, header] in selectedHistoryColumns" :key="field" :field="field" :header="header" sortable>
                             <template #body="{ data: historyData }">
                                 <template v-if="field === 'order_number'">
                                     <span class="font-semibold text-slate-800">{{ historyData.order_number }}</span>

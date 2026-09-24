@@ -121,7 +121,6 @@ const allColumns = [
     ['business_status', 'Status'],
     ['line_count', 'Jml Baris'],
     ['net_quantity', 'Qty Bersih'],
-    ['discounted_price', 'Harga Setelah Diskon'],
     ['subtotal', 'Total Transaksi'],
     ['admin', 'Biaya Admin'],
     ['shipping', 'Gratis Ongkir'],
@@ -135,7 +134,7 @@ const allColumns = [
 ] as const satisfies readonly TableColumnMeta[]
 
 const sortableFields = new Set(allColumns.map(([field]) => field))
-const moneyFields = new Set(['subtotal', 'admin', 'shipping', 'promo', 'processing', 'tax', 'total_fee', 'penghasilan', 'hpp', 'laba', 'discounted_price'])
+const moneyFields = new Set(['subtotal', 'admin', 'shipping', 'promo', 'processing', 'tax', 'total_fee', 'penghasilan', 'hpp', 'laba'])
 
 const detailColumns = [
     ['order_product_name', 'Nama Produk'],
@@ -405,7 +404,7 @@ const exportExcel = async () => {
     ))
     const worksheet = XLSX.utils.json_to_sheet(data)
     const workbook = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders')
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekapan Orders')
 
     const detailData = linesPayload.rows.map((row) => Object.fromEntries(
         exportColumns.map(([field, header]) => [header, field === 'hpp_status' ? hppStatusLabel(row.hpp_status) : row[field as keyof ExportLineRow] ?? '']),
@@ -492,6 +491,28 @@ const exportExcel = async () => {
             provisionalColumns.map(([field, header]) => [header, field === 'subtotal' ? roundMoney(row.net_quantity * row.discounted_price) : row[field]]),
         ))
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(provisionalRows), 'Provisional Revenue')
+
+    const combinedRows = [
+        ...recapRows.map((row) => ({
+            'Nama Produk': row['Nama Produk'],
+            'Nama Variasi': row['Nama Variasi'],
+            'Qty Bersih': row['Qty Bersih'],
+            'Harga Setelah Diskon': row['Harga Setelah Diskon'],
+            Subtotal: row['Subtotal'],
+            Kategori: 'Rekap Revenue',
+            Status: 'Settled',
+        })),
+        ...provisionalRows.map((row) => ({
+            'Nama Produk': row['Nama Produk'],
+            'Nama Variasi': row['Nama Variasi'],
+            'Qty Bersih': row['Qty Bersih'],
+            'Harga Setelah Diskon': row['Harga Setelah Diskon'],
+            Subtotal: row['Subtotal'],
+            Kategori: 'Provisional Revenue',
+            Status: row['Status'],
+        })),
+    ]
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(combinedRows), 'Rekap Revenue Gabungan')
 
     const fromLabel = appliedFromDate.value ? localDateKey(appliedFromDate.value) : 'semua'
     const toLabel = appliedToDate.value ? localDateKey(appliedToDate.value) : 'semua'

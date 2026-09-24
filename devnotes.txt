@@ -2,3 +2,20 @@
 - best practice error handling
 - best practice flash message
 - best practice UI/UX berbasis komponen
+
+
+
+
+- di ringkasan customer : tambahkan card info total biaya total pajak, total penghasilan setelah total belanja
+- di datatable customer dan modal detail customer : tambahkan kolom, total biaya, total pajak, total penghasilan setelah kolom total belanja
+- di datatable modal detail customer : aktifkan juga kontrak fitur datatable
+- di page reconciliation : sorting datatable tidak benar
+- kenapa pada saat saya pakai order periode juni 2026, hpp produk nya kosong, padahal ada terdaftar di hpp master untuk produk tersebut
+
+- terapkan konsep Tabs resmi primevue untuk menu Dashboard https://primevue.dev/tabs/
+
+- coba cek order 260610Q4KNNT3E, ada isu kesalahan biaya, sepertinya ini terjadi karna dalam satu transaksi ada produk yg sama tapi beda variasi, coba cek dulu, jangan ubah kode apapun terkait isu ini
+- perhitungkan juga kolom Biaya Gratis Ongkir XTRA - Ukuran Khusus (Kategori E) di file income, terdapat di periode juni
+- di menu Orders, di datatable : hapus kolom harga setelah diskon
+- sebagai insight : dalam satu transaksi, 1. lebih dari satu produk yg sama adalah tidak mungkin, 2. lebih dari satu yg sama dan juga variasi yg sama adalah tidak mungkin, 3. lebih dari satu produk yg sama dan variasi yg beda adalah mungkin, 4. harga produk yg sama dan beda variasi adalah mungkin sama
+- untuk export excel menu Orders, tambahkan sheet baru yg memuat gabungan sheet detail per item rekap dan provisional revenue, sekaligus coba rename nama sheet yg ada menurut kamu yg relevan sesuai isi nya

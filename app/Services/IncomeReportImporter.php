@@ -57,7 +57,7 @@ class IncomeReportImporter
                 'buyer_shipping_paid' => $this->number($data['Ongkir Dibayar Pembeli'] ?? null),
                 'platform_fee' => $this->number($data['Biaya Administrasi'] ?? null),
                 'order_processing_fee' => $this->number($data['Biaya Proses Pesanan'] ?? null),
-                'free_shipping_xtra_fee' => $this->sumNumbers($data, ['Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori D)', 'Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori E)', 'Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori G)']),
+                'free_shipping_xtra_fee' => $this->sumNumbers($data, ['Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori D)', 'Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori E)', 'Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori G)', 'Biaya Gratis Ongkir XTRA - Ukuran Khusus (Kategori E)']),
                 'shipping_fee' => $this->number($data['Subtotal Ongkos Kirim'] ?? null),
                 'service_fee' => $this->number($data['Biaya Layanan'] ?? null),
                 'promo_xtra_service_fee' => $this->number($data['Biaya Layanan Promo XTRA'] ?? null),

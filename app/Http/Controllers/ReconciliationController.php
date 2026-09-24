@@ -21,7 +21,7 @@ class ReconciliationController extends Controller
             'hpp_statuses' => ['nullable', 'array'],
             'hpp_statuses.*' => ['string', 'in:ok,mapping_missing,mapping_ambiguous,hpp_missing,no_allocation'],
             'column_filters' => ['nullable', 'json'],
-            'sort_field' => ['nullable', 'string', 'in:settlement_status,business_status,order_number,order_product_name,quantity,discounted_price,order_created_at'],
+            'sort_field' => ['nullable', 'string', 'in:settlement_status,business_status,match_method,match_confidence,refund_amount,refund_type,order_number,order_product_name,net_quantity,quantity,returned_quantity,discounted_price,order_subtotal,platform_fee,admin_fee_percent,free_shipping_xtra_fee,free_shipping_xtra_fee_percent,promo_xtra_service_fee,promo_xtra_fee_percent,fee_subtotal,fee_subtotal_percent,order_processing_fee,total_fee,tax,penghasilan,hpp,hpp_status,laba,order_created_at'],
             'sort_order' => ['nullable', 'string', 'in:asc,desc'],
             'multi_sort_meta' => ['nullable', 'json'],
         ]);

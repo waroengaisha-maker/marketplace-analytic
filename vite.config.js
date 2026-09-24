@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
 
                 return {
                     origin: env.VITE_PUBLIC_URL,
-                    allowedHosts: [publicUrl.hostname],
+                    allowedHosts: [publicUrl.hostname, 'host.docker.internal'],
                     hmr: {
                         protocol: publicUrl.protocol === 'https:' ? 'wss' : 'ws',
                         host: publicUrl.hostname,
@@ -43,6 +43,7 @@ export default defineConfig(({ mode }) => {
                 };
             })()
             : {
+                allowedHosts: ['host.docker.internal'],
                 hmr: {
                     host: 'localhost',
                     port: 5173,

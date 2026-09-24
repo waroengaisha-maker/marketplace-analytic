@@ -6,7 +6,7 @@
         Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
         Access-Control-Allow-Credentials "true"
     }
-    reverse_proxy @vite laravel.test:5173
+    reverse_proxy @vite host.docker.internal:5173
 
     @websocket header Connection *Upgrade*
     header @websocket {
@@ -15,7 +15,7 @@
         Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
         Access-Control-Allow-Credentials "true"
     }
-    reverse_proxy @websocket laravel.test:5173
+    reverse_proxy @websocket host.docker.internal:5173
 
     reverse_proxy laravel.test:80
 }
