@@ -113,11 +113,11 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertSame('partner.shopeemobile.com', $parsed['host']);
         $this->assertSame('/api/v2/shop/auth_partner', $parsed['path']);
         $this->assertSame(self::PARTNER_ID, $query['partner_id']);
-        $this->assertSame('1700000000', $query['token']);
+        $this->assertSame('1700000000', $query['timestamp']);
 
         $expectedSign = hash_hmac(
             'sha256',
-            self::PARTNER_ID.'https://partner.shopeemobile.com/api/v2/shop/auth_partner'.'1700000000',
+            self::PARTNER_ID.'/api/v2/shop/auth_partner'.'1700000000',
             self::PARTNER_KEY,
         );
         $this->assertSame($expectedSign, $query['sign']);
