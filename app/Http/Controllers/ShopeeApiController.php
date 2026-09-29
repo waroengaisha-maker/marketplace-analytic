@@ -103,6 +103,7 @@ class ShopeeApiController extends Controller
             'environment' => $connection?->environment,
             'has_code' => filled($request->query('code')),
             'has_state' => filled($request->query('state')),
+            'has_shop_id' => filled($request->query('shop_id)),
             'has_error' => filled($request->query('error')),
             'error' => $request->query('error'),
             'has_user' => $user !== null,
@@ -131,6 +132,7 @@ class ShopeeApiController extends Controller
         }
 
         $code = (string) $request->query('code', '');
+        $shopId = $request->query('shop_id');
 
         if ($code === '') {
             Log::warning('[Shopee OAuth] callback did not contain authorization code', [
@@ -161,7 +163,7 @@ class ShopeeApiController extends Controller
         ]);
 
         try {
-            $payload = $oauth->exchangeCode($connection, $code);
+            $payload = $oauth->exchangeCode($connection, $code, null, filled($shopId) ? (string) $shopId : null);
 
             $response = data_get($payload, 'response', []);
 
