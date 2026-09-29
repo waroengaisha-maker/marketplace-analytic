@@ -405,29 +405,25 @@ class ShopeeApiController extends Controller
     public function income(Request $request, ShopeeResponseNormalizer $normalizer): JsonResponse
     {
         $validated = $request->validate([
-            'status' => ['nullable', 'string'],
+            'income_status' => ['nullable', 'integer', 'in:0,1,2'],
             'date_from' => ['nullable', 'date'],
-            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'date_to' => ['nullable', 'date', 'after:date_from'],
             'page_size' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
         $client = $this->clientFor($request->user()->id);
 
+        // Shopee requires a date range for get_income_detail. Keep the
+        // default window within the documented 14-day maximum.
+        $dateTo = $validated['date_to'] ?? now()->toDateString();
+        $dateFrom = $validated['date_from'] ?? now()->subDays(13)->toDateString();
+
         $params = [
+            'income_status' => (int) ($validated['income_status'] ?? 1),
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
             'page_size' => $validated['page_size'] ?? 20,
         ];
-
-        if (! empty($validated['status'])) {
-            $params['status'] = $validated['status'];
-        }
-
-        if (! empty($validated['date_from'])) {
-            $params['date_from'] = $validated['date_from'];
-        }
-
-        if (! empty($validated['date_to'])) {
-            $params['date_to'] = $validated['date_to'];
-        }
 
         return $this->respondWith(
             fn (): array => $client->getIncomeDetail($params),
