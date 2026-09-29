@@ -301,6 +301,40 @@ class ShopeeApiIntegrationTest extends TestCase
         Http::assertSent(fn (ClientRequest $request): bool => str_contains($request->url(), '/api/v2/auth/access_token/get'));
     }
 
+    public function test_refresh_access_token_accepts_top_level_sandbox_payload(): void
+    {
+        $connection = $this->connectedConnection($this->activeUser());
+        $connection->update(['access_token_expires_at' => now()->subMinute()]);
+
+        Http::fake([
+            '*/api/v2/auth/access_token/get*' => Http::response([
+                'request_id' => 'req-refresh-top-level',
+                'error' => '-',
+                'message' => '',
+                'access_token' => 'TOP_LEVEL_REFRESHED_ACCESS_TOKEN',
+                'expire_in' => 14400,
+            ]),
+            '*/api/v2/order/get_order_list*' => Http::response($this->orderEnvelope([
+                ['order_sn' => '220404NF3CFFNY', 'order_status' => 'COMPLETED', 'create_time' => 1700000000],
+            ])),
+        ]);
+
+        $sync = new ShopeeSyncService(
+            ShopeeApiClient::fromConnection($connection),
+            new ShopeeOAuthService(app(HttpFactory::class)),
+            app(ShopeeResponseNormalizer::class),
+        );
+
+        $result = $sync->syncSampleOrders($connection);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(1, $result['order_count']);
+
+        $connection->refresh();
+        $this->assertSame('TOP_LEVEL_REFRESHED_ACCESS_TOKEN', $connection->access_token);
+        $this->assertNotNull($connection->access_token_expires_at);
+    }
+
     // ---------------------------------------------------------------
     // Secure credential storage / non-exposure
     // ---------------------------------------------------------------
