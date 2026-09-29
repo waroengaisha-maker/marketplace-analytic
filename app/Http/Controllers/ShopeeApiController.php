@@ -103,7 +103,7 @@ class ShopeeApiController extends Controller
             'environment' => $connection?->environment,
             'has_code' => filled($request->query('code')),
             'has_state' => filled($request->query('state')),
-            'has_shop_id' => filled($request->query('shop_id)),
+            'has_shop_id' => filled($request->query('shop_id')),
             'has_error' => filled($request->query('error')),
             'error' => $request->query('error'),
             'has_user' => $user !== null,
