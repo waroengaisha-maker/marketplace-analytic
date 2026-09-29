@@ -15,6 +15,7 @@ use App\Services\ShopeeSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class ShopeeApiController extends Controller
@@ -93,10 +94,38 @@ class ShopeeApiController extends Controller
 
     public function shopeeCallback(Request $request, ShopeeOAuthService $oauth): RedirectResponse
     {
+        $user = $request->user();
+        $connection = $user ? $this->connectionFor($user->id) : null;
+
+        // Diagnostic only: never log OAuth codes, state values, tokens, or partner keys.
+        Log::debug('[Shopee OAuth] callback reached', [
+            'connection_id' => $connection?->id,
+            'environment' => $connection?->environment,
+            'has_code' => filled($request->query('code')),
+            'has_state' => filled($request->query('state')),
+            'has_error' => filled($request->query('error')),
+            'error' => $request->query('error'),
+            'has_user' => $user !== null,
+        ]);
+
         $expectedState = $request->session()->pull('shopee_oauth_state');
         $state = (string) $request->query('state', '');
+        $stateMatches = $expectedState !== null && hash_equals($expectedState, $state);
 
-        if ($expectedState === null || ! hash_equals($expectedState, $state)) {
+        Log::debug('[Shopee OAuth] state check', [
+            'connection_id' => $connection?->id,
+            'has_expected_state' => $expectedState !== null,
+            'has_received_state' => $state !== '',
+            'state_matches' => $stateMatches,
+        ]);
+
+        if (!$stateMatches) {
+            Log::warning('[Shopee OAuth] state verification failed', [
+                'connection_id' => $connection?->id,
+                'has_expected_state' => $expectedState !== null,
+                'has_received_state' => $state !== '',
+            ]);
+
             return redirect()->route('integrations.shopee-api')
                 ->with('shopee_flow', ['status' => 'error', 'message' => 'Shopee authorization state could not be verified. Try again.']);
         }
@@ -104,23 +133,66 @@ class ShopeeApiController extends Controller
         $code = (string) $request->query('code', '');
 
         if ($code === '') {
+            Log::warning('[Shopee OAuth] callback did not contain authorization code', [
+                'connection_id' => $connection?->id,
+                'has_error' => filled($request->query('error')),
+                'error' => $request->query('error'),
+            ]);
+
             return redirect()->route('integrations.shopee-api')
                 ->with('shopee_flow', ['status' => 'error', 'message' => 'Shopee authorization did not return a code.']);
         }
 
-        $user = $request->user();
-        $connection = $this->connectionFor($user->id);
-
         if ($connection === null || blank($connection->partner_id) || blank($connection->partner_key)) {
+            Log::warning('[Shopee OAuth] connection is not configured', [
+                'connection_id' => $connection?->id,
+                'has_partner_id' => $connection !== null && filled($connection->partner_id),
+                'has_partner_key' => $connection !== null && filled($connection->partner_key),
+            ]);
+
             return redirect()->route('integrations.shopee-api')
                 ->with('shopee_flow', ['status' => 'error', 'message' => 'No Shopee configuration found for this account.']);
         }
 
+        Log::debug('[Shopee OAuth] exchanging authorization code', [
+            'connection_id' => $connection->id,
+            'environment' => $connection->environment,
+            'has_code' => $code !== '',
+        ]);
+
         try {
             $payload = $oauth->exchangeCode($connection, $code);
+
+            $response = data_get($payload, 'response', []);
+
+            Log::debug('[Shopee OAuth] token exchange completed', [
+                'connection_id' => $connection->id,
+                'payload_keys' => array_keys($payload),
+                'response_keys' => is_array($response) ? array_keys($response) : [],
+                'has_access_token' => filled(data_get($response, 'access_token')),
+                'has_refresh_token' => filled(data_get($response, 'refresh_token')),
+                'has_shop_id' => filled(data_get($response, 'shop_id')),
+            ]);
         } catch (ShopeeApiException $exception) {
+            Log::warning('[Shopee OAuth] token exchange failed', [
+                'connection_id' => $connection->id,
+                'environment' => $connection->environment,
+                'status' => $exception->httpStatus(),
+                'message' => $exception->getMessage(),
+            ]);
+
             return redirect()->route('integrations.shopee-api')
                 ->with('shopee_flow', ['status' => 'error', 'message' => 'Shopee authorization failed: '.$exception->getMessage()]);
+        } catch (\Throwable $exception) {
+            Log::error('[Shopee OAuth] unexpected token exchange error', [
+                'connection_id' => $connection->id,
+                'environment' => $connection->environment,
+                'exception' => get_class($exception),
+                'message' => $exception->getMessage(),
+            ]);
+
+            return redirect()->route('integrations.shopee-api')
+                ->with('shopee_flow', ['status' => 'error', 'message' => 'Shopee authorization failed unexpectedly.']);
         }
 
         $connection->access_token = data_get($payload, 'response.access_token');
@@ -131,6 +203,14 @@ class ShopeeApiController extends Controller
         $connection->refresh_token_expires_at = now()->addSeconds(max(1, (int) data_get($payload, 'response.refresh_expires_in', 31536000)));
         $connection->connected_at = $connection->connected_at ?? now();
         $connection->save();
+
+        Log::debug('[Shopee OAuth] connection saved', [
+            'connection_id' => $connection->id,
+            'has_access_token' => filled($connection->access_token),
+            'has_refresh_token' => filled($connection->refresh_token),
+            'has_shop_id' => filled($connection->shop_id),
+            'has_shop_name' => filled($connection->shop_name),
+        ]);
 
         return redirect()->route('integrations.shopee-api')
             ->with('shopee_flow', ['status' => 'success', 'message' => 'Shopee shop connected.']);
