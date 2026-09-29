@@ -29,7 +29,7 @@ class ShopeeOAuthService
     public function host(ShopeeApiConnection $connection): string
     {
         return ($connection->environment ?? 'production') === 'sandbox'
-            ? 'https://openplatform.sandbox.test-stable.shopee.sg'
+            ? 'https://partner.test-stable.shopeemobile.com'
             : 'https://partner.shopeemobile.com';
     }
 
@@ -55,13 +55,13 @@ class ShopeeOAuthService
             $redirect .= (str_contains($redirect, '?') ? '&' : '?').'state='.rawurlencode($state);
         }
 
-        $baseString = (string) $connection->partner_id.$endpoint.$timestamp;
+        $baseString = (string) $connection->partner_id.self::PATH_AUTH.$timestamp;
         $sign = hash_hmac('sha256', $baseString, (string) $connection->partner_key);
 
         return $endpoint
             .'?partner_id='.rawurlencode((string) $connection->partner_id)
             .'&redirect='.rawurlencode($redirect)
-            .'&token='.$timestamp
+            .'&timestamp='.$timestamp
             .'&sign='.$sign;
     }
 
