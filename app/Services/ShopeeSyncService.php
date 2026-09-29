@@ -295,17 +295,33 @@ class ShopeeSyncService
         }
 
         $payload = $this->oauth->refreshAccessToken($connection);
-        $accessToken = data_get($payload, 'response.access_token');
+
+        // Sandbox may return token fields at the top level, while other
+        // responses wrap them in "response". Normalize both shapes here.
+        $response = is_array(data_get($payload, 'response'))
+            ? data_get($payload, 'response')
+            : $payload;
+
+        $accessToken = data_get($response, 'access_token');
 
         if (blank($accessToken)) {
             throw new ShopeeApiException('Shopee token refresh returned no access token.', status: 502);
         }
 
         $connection->access_token = $accessToken;
-        $connection->access_token_expires_at = now()->addSeconds(max(1, (int) data_get($payload, 'response.expires_in', 14400)));
+        $connection->access_token_expires_at = now()->addSeconds(max(1, (int) (
+            data_get($response, 'expires_in')
+            ?? data_get($response, 'expire_in')
+            ?? 14400
+        )));
 
-        if (blank($connection->shop_id) && filled(data_get($payload, 'response.shop_id'))) {
-            $connection->shop_id = data_get($payload, 'response.shop_id');
+        if (blank($connection->shop_id)) {
+            $responseShopId = data_get($response, 'shop_id')
+                ?? data_get($response, 'shop_id_list.0');
+
+            if (filled($responseShopId)) {
+                $connection->shop_id = $responseShopId;
+            }
         }
 
         $connection->save();
