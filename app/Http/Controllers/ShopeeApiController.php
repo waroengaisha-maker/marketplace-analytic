@@ -165,15 +165,22 @@ class ShopeeApiController extends Controller
         try {
             $payload = $oauth->exchangeCode($connection, $code, null, filled($shopId) ? (string) $shopId : null);
 
-            $response = data_get($payload, 'response', []);
+            // Sandbox V2 returns OAuth tokens at the top level, while some
+            // Shopee responses use a nested "response" envelope.
+            $response = is_array(data_get($payload, 'response'))
+                ? data_get($payload, 'response')
+                : $payload;
+
+            $responseShopId = data_get($response, 'shop_id');
+            $responseShopId ??= data_get($response, 'shop_id_list.0');
 
             Log::debug('[Shopee OAuth] token exchange completed', [
                 'connection_id' => $connection->id,
                 'payload_keys' => array_keys($payload),
-                'response_keys' => is_array($response) ? array_keys($response) : [],
+                'response_keys' => array_keys($response),
                 'has_access_token' => filled(data_get($response, 'access_token')),
                 'has_refresh_token' => filled(data_get($response, 'refresh_token')),
-                'has_shop_id' => filled(data_get($response, 'shop_id')),
+                'has_shop_id' => filled($responseShopId),
             ]);
         } catch (ShopeeApiException $exception) {
             Log::warning('[Shopee OAuth] token exchange failed', [
@@ -197,12 +204,21 @@ class ShopeeApiController extends Controller
                 ->with('shopee_flow', ['status' => 'error', 'message' => 'Shopee authorization failed unexpectedly.']);
         }
 
-        $connection->access_token = data_get($payload, 'response.access_token');
-        $connection->refresh_token = data_get($payload, 'response.refresh_token');
-        $connection->shop_id = data_get($payload, 'response.shop_id') ?? $connection->shop_id;
-        $connection->shop_name = data_get($payload, 'response.shop_name') ?? $connection->shop_name;
-        $connection->access_token_expires_at = now()->addSeconds(max(1, (int) data_get($payload, 'response.expires_in', 14400)));
-        $connection->refresh_token_expires_at = now()->addSeconds(max(1, (int) data_get($payload, 'response.refresh_expires_in', 31536000)));
+        $connection->access_token = data_get($response, 'access_token');
+        $connection->refresh_token = data_get($response, 'refresh_token');
+        $connection->shop_id = $responseShopId ?? $connection->shop_id;
+        $connection->shop_name = data_get($response, 'shop_name') ?? $connection->shop_name;
+
+        $accessTokenLifetime = (int) data_get($response, 'expire_in',
+            data_get($response, 'expires_in', 14400)
+        );
+
+        $refreshTokenLifetime = (int) data_get($response, 'refresh_token_expire_in',
+            data_get($response, 'refresh_expires_in', 31536000)
+        );
+
+        $connection->access_token_expires_at = now()->addSeconds(max(1, $accessTokenLifetime));
+        $connection->refresh_token_expires_at = now()->addSeconds(max(1, $refreshTokenLifetime));
         $connection->connected_at = $connection->connected_at ?? now();
         $connection->save();
 
