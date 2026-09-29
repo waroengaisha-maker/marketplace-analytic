@@ -82,23 +82,48 @@ class ShopeeOAuthService
      *
      * @return array<string, mixed>
      */
-    public function exchangeCode(ShopeeApiConnection $connection, string $code, ?int $timestamp = null): array
-    {
+    public function exchangeCode(
+        ShopeeApiConnection $connection,
+        string $code,
+        ?int $timestamp = null,
+        ?string $shopId = null,
+    ): array {
         $timestamp ??= now()->timestamp;
-        $baseString = (string) $connection->partner_id.self::PATH_TOKEN_GET.$timestamp.$code;
 
-        $params = [
+        // Shopee Public API signing uses partner_id + path + timestamp.
+        // The signed values belong in the query string; the OAuth payload
+        // itself is JSON.
+        $baseString = (string) $connection->partner_id
+            .self::PATH_TOKEN_GET
+            .$timestamp;
+
+        $query = [
             'partner_id' => (string) $connection->partner_id,
-            'code' => $code,
             'timestamp' => $timestamp,
-            'sign' => hash_hmac('sha256', $baseString, trim((string) $connection->partner_key)),
+            'sign' => hash_hmac(
+                'sha256',
+                $baseString,
+                trim((string) $connection->partner_key)
+            ),
         ];
 
-        if (filled($connection->shop_id)) {
-            $params['shop_id'] = (string) $connection->shop_id;
+        $body = [
+            'code' => $code,
+            'partner_id' => (int) $connection->partner_id,
+        ];
+
+        $resolvedShopId = $shopId ?: $connection->shop_id;
+
+        if (filled($resolvedShopId)) {
+            $body['shop_id'] = (int) $resolvedShopId;
         }
 
-        return $this->authPost($connection, self::PATH_TOKEN_GET, $params);
+        return $this->authPost(
+            $connection,
+            self::PATH_TOKEN_GET,
+            $query,
+            $body,
+        );
     }
 
     /**
@@ -110,33 +135,53 @@ class ShopeeOAuthService
     public function refreshAccessToken(ShopeeApiConnection $connection, ?int $timestamp = null): array
     {
         $timestamp ??= now()->timestamp;
+
         $baseString = (string) $connection->partner_id
             .self::PATH_ACCESS_TOKEN_GET
-            .$timestamp
-            .(string) $connection->refresh_token
-            .(string) $connection->shop_id;
+            .$timestamp;
 
-        return $this->authPost($connection, self::PATH_ACCESS_TOKEN_GET, [
-            'partner_id' => (string) $connection->partner_id,
-            'shop_id' => (string) $connection->shop_id,
-            'refresh_token' => (string) $connection->refresh_token,
-            'timestamp' => $timestamp,
-            'sign' => hash_hmac('sha256', $baseString, (string) $connection->partner_key),
-        ]);
+        return $this->authPost(
+            $connection,
+            self::PATH_ACCESS_TOKEN_GET,
+            [
+                'partner_id' => (string) $connection->partner_id,
+                'timestamp' => $timestamp,
+                'sign' => hash_hmac(
+                    'sha256',
+                    $baseString,
+                    trim((string) $connection->partner_key)
+                ),
+            ],
+            [
+                'refresh_token' => (string) $connection->refresh_token,
+                'shop_id' => (int) $connection->shop_id,
+                'partner_id' => (int) $connection->partner_id,
+            ],
+        );
     }
 
     /**
      * @param  array<string, mixed>  $form
      * @return array<string, mixed>
      */
-    private function authPost(ShopeeApiConnection $connection, string $path, array $form): array
-    {
+    private function authPost(
+        ShopeeApiConnection $connection,
+        string $path,
+        array $query,
+        array $body,
+    ): array {
         try {
             $response = $this->http
-                ->asForm()
+                ->asJson()
                 ->timeout((int) config('shopee-api.timeout', 30))
                 ->acceptJson()
-                ->post($this->host($connection).$path, $form)
+                ->post(
+                    $this->host($connection).$path,
+                    [
+                        'query' => $query,
+                        'json' => $body,
+                    ],
+                )
                 ->throw();
         } catch (RequestException $exception) {
             throw ShopeeApiException::http($exception->response?->status() ?? 502, $exception->response?->body());
