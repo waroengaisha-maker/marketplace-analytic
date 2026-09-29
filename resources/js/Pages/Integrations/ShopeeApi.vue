@@ -288,6 +288,9 @@ async function getAuthLink() {
     try {
         const result = await apiGet('/integrations/shopee-api/authorize')
         authLink.value = (result.url as string | undefined) ?? null
+        if (authLink.value) {
+            window.location.assign(authLink.value)
+        }
         lab.error = null
         lab.rateLimited = false
     } catch (error) {
