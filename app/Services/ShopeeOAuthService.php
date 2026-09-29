@@ -175,12 +175,12 @@ class ShopeeOAuthService
                 ->asJson()
                 ->timeout((int) config('shopee-api.timeout', 30))
                 ->acceptJson()
+                ->withOptions([
+                    'query' => $query,
+                ])
                 ->post(
                     $this->host($connection).$path,
-                    [
-                        'query' => $query,
-                        'json' => $body,
-                    ],
+                    $body,
                 )
                 ->throw();
         } catch (RequestException $exception) {
