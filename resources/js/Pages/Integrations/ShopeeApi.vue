@@ -182,7 +182,7 @@ const promoteDryRun = ref(true)
 const promoteResult = ref<LabResult | null>(null)
 
 const orderParams = reactive({ page_size: '10', order_status: '', date_from: '', date_to: '' })
-const incomeParams = reactive({ status: '', date_from: '', date_to: '' })
+const incomeParams = reactive({ income_status: '1', date_from: '', date_to: '' })
 const orderSn = ref('')
 
 const connectParams = reactive({ partner_id: '', partner_key: '', environment: 'production', region: 'global' })
@@ -194,8 +194,9 @@ const orderStatusOptions = [
 ]
 
 const incomeStatusOptions = [
-    { label: 'Any status', value: '' },
-    ...['Pending', 'To Release', 'Released'].map((value) => ({ label: value, value })),
+    { label: 'To Release', value: '1' },
+    { label: 'Released', value: '2' },
+    { label: 'Pending', value: '0' },
 ]
 
 async function apiGet(path: string, params: Record<string, unknown> = {}, useJson = false): Promise<LabResult> {
@@ -435,7 +436,7 @@ async function fetchIncome() {
     lab.busy = true
     try {
         incomeResult.value = await apiGet('/integrations/shopee-api/income', {
-            status: incomeParams.status,
+            income_status: incomeParams.income_status,
             date_from: incomeParams.date_from,
             date_to: incomeParams.date_to,
         })
@@ -907,7 +908,7 @@ onMounted(loadStatus)
                                     <div class="flex flex-wrap items-end gap-3">
                                         <div class="flex flex-col gap-1">
                                             <label class="text-xs font-medium text-slate-500">Status</label>
-                                            <Select v-model="incomeParams.status" :options="incomeStatusOptions" option-label="label" option-value="value" />
+                                            <Select v-model="incomeParams.income_status" :options="incomeStatusOptions" option-label="label" option-value="value" />
                                         </div>
                                         <div class="flex flex-col gap-1">
                                             <label class="text-xs font-medium text-slate-500">From</label>
