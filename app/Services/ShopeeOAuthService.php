@@ -47,16 +47,27 @@ class ShopeeOAuthService
             throw ShopeeApiException::notConfigured();
         }
 
-        $timestamp ??= now()->timestamp;
-        $endpoint = $this->host($connection).self::PATH_AUTH;
         $redirect = route('integrations.shopee-api.shopee-auth');
 
         if ($state !== null && $state !== '') {
             $redirect .= (str_contains($redirect, '?') ? '&' : '?').'state='.rawurlencode($state);
         }
 
+        // Sandbox V2 uses the dedicated seller authorization portal. The
+        // legacy /api/v2/shop/auth_partner endpoint can reject otherwise
+        // correctly signed Sandbox V2 credentials with error_sign.
+        if (($connection->environment ?? 'production') === 'sandbox') {
+            return 'https://open.sandbox.test-stable.shopee.com/auth'
+                .'?auth_type=seller'
+                .'&partner_id='.rawurlencode((string) $connection->partner_id)
+                .'&redirect_uri='.rawurlencode($redirect)
+                .'&response_type=code';
+        }
+
+        $timestamp ??= now()->timestamp;
+        $endpoint = $this->host($connection).self::PATH_AUTH;
         $baseString = (string) $connection->partner_id.self::PATH_AUTH.$timestamp;
-        $sign = hash_hmac('sha256', $baseString, (string) $connection->partner_key);
+        $sign = hash_hmac('sha256', $baseString, trim((string) $connection->partner_key));
 
         return $endpoint
             .'?partner_id='.rawurlencode((string) $connection->partner_id)
@@ -80,7 +91,7 @@ class ShopeeOAuthService
             'partner_id' => (string) $connection->partner_id,
             'code' => $code,
             'timestamp' => $timestamp,
-            'sign' => hash_hmac('sha256', $baseString, (string) $connection->partner_key),
+            'sign' => hash_hmac('sha256', $baseString, trim((string) $connection->partner_key)),
         ];
 
         if (filled($connection->shop_id)) {
