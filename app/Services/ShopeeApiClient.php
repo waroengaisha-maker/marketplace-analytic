@@ -74,7 +74,7 @@ class ShopeeApiClient
         }
 
         return ($this->config['environment'] ?? 'production') === 'sandbox'
-            ? 'https://openplatform.sandbox.test-stable.shopee.sg'
+            ? 'https://partner.test-stable.shopeemobile.com'
             : 'https://partner.shopeemobile.com';
     }
 

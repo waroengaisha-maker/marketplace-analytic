@@ -13,7 +13,7 @@ return [
     |
     | Hosts:
     |   global    https://partner.shopeemobile.com
-    |   sandbox   https://openplatform.sandbox.test-stable.shopee.sg
+    |   sandbox   https://partner.test-stable.shopeemobile.com
     |   cn        https://openplatform.shopee.cn
     |   brazil    https://openplatform.shopee.com.br
     */

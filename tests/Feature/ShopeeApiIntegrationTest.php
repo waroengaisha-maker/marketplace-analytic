@@ -123,6 +123,31 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertSame($expectedSign, $query['sign']);
     }
 
+    public function test_sandbox_authorization_url_uses_test_stable_host_and_timestamp_parameter(): void
+    {
+        $connection = $this->connectedConnection($this->activeUser());
+        $connection->update(['environment' => 'sandbox']);
+
+        $service = new ShopeeOAuthService(app(HttpFactory::class));
+        $url = $service->authorizationUrl($connection, 1700000000);
+
+        $parsed = parse_url($url);
+        $query = [];
+        parse_str((string) ($parsed['query'] ?? ''), $query);
+
+        $this->assertSame('partner.test-stable.shopeemobile.com', $parsed['host']);
+        $this->assertSame('/api/v2/shop/auth_partner', $parsed['path']);
+        $this->assertSame('1700000000', $query['timestamp']);
+        $this->assertArrayNotHasKey('token', $query);
+
+        $expectedSign = hash_hmac(
+            'sha256',
+            self::PARTNER_ID.'/api/v2/shop/auth_partner'.'1700000000',
+            self::PARTNER_KEY,
+        );
+        $this->assertSame($expectedSign, $query['sign']);
+    }
+
     public function test_authorize_route_returns_oauth_url_upon_authorization(): void
     {
         $user = $this->activeUser();
