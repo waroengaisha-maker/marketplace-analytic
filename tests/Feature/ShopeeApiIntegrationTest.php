@@ -113,32 +113,7 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertSame('partner.shopeemobile.com', $parsed['host']);
         $this->assertSame('/api/v2/shop/auth_partner', $parsed['path']);
         $this->assertSame(self::PARTNER_ID, $query['partner_id']);
-        $this->assertSame('1700000000', $query['token']);
-
-        $expectedSign = hash_hmac(
-            'sha256',
-            self::PARTNER_ID.'https://partner.shopeemobile.com/api/v2/shop/auth_partner'.'1700000000',
-            self::PARTNER_KEY,
-        );
-        $this->assertSame($expectedSign, $query['sign']);
-    }
-
-    public function test_sandbox_authorization_url_uses_test_stable_host_and_timestamp_parameter(): void
-    {
-        $connection = $this->connectedConnection($this->activeUser());
-        $connection->update(['environment' => 'sandbox']);
-
-        $service = new ShopeeOAuthService(app(HttpFactory::class));
-        $url = $service->authorizationUrl($connection, 1700000000);
-
-        $parsed = parse_url($url);
-        $query = [];
-        parse_str((string) ($parsed['query'] ?? ''), $query);
-
-        $this->assertSame('partner.test-stable.shopeemobile.com', $parsed['host']);
-        $this->assertSame('/api/v2/shop/auth_partner', $parsed['path']);
         $this->assertSame('1700000000', $query['timestamp']);
-        $this->assertArrayNotHasKey('token', $query);
 
         $expectedSign = hash_hmac(
             'sha256',
@@ -147,6 +122,29 @@ class ShopeeApiIntegrationTest extends TestCase
         );
         $this->assertSame($expectedSign, $query['sign']);
     }
+
+    public function test_sandbox_authorization_url_uses_sandbox_v2_seller_portal(): void
+    {
+        $connection = $this->connectedConnection($this->activeUser());
+        $connection->update(['environment' => 'sandbox']);
+
+        $service = new ShopeeOAuthService(app(HttpFactory::class));
+        $url = $service->authorizationUrl($connection, 1700000000, 'sandbox-state');
+
+        $parsed = parse_url($url);
+        $query = [];
+        parse_str((string) ($parsed['query'] ?? ''), $query);
+
+        $this->assertSame('open.sandbox.test-stable.shopee.com', $parsed['host']);
+        $this->assertSame('/auth', $parsed['path']);
+        $this->assertSame('seller', $query['auth_type']);
+        $this->assertSame(self::PARTNER_ID, $query['partner_id']);
+        $this->assertSame('code', $query['response_type']);
+        $this->assertArrayNotHasKey('sign', $query);
+        $this->assertArrayNotHasKey('timestamp', $query);
+        $this->assertStringContainsString('state=sandbox-state', $query['redirect_uri']);
+    }
+
 
     public function test_authorize_route_returns_oauth_url_upon_authorization(): void
     {
