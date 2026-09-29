@@ -29,7 +29,7 @@ class ShopeeOAuthService
     public function host(ShopeeApiConnection $connection): string
     {
         return ($connection->environment ?? 'production') === 'sandbox'
-            ? 'https://partner.test-stable.shopeemobile.com'
+            ? 'https://openplatform.sandbox.test-stable.shopee.sg'
             : 'https://partner.shopeemobile.com';
     }
 
