@@ -248,7 +248,7 @@ class ShopeeApiController extends Controller
     {
         $validated = $request->validate([
             'mode' => ['nullable', 'string', 'in:sample,production'],
-            'page_size' => ['nullable', 'integer', 'min:1', 'max:100],
+            'page_size' => ['nullable', 'integer', 'min:1', 'max:100'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
