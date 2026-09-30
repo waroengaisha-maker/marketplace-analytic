@@ -112,7 +112,9 @@ class ShopeeApiClient
             return [
                 'ok' => false,
                 'configured' => true,
-                'error' => $exception->getMessage(),
+                'error' => app()->hasDebugModeEnabled()
+                    ? $exception->getMessage()
+                    : 'Shopee API request failed. Please try again later.',
                 'rate_limited' => $exception->isRateLimited(),
             ];
         }
