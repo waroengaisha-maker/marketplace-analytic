@@ -30,16 +30,30 @@ class ShopeeApiController extends Controller
 
     public function status(Request $request): JsonResponse
     {
+        $connection = $this->connectionFor($request->user()->id);
+
         return response()->json([
             'ok' => true,
-            'config' => $this->clientFor($request->user()->id)->connectionStatus(),
-            'connection' => $this->connectionFor($request->user()->id)?->safeState(),
+            'config' => $connection !== null
+                ? ShopeeApiClient::fromConnection($connection)->connectionStatus()
+                : [
+                    'configured' => false,
+                    'missing' => ['connection'],
+                    'environment' => 'production',
+                    'region' => 'global',
+                    'host' => null,
+                ],
+            'connection' => $connection?->safeState(),
         ]);
     }
 
     public function testConnection(Request $request): JsonResponse
     {
-        return response()->json($this->clientFor($request->user()->id)->testConnection());
+        try {
+            return response()->json($this->clientFor($request->user()->id)->testConnection());
+        } catch (ShopeeApiException $exception) {
+            return $this->errorResponse($exception);
+        }
     }
 
     public function configure(Request $request): JsonResponse
@@ -59,14 +73,10 @@ class ShopeeApiController extends Controller
 
         if (filled($validated['partner_id'] ?? null)) {
             $connection->partner_id = $validated['partner_id'];
-        } elseif (blank($connection->partner_id)) {
-            $connection->partner_id = config('shopee-api.partner_id');
         }
 
         if (filled($validated['partner_key'] ?? null)) {
             $connection->partner_key = $validated['partner_key'];
-        } elseif (blank($connection->partner_key)) {
-            $connection->partner_key = config('shopee-api.partner_key');
         }
 
         $connection->save();
@@ -511,11 +521,11 @@ class ShopeeApiController extends Controller
     {
         $connection = $this->connectionFor($userId);
 
-        if ($connection !== null && $connection->isConfigured()) {
-            return ShopeeApiClient::fromConnection($connection);
+        if ($connection === null) {
+            throw ShopeeApiException::notConfigured();
         }
 
-        return ShopeeApiClient::fromConfig();
+        return ShopeeApiClient::fromConnection($connection);
     }
 
     private function oauth(): ShopeeOAuthService
