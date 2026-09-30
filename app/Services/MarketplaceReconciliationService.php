@@ -1024,7 +1024,13 @@ class MarketplaceReconciliationService
                 $join->on('income_exact.user_id', '=', 'orders.user_id')
                     ->on('income_exact.order_number', '=', 'orders.order_number')
                     ->on('income_exact.product_key', '=', 'orders.product_key')
-                    ->on('income_exact.line_identity', '=', 'orders.line_identity')
+                    ->where(function ($join): void {
+                        $join->whereColumn('income_exact.line_identity', 'orders.line_identity')
+                            ->orWhere(function ($join): void {
+                                $join->whereNull('income_exact.line_identity')
+                                    ->whereNull('orders.line_identity');
+                            });
+                    })
                     ->whereRaw('LOWER(COALESCE(income_exact.product_name, \'\')) = LOWER(COALESCE(orders.product_name, \'\'))')
                     ->whereRaw('COALESCE(income_exact.variation_key, \'\') = COALESCE(orders.variation_key, \'\')')
                     ->whereRaw('(
