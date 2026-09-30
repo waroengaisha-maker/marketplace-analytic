@@ -283,6 +283,34 @@ class ShopeeSyncService
     }
 
     /**
+     * Build a deterministic identity for an income detail row.
+     *
+     * Income responses can contain multiple financial rows for the same order,
+     * so order_sn alone is not a safe staging key.
+     *
+     * @param  array<string, mixed>  $row
+     */
+    private function incomeIdentity(array $row): string
+    {
+        $identity = [
+            'order_sn' => data_get($row, 'order_sn'),
+            'status' => data_get($row, 'status'),
+            'description' => data_get($row, 'description'),
+            'application_number' => data_get($row, 'application_number'),
+            'transaction_id' => data_get($row, 'transaction_id'),
+            'product_id' => data_get($row, 'product_id'),
+            'total_income' => data_get($row, 'total_income', data_get($row, 'amount')),
+            'release_time' => data_get($row, 'release_time', data_get($row, 'release_date')),
+            'currency' => data_get($row, 'currency'),
+        ];
+
+        return hash(
+            'sha256',
+            json_encode($identity, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+        );
+    }
+
+    /**
      * Merge newly fetched staging rows into previously staged rows without
      * overwriting, so a partial/resumed sync never drops data already staged.
      * Rows are keyed by $keyField; later rows win for the same key.
