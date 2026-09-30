@@ -532,6 +532,61 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertSame('success', $connection->last_sync_status);
     }
 
+    public function test_income_cursor_pagination_walks_all_pages_and_preserves_rows(): void
+    {
+        $connection = $this->connectedConnection($this->activeUser());
+
+        Http::fake([
+            '*/api/v2/payment/get_income_detail*' => Http::sequence()
+                ->push(array_merge($this->baseEnvelope(), [
+                    'response' => [
+                        'income_detail_list_item' => [
+                            ['order_sn' => 'ORDER-1', 'description' => 'Product Income', 'status' => 'Released', 'total_income' => 100],
+                            ['order_sn' => 'ORDER-1', 'description' => 'Platform Fee', 'status' => 'Released', 'total_income' => -10],
+                        ],
+                        'next_cursor' => 'income-cursor-2',
+                        'more' => true,
+                    ],
+                ]))
+                ->push(array_merge($this->baseEnvelope(), [
+                    'response' => [
+                        'income_detail_list_item' => [
+                            ['order_sn' => 'ORDER-2', 'description' => 'Product Income', 'status' => 'Released', 'total_income' => 200],
+                        ],
+                        'next_cursor' => '',
+                        'more' => false,
+                    ],
+                ])),
+        ]);
+
+        $sync = new ShopeeSyncService(
+            ShopeeApiClient::fromConnection($connection),
+            new ShopeeOAuthService(app(HttpFactory::class)),
+            app(ShopeeResponseNormalizer::class),
+        );
+
+        $result = $sync->syncSampleIncome($connection, ['page_size' => 2]);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(3, $result['row_count']);
+        $this->assertSame(2, $result['pages']);
+        $this->assertSame('', $result['cursor']);
+        $this->assertFalse($result['more']);
+        $this->assertFalse($result['capped']);
+
+        $connection->refresh();
+        $this->assertCount(3, $connection->staging_income);
+        $this->assertSame('success', $connection->last_sync_status);
+
+        Http::assertSentCount(2);
+        Http::assertSent(function (ClientRequest $request): bool {
+            $query = [];
+            parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+            return ($query['cursor'] ?? null) === 'income-cursor-2';
+        });
+    }
+
     public function test_429_backoff_retries_then_succeeds(): void
     {
         $connection = $this->connectedConnection($this->activeUser());
