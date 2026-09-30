@@ -283,6 +283,12 @@ class ShopeePromotionService
             }
 
             $header = (array) ($headerIndex[$orderSn] ?? []);
+            $header['order_subtotal'] ??= data_get($orderIncome, 'order_discounted_price');
+            $header['buyer_shipping_paid'] ??= data_get($orderIncome, 'buyer_paid_shipping_fee');
+            $header['estimated_shipping_cost'] ??= data_get($header, 'estimated_shipping_fee');
+            $header['product_count'] ??= is_array(data_get($orderIncome, 'items'))
+                ? count(data_get($orderIncome, 'items'))
+                : null;
             $lines = $this->normalizer->normalizeOrderLines($orderIncome);
             $rawItems = is_array(data_get($orderIncome, 'items')) ? data_get($orderIncome, 'items') : [];
 
@@ -318,6 +324,10 @@ class ShopeePromotionService
             'order_subtotal' => $header['order_subtotal'] ?? null,
             'total_payment' => $header['total_payment'] ?? null,
             'buyer_shipping_paid' => $header['buyer_shipping_paid'] ?? null,
+            'estimated_shipping_discount' => $header['estimated_shipping_discount'] ?? null,
+            'estimated_shipping_cost' => $header['estimated_shipping_cost'] ?? null,
+            'product_count' => $header['product_count'] ?? null,
+            'total_weight' => $header['total_weight'] ?? null,
             'buyer_username' => $header['buyer_username'] ?? null,
             'recipient_name' => $header['recipient_name'] ?? null,
             'buyer_phone' => $header['buyer_phone'] ?? null,
@@ -341,7 +351,8 @@ class ShopeePromotionService
             'returned_quantity' => $returnedQuantity,
             'raw_data' => json_encode([
                 'source' => 'shopee_api',
-                'payload' => $line + ['quantity_returned' => $returnedQuantity],
+                'order' => $header,
+                'line' => $line + ['quantity_returned' => $returnedQuantity],
             ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             'created_at' => now(),
             'updated_at' => now(),
