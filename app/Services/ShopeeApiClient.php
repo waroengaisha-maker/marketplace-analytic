@@ -106,13 +106,13 @@ class ShopeeApiClient
                 'error' => $ok ? null : ($envelope['message'] ?? 'Unknown Shopee API error.'),
                 'message' => $ok ? 'Connected to Shopee Open API.' : 'Shopee API call failed.',
                 'rate_limited' => false,
-                'raw' => app()->hasDebugModeEnabled() ? $envelope : null,
+                'raw' => config('app.debug') ? $envelope : null,
             ];
         } catch (ShopeeApiException $exception) {
             return [
                 'ok' => false,
                 'configured' => true,
-                'error' => app()->hasDebugModeEnabled()
+                'error' => config('app.debug')
                     ? $exception->getMessage()
                     : 'Shopee API request failed. Please try again later.',
                 'rate_limited' => $exception->isRateLimited(),
