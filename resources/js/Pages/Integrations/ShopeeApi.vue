@@ -385,7 +385,7 @@ const labelForStatus = (status: ValidationRow['status']) =>
 async function runTest() {
     lab.busy = true
     try {
-        testResult.value = await apiGet('/integrations/shopee-api/test')
+        testResult.value = await apiPost('/integrations/shopee-api/test')
         lab.error = null
         lab.rateLimited = false
     } catch (error) {
