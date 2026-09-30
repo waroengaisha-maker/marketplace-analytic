@@ -1251,6 +1251,11 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $request->validateResolved();
 
+        $this->assertSame('POST', $request->method());
+        $this->assertNotNull($request->file('income_report'));
+        $this->assertSame('income-report.xlsx', $request->file('income_report')->getClientOriginalName());
+        $this->assertTrue($request->hasFile('income_report'));
+
         unlink($path);
     }
 
