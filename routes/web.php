@@ -77,7 +77,7 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::post('/products/hpp-mapping/reallocate', [HppMappingController::class, 'reallocate'])->name('products.hpp-mapping.reallocate');
     Route::get('/integrations/shopee-api', [ShopeeApiController::class, 'index'])->name('integrations.shopee-api');
     Route::get('/integrations/shopee-api/status', [ShopeeApiController::class, 'status'])->name('integrations.shopee-api.status');
-    Route::get('/integrations/shopee-api/test', [ShopeeApiController::class, 'testConnection'])->name('integrations.shopee-api.test');
+    Route::post('/integrations/shopee-api/test', [ShopeeApiController::class, 'testConnection'])->name('integrations.shopee-api.test');
     Route::get('/integrations/shopee-api/orders', [ShopeeApiController::class, 'orders'])->name('integrations.shopee-api.orders');
     Route::get('/integrations/shopee-api/orders/{order_sn}', [ShopeeApiController::class, 'orderDetail'])->name('integrations.shopee-api.order-detail')->where('order_sn', '[A-Za-z0-9_.-]+');
     Route::get('/integrations/shopee-api/income', [ShopeeApiController::class, 'income'])->name('integrations.shopee-api.income');
