@@ -127,56 +127,85 @@ class ShopeeSyncService
 
         $incomeCap = (int) config('shopee-api.sync.income_page_size_max', 20);
         $pageSize = min((int) ($options['page_size'] ?? $incomeCap), $incomeCap);
-        $params = [
-            'page_size' => $pageSize,
-        ];
+        $maxPages = (int) config('shopee-api.sync.income_max_pages', 10);
+        $cursor = (string) ($options['start_cursor'] ?? '');
+        $nextCursor = $cursor;
+        $items = [];
+        $pages = 0;
+        $more = false;
+        $failure = null;
 
-        foreach (['status', 'date_from', 'date_to'] as $key) {
-            if (! empty($options[$key])) {
-                $params[$key] = $options[$key];
-            }
-        }
-
-        try {
-            $envelope = $this->withBackoff(fn (): array => $this->client->getIncomeDetail($params));
-        } catch (ShopeeApiException $exception) {
-            $this->markOutcome($connection, ['error' => $exception->getMessage(), 'rate_limited' => $exception->isRateLimited()]);
-
-            return [
-                'ok' => false,
-                'row_count' => 0,
-                'error' => $exception->getMessage(),
-                'rate_limited' => $exception->isRateLimited(),
-                'normalized' => [],
+        do {
+            $params = [
+                'page_size' => $pageSize,
             ];
-        }
 
-        $items = data_get($envelope, 'response.income_detail_list_item', data_get($envelope, 'response.list', []));
+            if ($nextCursor !== '') {
+                $params['cursor'] = $nextCursor;
+            }
 
-        if (! is_array($items)) {
-            $items = [];
-        }
+            foreach (['status', 'date_from', 'date_to'] as $key) {
+                if (! empty($options[$key])) {
+                    $params[$key] = $options[$key];
+                }
+            }
+
+            try {
+                $envelope = $this->withBackoff(fn (): array => $this->client->getIncomeDetail($params));
+            } catch (ShopeeApiException $exception) {
+                $failure = [
+                    'error' => $exception->getMessage(),
+                    'rate_limited' => $exception->isRateLimited(),
+                ];
+                break;
+            }
+
+            $page = data_get(
+                $envelope,
+                'response.income_detail_list_item',
+                data_get($envelope, 'response.list', [])
+            );
+
+            if (is_array($page)) {
+                foreach ($page as $row) {
+                    if (is_array($row)) {
+                        $items[] = $row;
+                    }
+                }
+            }
+
+            $nextCursor = (string) (data_get($envelope, 'response.next_cursor') ?? '');
+            $more = (bool) (data_get($envelope, 'response.more') ?? false);
+            $pages++;
+        } while ($more && $nextCursor !== '' && $pages < $maxPages);
+
+        $capped = $more && $nextCursor !== '';
 
         $incoming = array_map(
             fn (array $row): array => $row + ['income_identity' => $this->incomeIdentity($row)],
-            array_values(array_filter($items, 'is_array'))
+            $items
         );
 
         $merged = $this->mergeStaging($connection->staging_income ?? [], $incoming, 'income_identity');
         $connection->staging_income = $merged;
-        $this->markOutcome($connection, null);
+        $this->markOutcome($connection, $failure);
 
         if (! empty($merged)) {
             $connection->markStaged();
         }
 
         return [
-            'ok' => true,
+            'ok' => $failure === null,
             'row_count' => count($items),
             'staged_total' => count($merged),
+            'pages' => $pages,
+            'cursor' => $nextCursor,
+            'more' => $more,
+            'capped' => $capped,
             'page_size' => $pageSize,
-            'error' => null,
-            'rate_limited' => false,
+            'max_pages' => $maxPages,
+            'error' => $failure['error'] ?? null,
+            'rate_limited' => $failure['rate_limited'] ?? false,
             'normalized' => $this->normalizer->normalizeIncomeRows($items),
         ];
     }
