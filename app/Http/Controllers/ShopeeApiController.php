@@ -20,6 +20,7 @@ use Inertia\Inertia;
 
 class ShopeeApiController extends Controller
 {
+    // Production error handling is intentionally sanitized at the controller boundary.
     public function index(ShopeeApiResearchService $service, Request $request)
     {
         return Inertia::render('Integrations/ShopeeApi', array_merge(
