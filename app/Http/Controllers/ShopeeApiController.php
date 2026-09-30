@@ -201,7 +201,12 @@ class ShopeeApiController extends Controller
             ]);
 
             return redirect()->route('integrations.shopee-api')
-                ->with('shopee_flow', ['status' => 'error', 'message' => 'Shopee authorization failed: '.$exception->getMessage()]);
+                ->with('shopee_flow', [
+                    'status' => 'error',
+                    'message' => app()->hasDebugModeEnabled()
+                        ? 'Shopee authorization failed: '.$exception->getMessage()
+                        : 'Shopee authorization failed. Please try again later.',
+                ]);
         } catch (\Throwable $exception) {
             Log::error('[Shopee OAuth] unexpected token exchange error', [
                 'connection_id' => $connection->id,
@@ -490,7 +495,9 @@ class ShopeeApiController extends Controller
         $metadata = [
             'operation' => $operation,
             'ok' => (bool) ($result['ok'] ?? false),
-            'error' => $result['error'] ?? null,
+            'error' => app()->hasDebugModeEnabled()
+                ? ($result['error'] ?? null)
+                : (($result['ok'] ?? false) ? null : 'Shopee API request failed. Please try again later.'),
             'rate_limited' => (bool) ($result['rate_limited'] ?? false),
         ];
 
