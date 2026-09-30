@@ -202,6 +202,7 @@ class ShopeeSyncService
 
         $merged = $this->mergeStaging($connection->staging_income ?? [], $incoming, 'income_identity');
         $connection->staging_income = $merged;
+        $connection->last_sync_income_cursor = $nextCursor;
         $this->markOutcome($connection, $failure);
 
         if (! empty($merged)) {
