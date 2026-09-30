@@ -120,6 +120,24 @@ class ShopeeApiClient
 
     public function getOrderList(array $params = []): array
     {
+        $params['response_optional_fields'] ??= implode(',', [
+            'buyer_user_id',
+            'buyer_username',
+            'estimated_shipping_fee',
+            'recipient_address',
+            'actual_shipping_fee',
+            'item_list',
+            'pay_time',
+            'buyer_cancel_reason',
+            'cancel_by',
+            'cancel_reason',
+            'pickup_done_time',
+            'package_list',
+            'shipping_carrier',
+            'payment_method',
+            'total_amount',
+        ]);
+
         return $this->request(self::PATH_ORDER_LIST, $params);
     }
 
