@@ -23,7 +23,10 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->trustProxies(at: $trustedProxies);
 
-        $trustedHosts = config('app.trusted_hosts', []);
+        $trustedHosts = array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) getenv('TRUSTED_HOSTS')),
+        )));
 
         if ($trustedHosts !== []) {
             $middleware->trustHosts(at: $trustedHosts);
