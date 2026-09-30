@@ -169,6 +169,7 @@ class ShopeeApiConnection extends Model
         $this->promoted_fingerprint = null;
         $this->last_staged_at = null;
         $this->last_sync_order_cursor = null;
+        $this->last_sync_income_cursor = null;
         $this->last_sync_status = null;
         $this->last_sync_error = null;
         $this->save();
