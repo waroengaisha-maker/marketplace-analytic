@@ -574,9 +574,19 @@ class ShopeeApiController extends Controller
             $status = 502;
         }
 
+        if (! app()->hasDebugModeEnabled()) {
+            Log::warning('[Shopee API] request failed', [
+                'status' => $status,
+                'rate_limited' => $exception->isRateLimited(),
+                'exception' => get_class($exception),
+            ]);
+        }
+
         return response()->json([
             'ok' => false,
-            'error' => $exception->getMessage(),
+            'error' => app()->hasDebugModeEnabled()
+                ? $exception->getMessage()
+                : 'Shopee API request failed. Please try again later.',
             'rate_limited' => $exception->isRateLimited(),
         ], $status);
     }
