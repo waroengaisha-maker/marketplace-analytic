@@ -153,7 +153,7 @@ class ShopeeApiIntegrationTest extends TestCase
         $user = $this->activeUser();
         $this->connectedConnection($user);
 
-        $response = $this->actingAs($user)->getJson(route('integrations.shopee-api.authorize'));
+        $response = $this->actingAs($user)->postJson(route('integrations.shopee-api.authorize'));
 
         $response->assertOk()->assertJson(['ok' => true]);
         $this->assertStringStartsWith('https://partner.shopeemobile.com/api/v2/shop/auth_partner?', $response->json('url'));
@@ -164,7 +164,7 @@ class ShopeeApiIntegrationTest extends TestCase
     {
         $user = $this->activeUser();
 
-        $response = $this->actingAs($user)->getJson(route('integrations.shopee-api.authorize'));
+        $response = $this->actingAs($user)->postJson(route('integrations.shopee-api.authorize'));
 
         $response->assertStatus(422)->assertJson(['ok' => false]);
     }
@@ -249,7 +249,7 @@ class ShopeeApiIntegrationTest extends TestCase
      */
     private function startAuthorizationFlow(User $user): string
     {
-        $authResponse = $this->actingAs($user)->getJson(route('integrations.shopee-api.authorize'));
+        $authResponse = $this->actingAs($user)->postJson(route('integrations.shopee-api.authorize'));
 
         $authResponse->assertOk()->assertJson(['ok' => true]);
 
@@ -1086,7 +1086,7 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-orders'))->assertOk();
         $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-income'))->assertOk();
         $this->actingAs($user)->getJson(route('integrations.shopee-api.status'))->assertOk();
-        $this->actingAs($user)->getJson(route('integrations.shopee-api.test'))->assertOk();
+        $this->actingAs($user)->postJson(route('integrations.shopee-api.test'))->assertOk();
         $this->actingAs($user)->getJson(route('integrations.shopee-api.orders'))->assertOk();
         $this->actingAs($user)->getJson(route('integrations.shopee-api.order-detail', '220404NF3CFFNY'))->assertOk();
         $this->actingAs($user)->getJson(route('integrations.shopee-api.income'))->assertOk();
