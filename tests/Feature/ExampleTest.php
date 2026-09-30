@@ -25,7 +25,7 @@ class ExampleTest extends TestCase
             ->get('/')
             ->assertOk()
             ->assertInertia(fn ($page) => $page
-                ->component('Dashboard')
+                ->component('Dashboard', false)
                 ->where('auth.user.id', $user->id)
                 ->where('auth.user.email', $user->email)
             );
