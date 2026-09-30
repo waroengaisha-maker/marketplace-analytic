@@ -28,7 +28,7 @@ class IncomeReconciliationService
         $incomePrice = 'COALESCE(i.product_price, i.unit_price)';
         $orderNetQuantity = 'CASE WHEN o.quantity - COALESCE(o.returned_quantity, 0) > 0 THEN o.quantity - COALESCE(o.returned_quantity, 0) ELSE 0 END';
         $sameProduct = 'o.user_id = i.user_id AND o.order_number = i.order_number AND o.product_key = i.product_key';
-        $sameCanonicalIdentity = 'o.user_id = i.user_id AND o.line_identity = i.line_identity';
+        $sameCanonicalIdentity = 'o.user_id = i.user_id AND (o.line_identity = i.line_identity OR (o.line_identity IS NULL AND i.line_identity IS NULL))';
         $sameVariation = "COALESCE(o.variation_key, '') = COALESCE(i.variation_key, '')";
         $sameName = "LOWER(COALESCE(o.product_name, '')) = LOWER(COALESCE(i.product_name, ''))";
         $samePrice = "(COALESCE(o.unit_price, o.discounted_price) = COALESCE(i.unit_price, i.product_price) OR o.discounted_price * {$orderNetQuantity} = {$incomePrice})";
