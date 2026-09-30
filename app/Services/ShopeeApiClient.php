@@ -125,7 +125,34 @@ class ShopeeApiClient
 
     public function getOrderDetail(string $orderSn): array
     {
-        return $this->request(self::PATH_ORDER_DETAIL, ['order_sn_list' => $orderSn]);
+        return $this->request(self::PATH_ORDER_DETAIL, [
+            'order_sn_list' => $orderSn,
+            'response_optional_fields' => implode(',', [
+                'buyer_user_id',
+                'buyer_username',
+                'estimated_shipping_fee',
+                'recipient_address',
+                'actual_shipping_fee',
+                'goods_to_declare',
+                'note',
+                'note_update_time',
+                'item_list',
+                'pay_time',
+                'dropshipper',
+                'dropshipper_phone',
+                'split_up',
+                'buyer_cancel_reason',
+                'cancel_by',
+                'cancel_reason',
+                'actual_shipping_fee_confirmed',
+                'fulfillment_flag',
+                'pickup_done_time',
+                'package_list',
+                'shipping_carrier',
+                'payment_method',
+                'total_amount',
+            ]),
+        ]);
     }
 
     public function getEscrowDetail(string $orderSn): array
