@@ -17,6 +17,7 @@ use App\Services\ShopeeSyncService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -475,6 +476,59 @@ class ShopeeApiHardeningTest extends TestCase
         $this->assertFalse($audit->metadata['ok']);
         $this->assertTrue($audit->metadata['rate_limited']);
         $this->assertNotNull($audit->metadata['error']);
+    }
+
+    // ---------------------------------------------------------------
+    // Production error sanitization
+    // ---------------------------------------------------------------
+
+    public function test_production_sync_error_does_not_expose_remote_exception_details(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        Config::set('app.debug', false);
+
+        $user = $this->activeUser();
+        $this->connectedConnection($user);
+
+        Http::fake([
+            '*/api/v2/payment/get_income_detail*' => Http::response(json_encode([
+                'error' => 'SECRET_REMOTE_ERROR',
+                'message' => 'sensitive remote diagnostic',
+                'request_id' => 'secret-request-id',
+            ]), 500),
+        ]);
+
+        $response = $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-income'))
+            ->assertOk()
+            ->json();
+
+        $this->assertFalse($response['ok']);
+        $this->assertSame('Shopee API request failed. Please try again later.', $response['error']);
+        $this->assertStringNotContainsString('SECRET_REMOTE_ERROR', json_encode($response));
+        $this->assertStringNotContainsString('sensitive remote diagnostic', json_encode($response));
+        $this->assertStringNotContainsString('secret-request-id', json_encode($response));
+
+        $audit = AccountAuditLog::query()->where('action', 'shopee_api.sync.income')->first();
+        $this->assertNotNull($audit);
+        $this->assertSame('Shopee API request failed. Please try again later.', $audit->metadata['error']);
+    }
+
+    public function test_production_safe_state_does_not_expose_last_sync_error_details(): void
+    {
+        Config::set('app.debug', false);
+
+        $user = $this->activeUser();
+        $connection = $this->connectedConnection($user, [
+            'last_sync_status' => 'error',
+            'last_sync_error' => 'Shopee API HTTP 500. error=SECRET_REMOTE_ERROR. message=sensitive remote diagnostic. request_id=secret-request-id.',
+        ]);
+
+        $state = $connection->safeState();
+
+        $this->assertSame('Shopee API request failed. Please try again later.', $state['last_sync_error']);
+        $this->assertStringNotContainsString('SECRET_REMOTE_ERROR', json_encode($state));
+        $this->assertStringNotContainsString('secret-request-id', json_encode($state));
     }
 
     // ---------------------------------------------------------------
