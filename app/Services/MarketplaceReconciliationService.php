@@ -1012,7 +1012,7 @@ class MarketplaceReconciliationService
         $ambiguousMatch = '(income_exact.candidate_count > 1 OR (income_exact.candidate_count IS NULL AND income_fallback.candidate_count > 1 AND (income_fallback.candidate_count <> order_group.order_line_count OR income_fallback.income_amount <> order_group.order_amount)))';
         $estimatedMatch = '(income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NULL AND settled_sku_fee.user_id IS NOT NULL)';
         $returnEvidence = "(COALESCE(orders.returned_quantity, 0) > 0 OR NULLIF(TRIM(COALESCE(orders.return_status, '')), '') IS NOT NULL)";
-        $cancelledEvidence = "(LOWER(TRIM(COALESCE(orders.order_status, ''))) = 'batal' OR NULLIF(TRIM(COALESCE(orders.cancellation_reason, '')), '') IS NOT NULL)";
+        $cancelledEvidence = "(LOWER(TRIM(COALESCE(orders.order_status, ''))) IN ('batal', 'dibatalkan', 'cancelled', 'canceled') OR NULLIF(TRIM(COALESCE(orders.cancellation_reason, '')), '') IS NOT NULL)";
         $invalidEvidence = "(orders.tracking_number IS NULL OR TRIM(orders.tracking_number) = '')";
         $businessStatus = "CASE WHEN {$refundEvidence} THEN CASE WHEN ABS({$refundAmount}) >= COALESCE(orders.discounted_price, 0) * COALESCE(orders.quantity, 0) THEN 'Refunded' ELSE 'Partially Refunded' END WHEN {$returnEvidence} THEN 'Returned' WHEN {$cancelledEvidence} THEN 'Cancelled' WHEN {$invalidEvidence} THEN 'Invalid' WHEN {$exactMatch} OR {$groupedMatch} THEN 'Settled' ELSE 'Unmatched' END";
         $matchMethod = "CASE WHEN {$refundEvidence} OR {$cancelledEvidence} OR {$invalidEvidence} OR {$ambiguousMatch} THEN 'None' WHEN {$exactMatch} THEN 'Exact' WHEN {$groupedMatch} THEN 'Grouped' WHEN {$estimatedMatch} THEN 'Estimated' ELSE 'None' END";
