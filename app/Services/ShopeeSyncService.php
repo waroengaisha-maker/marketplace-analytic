@@ -157,7 +157,12 @@ class ShopeeSyncService
             $items = [];
         }
 
-        $merged = $this->mergeStaging($connection->staging_income ?? [], $items, 'order_sn');
+        $incoming = array_map(
+            fn (array $row): array => $row + ['income_identity' => $this->incomeIdentity($row)],
+            array_values(array_filter($items, 'is_array'))
+        );
+
+        $merged = $this->mergeStaging($connection->staging_income ?? [], $incoming, 'income_identity');
         $connection->staging_income = $merged;
         $this->markOutcome($connection, null);
 
