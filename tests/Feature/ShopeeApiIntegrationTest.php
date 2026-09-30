@@ -849,6 +849,69 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertDatabaseCount('marketplace_income', 0);
     }
 
+    public function test_order_normalizer_maps_production_detail_fields(): void
+    {
+        $normalizer = app(ShopeeResponseNormalizer::class);
+
+        $rows = $normalizer->normalizeOrderHeaders([[
+            'order_sn' => 'ORDER-DETAIL-1',
+            'order_status' => 'COMPLETED',
+            'payment_method' => 'PAY_PROFILE',
+            'total_amount' => 125000,
+            'buyer_username' => 'buyer-one',
+            'recipient_address' => [
+                'name' => 'Buyer One',
+                'phone' => '08123456789',
+                'full_address' => 'Jl. Test No. 1',
+                'city' => 'Medan',
+                'state' => 'North Sumatra',
+                'zipcode' => '20111',
+            ],
+            'cancel_reason' => null,
+            'create_time' => 1700000000,
+            'pay_time' => 1700000100,
+            'pickup_done_time' => 1700000200,
+        ]]);
+
+        $this->assertSame('Buyer One', $rows[0]['recipient_name']);
+        $this->assertSame('08123456789', $rows[0]['buyer_phone']);
+        $this->assertStringContainsString('Jl. Test No. 1', $rows[0]['shipping_address']);
+        $this->assertSame('Medan', $rows[0]['city']);
+        $this->assertSame('North Sumatra', $rows[0]['province']);
+        $this->assertSame(125000, $rows[0]['total_payment']);
+    }
+
+    public function test_income_normalizer_maps_financial_fields(): void
+    {
+        $normalizer = app(ShopeeResponseNormalizer::class);
+
+        $rows = $normalizer->normalizeIncomeRows([[
+            'order_sn' => 'ORDER-INCOME-1',
+            'description' => 'Product Income',
+            'application_number' => 'APP-1',
+            'product_id' => 'PRODUCT-1',
+            'product_name' => 'Kemeja',
+            'release_time' => 1700001000,
+            'total_income' => 100000,
+            'product_price' => 120000,
+            'platform_fee' => -5000,
+            'service_fee' => -2500,
+            'refund_to_buyer' => 0,
+            'buyer_username' => 'buyer-one',
+            'buyer_paid_amount' => 125000,
+            'shipping_provider' => 'J&T',
+        ]]);
+
+        $this->assertSame('APP-1', $rows[0]['application_number']);
+        $this->assertSame('PRODUCT-1', $rows[0]['product_id']);
+        $this->assertSame('Kemeja', $rows[0]['product_name']);
+        $this->assertSame(100000, $rows[0]['total_income']);
+        $this->assertSame(120000, $rows[0]['product_price']);
+        $this->assertSame(-5000, $rows[0]['platform_fee']);
+        $this->assertSame(-2500, $rows[0]['service_fee']);
+        $this->assertSame('J&T', $rows[0]['shipping_provider']);
+    }
+
     // ---------------------------------------------------------------
     // Zero production-table writes
     // ---------------------------------------------------------------
