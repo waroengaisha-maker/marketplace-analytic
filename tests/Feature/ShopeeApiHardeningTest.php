@@ -492,6 +492,35 @@ class ShopeeApiHardeningTest extends TestCase
             ->assertStatus(405);
     }
 
+    public function test_production_connection_error_does_not_expose_remote_exception_details(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        Config::set('app.debug', false);
+
+        $user = $this->activeUser();
+        $this->connectedConnection($user);
+
+        Http::fake([
+            '*/api/v2/order/get_order_list*' => Http::response([
+                'error' => 'SECRET_REMOTE_ERROR',
+                'message' => 'sensitive remote diagnostic',
+                'request_id' => 'secret-request-id',
+            ], 500),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->postJson(route('integrations.shopee-api.test'))
+            ->assertStatus(500)
+            ->json();
+
+        $this->assertFalse($response['ok']);
+        $this->assertSame('Shopee API request failed. Please try again later.', $response['error']);
+        $this->assertStringNotContainsString('SECRET_REMOTE_ERROR', json_encode($response));
+        $this->assertStringNotContainsString('sensitive remote diagnostic', json_encode($response));
+        $this->assertStringNotContainsString('secret-request-id', json_encode($response));
+    }
+
     public function test_connection_endpoint_can_be_called_with_post(): void
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);
@@ -500,8 +529,10 @@ class ShopeeApiHardeningTest extends TestCase
         $connection = $this->connectedConnection($user);
 
         Http::fake([
-            '*/api/v2/shop/get_shop_info*' => Http::response([
-                'shop_name' => 'Test Shop',
+            '*/api/v2/order/get_order_list*' => Http::response([
+                'error' => '-',
+                'message' => 'success',
+                'response' => ['order_list' => []],
             ]),
         ]);
 
@@ -511,7 +542,8 @@ class ShopeeApiHardeningTest extends TestCase
             ->json();
 
         $this->assertTrue($response['ok']);
-        $this->assertSame('Test Shop', $response['shop_name'] ?? null);
+        $this->assertTrue($response['configured']);
+        $this->assertNull($response['error']);
     }
 
     public function test_production_sync_error_does_not_expose_remote_exception_details(): void
