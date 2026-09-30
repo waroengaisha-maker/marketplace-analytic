@@ -27,6 +27,7 @@ class ShopeeApiConnection extends Model
         'last_sync_status',
         'last_sync_error',
         'last_sync_order_cursor',
+        'last_sync_income_cursor',
         'last_staged_at',
         'last_promoted_at',
         'promoted_fingerprint',
