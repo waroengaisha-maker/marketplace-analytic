@@ -457,6 +457,30 @@ class ShopeeApiIntegrationTest extends TestCase
         });
     }
 
+    public function test_production_sync_mode_is_explicit_and_still_stages_only(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $user = $this->activeUser();
+        $connection = $this->connectedConnection($user);
+
+        Http::fake([
+            '*/api/v2/order/get_order_list*' => Http::sequence()
+                ->push($this->orderEnvelope([['order_sn' => 'PROD-CTRL-1']], 'next', true))
+                ->push($this->orderEnvelope([['order_sn' => 'PROD-CTRL-2']])),
+        ]);
+
+        $response = $this->actingAs($user)->postJson(
+            route('integrations.shopee-api.sync-orders'),
+            ['mode' => 'production', 'page_size' => 100]
+        );
+
+        $response->assertOk()->assertJson(['ok' => true, 'pages' => 2, 'capped' => false]);
+
+        $this->assertCount(2, $connection->refresh()->staging_orders);
+        $this->assertDatabaseCount('marketplace_orders', 0);
+    }
+
     public function test_sync_never_crosses_tenant_boundaries(): void
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);
@@ -585,6 +609,69 @@ class ShopeeApiIntegrationTest extends TestCase
 
             return ($query['cursor'] ?? null) === 'income-cursor-2';
         });
+    }
+
+    public function test_production_order_sync_walks_until_exhausted_beyond_sample_cap(): void
+    {
+        $connection = $this->connectedConnection($this->activeUser());
+
+        Http::fake([
+            '*/api/v2/order/get_order_list*' => Http::sequence()
+                ->push($this->orderEnvelope([['order_sn' => 'PROD-1']], 'cursor-2', true))
+                ->push($this->orderEnvelope([['order_sn' => 'PROD-2']], 'cursor-3', true))
+                ->push($this->orderEnvelope([['order_sn' => 'PROD-3']], '', false)),
+        ]);
+
+        $sync = new ShopeeSyncService(
+            ShopeeApiClient::fromConnection($connection),
+            new ShopeeOAuthService(app(HttpFactory::class)),
+            app(ShopeeResponseNormalizer::class),
+        );
+
+        $result = $sync->syncSampleOrders($connection, ['mode' => 'production', 'page_size' => 100]);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(3, $result['order_count']);
+        $this->assertSame(3, $result['pages']);
+        $this->assertFalse($result['more']);
+        $this->assertFalse($result['capped']);
+        $this->assertCount(3, $connection->refresh()->staging_orders);
+    }
+
+    public function test_production_income_sync_walks_until_exhausted_beyond_sample_cap(): void
+    {
+        $connection = $this->connectedConnection($this->activeUser());
+
+        Http::fake([
+            '*/api/v2/payment/get_income_detail*' => Http::sequence()
+                ->push(array_merge($this->baseEnvelope(), ['response' => [
+                    'income_detail_list_item' => [['order_sn' => 'PROD-1', 'description' => 'Income', 'total_income' => 100]],
+                    'next_cursor' => 'income-2', 'more' => true,
+                ]]))
+                ->push(array_merge($this->baseEnvelope(), ['response' => [
+                    'income_detail_list_item' => [['order_sn' => 'PROD-2', 'description' => 'Fee', 'total_income' => -10]],
+                    'next_cursor' => 'income-3', 'more' => true,
+                ]]))
+                ->push(array_merge($this->baseEnvelope(), ['response' => [
+                    'income_detail_list_item' => [['order_sn' => 'PROD-3', 'description' => 'Income', 'total_income' => 200]],
+                    'next_cursor' => '', 'more' => false,
+                ]])),
+        ]);
+
+        $sync = new ShopeeSyncService(
+            ShopeeApiClient::fromConnection($connection),
+            new ShopeeOAuthService(app(HttpFactory::class)),
+            app(ShopeeResponseNormalizer::class),
+        );
+
+        $result = $sync->syncSampleIncome($connection, ['mode' => 'production', 'page_size' => 100]);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame(3, $result['row_count']);
+        $this->assertSame(3, $result['pages']);
+        $this->assertFalse($result['more']);
+        $this->assertFalse($result['capped']);
+        $this->assertCount(3, $connection->refresh()->staging_income);
     }
 
     public function test_429_backoff_retries_then_succeeds(): void
