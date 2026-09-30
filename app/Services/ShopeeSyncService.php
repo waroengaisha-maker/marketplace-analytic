@@ -142,7 +142,7 @@ class ShopeeSyncService
             $production ? 'shopee-api.sync.production_income_max_pages' : 'shopee-api.sync.income_max_pages',
             $production ? 1000 : 10
         );
-        $cursor = (string) ($options['start_cursor'] ?? '');
+        $cursor = (string) ($options['start_cursor'] ?? $connection->last_sync_income_cursor ?? '');
         $nextCursor = $cursor;
         $items = [];
         $pages = 0;
