@@ -204,7 +204,7 @@ class ShopeeApiController extends Controller
             return redirect()->route('integrations.shopee-api')
                 ->with('shopee_flow', [
                     'status' => 'error',
-                    'message' => app()->hasDebugModeEnabled()
+                    'message' => config('app.debug')
                         ? 'Shopee authorization failed: '.$exception->getMessage()
                         : 'Shopee authorization failed. Please try again later.',
                 ]);
@@ -413,7 +413,7 @@ class ShopeeApiController extends Controller
                 'headers' => $normalizer->normalizeOrderHeaders(is_array($orderList) ? $orderList : []),
                 'escrow' => $normalizer->normalizeEscrow(is_array($orderIncome) ? $orderIncome : []),
                 'lines' => $normalizer->normalizeOrderLines(is_array($orderIncome) ? $orderIncome : []),
-                'raw' => app()->hasDebugModeEnabled() ? ['detail' => $detail, 'escrow' => $escrow] : null,
+                'raw' => config('app.debug') ? ['detail' => $detail, 'escrow' => $escrow] : null,
             ]);
         } catch (ShopeeApiException $exception) {
             return $this->errorResponse($exception);
@@ -496,7 +496,7 @@ class ShopeeApiController extends Controller
         $metadata = [
             'operation' => $operation,
             'ok' => (bool) ($result['ok'] ?? false),
-            'error' => app()->hasDebugModeEnabled()
+            'error' => config('app.debug')
                 ? ($result['error'] ?? null)
                 : (($result['ok'] ?? false) ? null : 'Shopee API request failed. Please try again later.'),
             'rate_limited' => (bool) ($result['rate_limited'] ?? false),
@@ -567,7 +567,7 @@ class ShopeeApiController extends Controller
                 'ok' => true,
                 'error' => null,
                 'rate_limited' => false,
-                'raw' => app()->hasDebugModeEnabled() ? $envelope : null,
+                'raw' => config('app.debug') ? $envelope : null,
             ], $normalize($envelope)));
         } catch (ShopeeApiException $exception) {
             return $this->errorResponse($exception);
@@ -582,7 +582,7 @@ class ShopeeApiController extends Controller
             $status = 502;
         }
 
-        if (! app()->hasDebugModeEnabled()) {
+        if (! config('app.debug')) {
             Log::warning('[Shopee API] request failed', [
                 'status' => $status,
                 'rate_limited' => $exception->isRateLimited(),
@@ -592,7 +592,7 @@ class ShopeeApiController extends Controller
 
         return response()->json([
             'ok' => false,
-            'error' => app()->hasDebugModeEnabled()
+            'error' => config('app.debug')
                 ? $exception->getMessage()
                 : 'Shopee API request failed. Please try again later.',
             'rate_limited' => $exception->isRateLimited(),
