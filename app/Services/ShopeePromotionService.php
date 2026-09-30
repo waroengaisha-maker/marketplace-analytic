@@ -140,7 +140,7 @@ class ShopeePromotionService
                 $orderLines = $this->orderImporter->persist($plan['orders'], $connection->user_id);
                 $incomeRows = $plan['income'] === []
                     ? 0
-                    : $this->incomeImporter->persist($plan['income'], $connection->user_id);
+                    : $this->incomeImporter->persistForPromotion($plan['income'], $connection->user_id);
 
                 $audit = $this->audit($connection, 'shopee_api.promotion', [
                     'dry_run' => false,
