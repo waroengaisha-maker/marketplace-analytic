@@ -67,7 +67,8 @@ class ShopeeApiPocTest extends TestCase
             'integrations.shopee-api.orders',
             'integrations.shopee-api.income',
         ] as $name) {
-            $this->get(route($name))->assertRedirect('/login');
+            $method = $name === 'integrations.shopee-api.test' ? 'post' : 'get';
+            $this->{$method}(route($name))->assertRedirect('/login');
         }
 
         $this->post(route('integrations.shopee-api.clear'))->assertRedirect('/login');
@@ -333,7 +334,7 @@ class ShopeeApiPocTest extends TestCase
         $user = $this->activeUser();
 
         $this->actingAs($user)->getJson(route('integrations.shopee-api.status'))->assertOk();
-        $this->actingAs($user)->getJson(route('integrations.shopee-api.test'))->assertOk();
+        $this->actingAs($user)->postJson(route('integrations.shopee-api.test'))->assertOk();
         $this->actingAs($user)->getJson(route('integrations.shopee-api.orders'))->assertOk();
         $this->actingAs($user)->getJson(route('integrations.shopee-api.order-detail', '220404NF3CFFNY'))->assertOk();
         $this->actingAs($user)->getJson(route('integrations.shopee-api.income'))->assertOk();
