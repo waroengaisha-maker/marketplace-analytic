@@ -41,7 +41,11 @@ class ShopeeSyncService
     {
         $this->ensureFreshAccessToken($connection);
 
-        $pageSizeCap = (int) config('shopee-api.sync.order_page_size_max', 5);
+        $production = ($options['mode'] ?? 'sample') === 'production';
+        $pageSizeCap = (int) config(
+            $production ? 'shopee-api.sync.production_order_page_size_max' : 'shopee-api.sync.order_page_size_max',
+            $production ? 100 : 5
+        );
         $pageSize = min((int) ($options['page_size'] ?? $pageSizeCap), $pageSizeCap);
         $from = (string) ($options['date_from'] ?? $connection->connected_at?->toDateString() ?? now()->subDays(7)->toDateString());
         $to = (string) ($options['date_to'] ?? now()->toDateString());
@@ -53,7 +57,10 @@ class ShopeeSyncService
         $more = false;
         $failure = null;
 
-        $maxPages = (int) config('shopee-api.sync.max_pages', 10);
+        $maxPages = (int) config(
+            $production ? 'shopee-api.sync.production_max_pages' : 'shopee-api.sync.max_pages',
+            $production ? 1000 : 10
+        );
 
         do {
             $params = [
@@ -125,9 +132,16 @@ class ShopeeSyncService
     {
         $this->ensureFreshAccessToken($connection);
 
-        $incomeCap = (int) config('shopee-api.sync.income_page_size_max', 20);
+        $production = ($options['mode'] ?? 'sample') === 'production';
+        $incomeCap = (int) config(
+            $production ? 'shopee-api.sync.production_income_page_size_max' : 'shopee-api.sync.income_page_size_max',
+            $production ? 100 : 20
+        );
         $pageSize = min((int) ($options['page_size'] ?? $incomeCap), $incomeCap);
-        $maxPages = (int) config('shopee-api.sync.income_max_pages', 10);
+        $maxPages = (int) config(
+            $production ? 'shopee-api.sync.production_income_max_pages' : 'shopee-api.sync.income_max_pages',
+            $production ? 1000 : 10
+        );
         $cursor = (string) ($options['start_cursor'] ?? '');
         $nextCursor = $cursor;
         $items = [];
