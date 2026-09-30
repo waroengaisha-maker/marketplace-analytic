@@ -7,6 +7,8 @@ use App\Models\ShopeeApiConnection;
 use App\Models\User;
 use App\Services\ShopeeApiClient;
 use App\Services\ShopeeOAuthService;
+use App\Services\ShopeePromotionService;
+use App\Services\ReportLineIdentity;
 use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeSyncService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -911,6 +913,142 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertSame(-2500, $rows[0]['service_fee']);
         $this->assertSame('J&T', $rows[0]['shipping_provider']);
     }
+
+
+    public function test_promotion_replaces_matching_production_rows_with_complete_order_and_income_payload(): void
+    {
+        $user = $this->activeUser();
+        $connection = $this->connectedConnection($user);
+
+        $orderSn = 'PROMOTE-ORDER-1';
+        $productName = 'Kemeja Test';
+        $variationName = 'Merah / M';
+        $discountedPrice = 125000.0;
+        $quantity = 2;
+        $productKey = hash('sha256', mb_strtolower(trim($productName)));
+        $variationKey = hash('sha256', mb_strtolower(trim($variationName)));
+        $lineIdentity = ReportLineIdentity::make(
+            $orderSn,
+            $productKey,
+            $variationKey,
+            $discountedPrice,
+            $quantity,
+        );
+
+        $createdAt = Carbon::createFromTimestamp(1700000000)->toDateTimeString();
+        $paidAt = Carbon::createFromTimestamp(1700000100)->toDateTimeString();
+        $releasedAt = Carbon::createFromTimestamp(1700001000)->toDateTimeString();
+
+        DB::table('marketplace_orders')->insert([
+            'user_id' => $user->id,
+            'order_number' => $orderSn,
+            'order_status' => 'COMPLETED',
+            'payment_method' => 'PAY_PROFILE',
+            'shipping_option' => 'J&T',
+            'buyer_username' => 'buyer-one',
+            'parent_sku' => 'SKU-A',
+            'product_name' => $productName,
+            'sku_reference' => 'SKU-A-M',
+            'variation_name' => $variationName,
+            'original_price' => 150000,
+            'discounted_price' => $discountedPrice,
+            'unit_price' => $discountedPrice,
+            'quantity' => $quantity,
+            'line_identity' => $lineIdentity,
+            'order_created_at' => $createdAt,
+            'payment_at' => $paidAt,
+            'raw_data' => json_encode(['source' => 'fixture']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('marketplace_income')->insert([
+            'user_id' => $user->id,
+            'order_number' => $orderSn,
+            'row_type' => 'Total Income',
+            'line_identity' => hash('sha256', $orderSn.'|100000.00|'.$releasedAt),
+            'total_income' => 100000,
+            'fund_released_at' => $releasedAt,
+            'raw_data' => json_encode(['source' => 'fixture']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $connection->staging_orders = [[
+            'order_sn' => $orderSn,
+            'order_status' => 'COMPLETED',
+            'payment_method' => 'PAY_PROFILE',
+            'package_list' => [['shipping_carrier' => 'J&T', 'tracking_number' => 'TRACK-1']],
+            'buyer_username' => 'buyer-one',
+            'recipient_address' => [
+                'name' => 'Buyer One',
+                'phone' => '08123456789',
+                'full_address' => 'Jl. Test No. 1',
+                'city' => 'Medan',
+                'state' => 'North Sumatra',
+            ],
+            'create_time' => 1700000000,
+            'pay_time' => 1700000100,
+        ]];
+        $connection->staging_escrow = [[
+            'order_sn' => $orderSn,
+            'response' => [
+                'order_income' => [
+                    'order_sn' => $orderSn,
+                    'items' => [[
+                        'item_sku' => 'SKU-A',
+                        'item_name' => $productName,
+                        'model_sku' => 'SKU-A-M',
+                        'model_name' => $variationName,
+                        'original_price' => 150000,
+                        'discounted_price' => $discountedPrice,
+                        'quantity_purchased' => $quantity,
+                    ]],
+                ],
+            ],
+        ]];
+        $connection->staging_income = [[
+            'order_sn' => $orderSn,
+            'description' => 'Total Income',
+            'status' => 'Released',
+            'total_income' => 100000,
+            'release_time' => 1700001000,
+        ]];
+        $connection->last_staged_at = now();
+        $connection->last_sync_status = 'success';
+        $connection->save();
+
+        $service = app(ShopeePromotionService::class);
+        $result = $service->promote($connection->refresh());
+
+        $this->assertTrue($result['ok'], $result['error'] ?? 'promotion failed');
+        $this->assertSame(1, $result['promoted']['lines']);
+        $this->assertSame(1, $result['promoted']['income']);
+
+        $order = DB::table('marketplace_orders')
+            ->where('user_id', $user->id)
+            ->where('order_number', $orderSn)
+            ->first();
+        $this->assertNotNull($order);
+        $this->assertSame('buyer-one', $order->buyer_username);
+        $this->assertSame('Buyer One', $order->recipient_name);
+        $this->assertSame('08123456789', $order->buyer_phone);
+        $this->assertSame('Jl. Test No. 1, Medan, North Sumatra', $order->shipping_address);
+        $this->assertSame('TRACK-1', $order->tracking_number);
+
+        $raw = json_decode($order->raw_data, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertArrayHasKey('order', $raw);
+        $this->assertArrayHasKey('line', $raw);
+
+        $income = DB::table('marketplace_income')
+            ->where('user_id', $user->id)
+            ->where('order_number', $orderSn)
+            ->first();
+        $this->assertNotNull($income);
+        $this->assertSame(100000.0, (float) $income->total_income);
+        $this->assertSame($releasedAt, (string) $income->fund_released_at);
+    }
+
 
     // ---------------------------------------------------------------
     // Zero production-table writes
