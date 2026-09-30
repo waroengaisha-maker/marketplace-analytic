@@ -482,6 +482,19 @@ class ShopeeApiHardeningTest extends TestCase
     // Production error sanitization
     // ---------------------------------------------------------------
 
+    public function test_authorize_endpoint_requires_post(): void
+    {
+        $user = $this->activeUser();
+        $this->connectedConnection($user, [
+            'partner_id' => 'partner-id',
+            'partner_key' => 'partner-key',
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('integrations.shopee-api.authorize'))
+            ->assertStatus(405);
+    }
+
     public function test_connection_endpoint_requires_post_and_uses_csrf_protected_route(): void
     {
         $user = $this->activeUser();
