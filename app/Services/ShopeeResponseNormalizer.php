@@ -25,9 +25,19 @@ class ShopeeResponseNormalizer
                 'shipping_option' => $packages !== [] ? (data_get($packages[0], 'shipping_carrier') ?? null) : null,
                 'tracking_number' => $this->firstTrackingNumber($packages),
                 'buyer_username' => $order['buyer_username'] ?? $order['buyer_login_id'] ?? null,
+                'recipient_name' => data_get($order, 'recipient_address.name'),
+                'buyer_phone' => data_get($order, 'recipient_address.phone'),
+                'shipping_address' => $this->address($order['recipient_address'] ?? null),
+                'city' => data_get($order, 'recipient_address.city'),
+                'province' => data_get($order, 'recipient_address.state'),
+                'order_type' => $order['order_type'] ?? null,
+                'order_subtotal' => $order['total_amount'] ?? null,
+                'total_payment' => $order['total_amount'] ?? null,
+                'cancellation_reason' => $order['cancel_reason'] ?? $order['buyer_cancel_reason'] ?? null,
                 'order_created_at' => $this->timestamp($order['create_time'] ?? null),
                 'payment_at' => $this->timestamp($order['pay_time'] ?? null),
                 'shipped_at' => $this->timestamp($order['pickup_done_time'] ?? null),
+                'completed_at' => $this->timestamp($order['update_time'] ?? null),
             ];
         }, $orderList);
     }
@@ -124,6 +134,25 @@ class ShopeeResponseNormalizer
                 'income_released_at' => $this->timestamp($item['release_time'] ?? $item['release_date'] ?? null),
             ];
         }, $items);
+    }
+
+    private function address(mixed $address): ?string
+    {
+        if (! is_array($address)) {
+            return is_string($address) && trim($address) !== '' ? trim($address) : null;
+        }
+
+        $parts = array_filter([
+            $address['full_address'] ?? null,
+            $address['address'] ?? null,
+            $address['district'] ?? null,
+            $address['city'] ?? null,
+            $address['state'] ?? null,
+            $address['country'] ?? null,
+            $address['zipcode'] ?? null,
+        ], fn (mixed $value): bool => is_string($value) && trim($value) !== '');
+
+        return $parts === [] ? null : implode(', ', array_unique(array_map('trim', $parts)));
     }
 
     private function timestamp(mixed $value): ?string
