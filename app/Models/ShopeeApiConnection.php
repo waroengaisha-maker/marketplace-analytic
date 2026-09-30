@@ -92,7 +92,9 @@ class ShopeeApiConnection extends Model
             'refresh_token_expires_at' => $this->refresh_token_expires_at?->toDateTimeString(),
             'last_sync_at' => $this->last_sync_at?->toDateTimeString(),
             'last_sync_status' => $this->last_sync_status,
-            'last_sync_error' => $this->last_sync_error,
+            'last_sync_error' => app()->hasDebugModeEnabled()
+                ? $this->last_sync_error
+                : ($this->last_sync_error !== null ? 'Shopee API request failed. Please try again later.' : null),
             'last_staged_at' => $this->last_staged_at?->toDateTimeString(),
             'last_promoted_at' => $this->last_promoted_at?->toDateTimeString(),
             'staging_order_count' => count($this->staging_orders ?? []),
