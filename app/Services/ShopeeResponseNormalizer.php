@@ -31,13 +31,11 @@ class ShopeeResponseNormalizer
                 'city' => data_get($order, 'recipient_address.city'),
                 'province' => data_get($order, 'recipient_address.state'),
                 'order_type' => $order['order_type'] ?? null,
-                'order_subtotal' => $order['total_amount'] ?? null,
                 'total_payment' => $order['total_amount'] ?? null,
                 'cancellation_reason' => $order['cancel_reason'] ?? $order['buyer_cancel_reason'] ?? null,
                 'order_created_at' => $this->timestamp($order['create_time'] ?? null),
                 'payment_at' => $this->timestamp($order['pay_time'] ?? null),
                 'shipped_at' => $this->timestamp($order['pickup_done_time'] ?? null),
-                'completed_at' => $this->timestamp($order['update_time'] ?? null),
             ];
         }, $orderList);
     }
@@ -130,8 +128,28 @@ class ShopeeResponseNormalizer
                 'status' => $item['status'] ?? null,
                 'payment_method' => $item['payment_method'] ?? null,
                 'currency' => $item['currency'] ?? null,
-                'total_income' => $item['total_income'] ?? $item['amount'] ?? null,
+                'application_number' => $item['application_number'] ?? $item['withdrawal_id'] ?? null,
+                'product_id' => $item['product_id'] ?? $item['item_id'] ?? null,
+                'product_name' => $item['product_name'] ?? $item['item_name'] ?? null,
+                'order_created_at' => $this->timestamp($item['order_create_time'] ?? $item['create_time'] ?? null),
                 'income_released_at' => $this->timestamp($item['release_time'] ?? $item['release_date'] ?? null),
+                'release_method' => $item['release_method'] ?? null,
+                'order_type' => $item['order_type'] ?? null,
+                'total_income' => $item['total_income'] ?? $item['amount'] ?? null,
+                'product_price' => $item['product_price'] ?? null,
+                'buyer_shipping_paid' => $item['buyer_shipping_paid'] ?? null,
+                'platform_fee' => $item['platform_fee'] ?? $item['commission_fee'] ?? null,
+                'order_processing_fee' => $item['order_processing_fee'] ?? null,
+                'shipping_fee' => $item['shipping_fee'] ?? null,
+                'service_fee' => $item['service_fee'] ?? null,
+                'promotion_fee' => $item['promotion_fee'] ?? null,
+                'other_fee' => $item['other_fee'] ?? null,
+                'refund_to_buyer' => $item['refund_to_buyer'] ?? $item['refund_amount'] ?? null,
+                'buyer_username' => $item['buyer_username'] ?? null,
+                'buyer_paid_amount' => $item['buyer_paid_amount'] ?? null,
+                'payment_method' => $item['payment_method'] ?? null,
+                'shipping_provider' => $item['shipping_provider'] ?? $item['shipping_carrier'] ?? null,
+                'voucher_code' => $item['voucher_code'] ?? null,
             ];
         }, $items);
     }
