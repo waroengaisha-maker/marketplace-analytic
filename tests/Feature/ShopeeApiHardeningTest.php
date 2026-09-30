@@ -482,6 +482,38 @@ class ShopeeApiHardeningTest extends TestCase
     // Production error sanitization
     // ---------------------------------------------------------------
 
+    public function test_connection_endpoint_requires_post_and_uses_csrf_protected_route(): void
+    {
+        $user = $this->activeUser();
+        $this->connectedConnection($user);
+
+        $this->actingAs($user)
+            ->get(route('integrations.shopee-api.test'))
+            ->assertStatus(405);
+    }
+
+    public function test_connection_endpoint_can_be_called_with_post(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $user = $this->activeUser();
+        $connection = $this->connectedConnection($user);
+
+        Http::fake([
+            '*/api/v2/shop/get_shop_info*' => Http::response([
+                'shop_name' => 'Test Shop',
+            ]),
+        ]);
+
+        $response = $this->actingAs($user)
+            ->postJson(route('integrations.shopee-api.test'))
+            ->assertOk()
+            ->json();
+
+        $this->assertTrue($response['ok']);
+        $this->assertSame('Test Shop', $response['shop_name'] ?? null);
+    }
+
     public function test_production_sync_error_does_not_expose_remote_exception_details(): void
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);
