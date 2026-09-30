@@ -247,7 +247,8 @@ class ShopeeApiController extends Controller
     public function syncOrders(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'page_size' => ['nullable', 'integer', 'min:1', 'max:'.(int) config('shopee-api.sync.order_page_size_max', 5)],
+            'mode' => ['nullable', 'string', 'in:sample,production'],
+            'page_size' => ['nullable', 'integer', 'min:1', 'max:100],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
@@ -272,7 +273,8 @@ class ShopeeApiController extends Controller
             'status' => ['nullable', 'string'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
-            'page_size' => ['nullable', 'integer', 'min:1', 'max:'.(int) config('shopee-api.sync.income_page_size_max', 20)],
+            'mode' => ['nullable', 'string', 'in:sample,production'],
+            'page_size' => ['nullable', 'integer', 'min:1', 'max:100],
         ]);
 
         try {
