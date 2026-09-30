@@ -287,7 +287,7 @@ async function saveConnect() {
 async function getAuthLink() {
     lab.busy = true
     try {
-        const result = await apiGet('/integrations/shopee-api/authorize')
+        const result = await apiPost('/integrations/shopee-api/authorize')
         authLink.value = (result.url as string | undefined) ?? null
         if (authLink.value) {
             window.location.assign(authLink.value)
