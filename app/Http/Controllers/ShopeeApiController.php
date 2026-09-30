@@ -407,7 +407,7 @@ class ShopeeApiController extends Controller
                 'headers' => $normalizer->normalizeOrderHeaders(is_array($orderList) ? $orderList : []),
                 'escrow' => $normalizer->normalizeEscrow(is_array($orderIncome) ? $orderIncome : []),
                 'lines' => $normalizer->normalizeOrderLines(is_array($orderIncome) ? $orderIncome : []),
-                'raw' => ['detail' => $detail, 'escrow' => $escrow],
+                'raw' => app()->hasDebugModeEnabled() ? ['detail' => $detail, 'escrow' => $escrow] : null,
             ]);
         } catch (ShopeeApiException $exception) {
             return $this->errorResponse($exception);
@@ -559,7 +559,7 @@ class ShopeeApiController extends Controller
                 'ok' => true,
                 'error' => null,
                 'rate_limited' => false,
-                'raw' => $envelope,
+                'raw' => app()->hasDebugModeEnabled() ? $envelope : null,
             ], $normalize($envelope)));
         } catch (ShopeeApiException $exception) {
             return $this->errorResponse($exception);
