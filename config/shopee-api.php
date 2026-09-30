@@ -65,9 +65,13 @@ return [
 
     'sync' => [
         'order_page_size_max' => (int) env('SHOPEE_SYNC_ORDER_PAGE_SIZE_MAX', 5),
+        'production_order_page_size_max' => (int) env('SHOPEE_SYNC_PRODUCTION_ORDER_PAGE_SIZE_MAX', 100),
         'max_pages' => (int) env('SHOPEE_SYNC_MAX_PAGES', 10),
         'income_page_size_max' => (int) env('SHOPEE_SYNC_INCOME_PAGE_SIZE_MAX', 20),
         'income_max_pages' => (int) env('SHOPEE_SYNC_INCOME_MAX_PAGES', 10),
+        'production_income_page_size_max' => (int) env('SHOPEE_SYNC_PRODUCTION_INCOME_PAGE_SIZE_MAX', 100),
+        'production_income_max_pages' => (int) env('SHOPEE_SYNC_PRODUCTION_INCOME_MAX_PAGES', 1000),
+        'production_max_pages' => (int) env('SHOPEE_SYNC_PRODUCTION_MAX_PAGES', 1000),
         'escrow_limit_max' => (int) env('SHOPEE_SYNC_ESCROW_LIMIT_MAX', 20),
     ],
 
