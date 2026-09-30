@@ -83,7 +83,7 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::get('/integrations/shopee-api/income', [ShopeeApiController::class, 'income'])->name('integrations.shopee-api.income');
     Route::post('/integrations/shopee-api/clear', [ShopeeApiController::class, 'clear'])->name('integrations.shopee-api.clear');
     Route::post('/integrations/shopee-api/configure', [ShopeeApiController::class, 'configure'])->name('integrations.shopee-api.configure');
-    Route::get('/integrations/shopee-api/authorize', [ShopeeApiController::class, 'authorize'])->name('integrations.shopee-api.authorize');
+    Route::post('/integrations/shopee-api/authorize', [ShopeeApiController::class, 'authorize'])->name('integrations.shopee-api.authorize');
     Route::get('/integrations/shopee-api/shopee-auth', [ShopeeApiController::class, 'shopeeCallback'])->name('integrations.shopee-api.shopee-auth');
     Route::post('/integrations/shopee-api/sync-orders', [ShopeeApiController::class, 'syncOrders'])->name('integrations.shopee-api.sync-orders');
     Route::post('/integrations/shopee-api/sync-income', [ShopeeApiController::class, 'syncIncome'])->name('integrations.shopee-api.sync-income');
