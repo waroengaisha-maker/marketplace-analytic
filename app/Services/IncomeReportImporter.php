@@ -96,6 +96,28 @@ class IncomeReportImporter
     public function persist(array $rows, int $userId): int
     {
         $rows = $this->uniqueRows($rows);
+        return $this->persistRows($rows, $userId);
+    }
+
+    /**
+     * API promotion is stricter than an Excel re-import: duplicate identities
+     * in a staged API snapshot are ambiguous data and must abort the whole
+     * promotion instead of being silently collapsed.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    public function persistForPromotion(array $rows, int $userId): int
+    {
+        $this->assertNoDuplicateIdentities($rows, $userId);
+
+        return $this->persistRows($rows, $userId);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function persistRows(array $rows, int $userId): int
+    {
         $orderNumbers = array_values(array_unique(array_column($rows, 'order_number')));
 
         DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
@@ -105,6 +127,28 @@ class IncomeReportImporter
         }
 
         return count($rows);
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function assertNoDuplicateIdentities(array $rows, int $userId): void
+    {
+        $seen = [];
+
+        foreach ($rows as $row) {
+            $identity = (string) ($row['line_identity'] ?? '');
+            if ($identity === '') {
+                continue;
+            }
+
+            $key = $userId.'|'.$identity;
+            if (isset($seen[$key])) {
+                throw new \RuntimeException('Duplicate Shopee income identity detected during promotion.');
+            }
+
+            $seen[$key] = true;
+        }
     }
 
     /**
