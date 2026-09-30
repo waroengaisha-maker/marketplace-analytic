@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\AccountStatus;
+use App\Models\ShopeeApiConnection;
 use App\Models\User;
 use App\Services\ShopeeApiClient;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,12 +28,30 @@ class ShopeeApiPocTest extends TestCase
         'access_token' => 'SENTINEL_ACCESS_TOKEN_VALUE',
     ];
 
-    private function activeUser(): User
+    private function activeUser(bool $withConnection = true): User
     {
-        return User::factory()->create([
+        $user = User::factory()->create([
             'account_status' => AccountStatus::Active,
             'trial_ends_at' => now()->addDay(),
         ]);
+
+        if ($withConnection) {
+            ShopeeApiConnection::create([
+                'user_id' => $user->id,
+                'environment' => 'production',
+                'region' => 'global',
+                'partner_id' => self::API_CONFIG['partner_id'],
+                'partner_key' => self::API_CONFIG['partner_key'],
+                'shop_id' => self::API_CONFIG['shop_id'],
+                'access_token' => self::API_CONFIG['access_token'],
+                'refresh_token' => 'SENTINEL_REFRESH_TOKEN_VALUE',
+                'access_token_expires_at' => now()->addHour(),
+                'refresh_token_expires_at' => now()->addYear(),
+                'connected_at' => now(),
+            ]);
+        }
+
+        return $user;
     }
 
     private function configureApi(): void
@@ -113,7 +132,7 @@ class ShopeeApiPocTest extends TestCase
 
     public function test_unconfigured_status_reports_missing_names_without_values(): void
     {
-        $user = $this->activeUser();
+        $user = $this->activeUser(false);
 
         $response = $this->actingAs($user)->getJson(route('integrations.shopee-api.status'));
 
@@ -121,7 +140,10 @@ class ShopeeApiPocTest extends TestCase
             'ok' => true,
             'config' => [
                 'configured' => false,
-                'missing' => ['partner_id', 'partner_key', 'shop_id', 'access_token'],
+                'missing' => ['connection'],
+                'environment' => 'production',
+                'region' => 'global',
+                'host' => null,
             ],
         ]);
         $this->assertStringNotContainsString('env(', $response->getContent());
