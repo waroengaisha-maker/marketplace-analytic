@@ -283,12 +283,6 @@ class ShopeePromotionService
             }
 
             $header = (array) ($headerIndex[$orderSn] ?? []);
-            $header['order_subtotal'] ??= data_get($orderIncome, 'order_discounted_price');
-            $header['buyer_shipping_paid'] ??= data_get($orderIncome, 'buyer_paid_shipping_fee');
-            $header['estimated_shipping_cost'] ??= data_get($header, 'estimated_shipping_fee');
-            $header['product_count'] ??= is_array(data_get($orderIncome, 'items'))
-                ? count(data_get($orderIncome, 'items'))
-                : null;
             $lines = $this->normalizer->normalizeOrderLines($orderIncome);
             $rawItems = is_array(data_get($orderIncome, 'items')) ? data_get($orderIncome, 'items') : [];
 
