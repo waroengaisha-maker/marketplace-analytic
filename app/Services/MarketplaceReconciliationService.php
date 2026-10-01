@@ -459,11 +459,11 @@ class MarketplaceReconciliationService
                 SUM(g.subtotal) AS subtotal,
                 SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END) AS revenue_subtotal,
                 (SUM(g.subtotal) - SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END)) AS non_revenue_subtotal,
-                (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
-                SUM(g.tax) AS tax,
-                (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
-                SUM(g.hpp) AS hpp,
-                ((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+                CASE WHEN COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) THEN NULL ELSE SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) END AS total_fee,
+                CASE WHEN COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.tax) END AS tax,
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.refund_amount) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax) END AS penghasilan,
+                CASE WHEN COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE SUM(g.hpp) END AS hpp,
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.refund_amount) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) OR COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp) END AS laba
             ")
             ->groupBy(DB::raw($buyerExpression));
 
@@ -596,6 +596,21 @@ class MarketplaceReconciliationService
      */
     private function customerSummary(object $row): array
     {
+        $projection = $this->canonicalFinancialProjection->projectLine([
+            'quantity' => $row->net_quantity,
+            'discounted_price' => $row->subtotal,
+            'order_subtotal' => $row->subtotal,
+            'platform_fee' => $row->total_fee,
+            'free_shipping_xtra_fee' => 0.0,
+            'promo_xtra_service_fee' => 0.0,
+            'order_processing_fee' => 0.0,
+            'pph22' => $row->tax,
+            'refund_amount' => 0.0,
+        ], [
+            'cost_status' => $row->hpp === null ? 'hpp_missing' : 'ok',
+            'total_hpp' => $row->hpp,
+        ]);
+
         return [
             'buyer_username' => $row->buyer_username,
             'order_count' => (int) $row->order_count,
@@ -606,11 +621,13 @@ class MarketplaceReconciliationService
             'subtotal' => (float) $row->subtotal,
             'revenue_subtotal' => (float) ($row->revenue_subtotal ?? 0),
             'non_revenue_subtotal' => (float) ($row->non_revenue_subtotal ?? 0),
-            'total_fee' => (float) $row->total_fee,
-            'tax' => (float) ($row->tax ?? 0),
-            'penghasilan' => (float) $row->penghasilan,
-            'hpp' => (float) $row->hpp,
-            'laba' => (float) $row->laba,
+            'total_fee' => $projection->totalFee,
+            'tax' => $projection->tax,
+            'penghasilan' => $projection->penghasilan,
+            'hpp' => $projection->hpp,
+            'laba' => $projection->laba,
+            'canonical_status' => $projection->status,
+            'canonical_provenance' => $projection->provenance,
         ];
     }
 
