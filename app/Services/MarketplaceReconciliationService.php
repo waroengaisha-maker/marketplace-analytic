@@ -58,11 +58,11 @@ class MarketplaceReconciliationService
 
         $legacyNetQuantity = 'CASE WHEN COALESCE(rows.quantity, 0) - COALESCE(rows.returned_quantity, 0) > 0 THEN COALESCE(rows.quantity, 0) - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
         $subtotal = 'CASE WHEN rows.order_subtotal IS NOT NULL THEN rows.order_subtotal WHEN rows.discounted_price IS NOT NULL AND rows.quantity IS NOT NULL THEN rows.discounted_price * rows.quantity ELSE NULL END';
-        $admin = 'CASE WHEN rows.platform_fee IS NULL THEN NULL ELSE (-ABS(rows.platform_fee)) END';
-        $shipping = 'CASE WHEN rows.free_shipping_xtra_fee IS NULL THEN NULL ELSE (-ABS(rows.free_shipping_xtra_fee)) END';
-        $promo = 'CASE WHEN rows.promo_xtra_service_fee IS NULL THEN NULL ELSE (-ABS(rows.promo_xtra_service_fee)) END';
-        $processing = 'CASE WHEN rows.order_processing_fee IS NULL THEN NULL ELSE (-ABS(rows.order_processing_fee)) END';
-        $tax = 'CASE WHEN rows.pph22 IS NULL THEN NULL ELSE (-ABS(rows.pph22)) END';
+        $admin = 'CASE WHEN rows.platform_fee IS NULL THEN NULL ELSE (rows.platform_fee) END';
+        $shipping = 'CASE WHEN rows.free_shipping_xtra_fee IS NULL THEN NULL ELSE (rows.free_shipping_xtra_fee) END';
+        $promo = 'CASE WHEN rows.promo_xtra_service_fee IS NULL THEN NULL ELSE (rows.promo_xtra_service_fee) END';
+        $processing = 'CASE WHEN rows.order_processing_fee IS NULL THEN NULL ELSE (rows.order_processing_fee) END';
+        $tax = 'CASE WHEN rows.pph22 IS NULL THEN NULL ELSE (rows.pph22) END';
         $totalFee = "CASE WHEN {$admin} IS NULL OR {$shipping} IS NULL OR {$promo} IS NULL OR {$processing} IS NULL THEN NULL ELSE ({$admin} + {$shipping} + {$promo} + {$processing}) END";
         $refund = 'COALESCE(rows.refund_amount, 0)';
         $earnings = "CASE WHEN {$subtotal} IS NULL OR {$totalFee} IS NULL OR {$tax} IS NULL THEN NULL ELSE ({$subtotal} + {$refund} + {$totalFee} + {$tax}) END";
@@ -238,11 +238,11 @@ class MarketplaceReconciliationService
                 l.refund_amount AS refund_amount,
                 (CASE WHEN l.quantity IS NULL THEN NULL WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
                 CASE WHEN l.order_subtotal IS NOT NULL THEN l.order_subtotal WHEN l.discounted_price IS NOT NULL AND l.quantity IS NOT NULL THEN l.discounted_price * l.quantity ELSE NULL END AS subtotal,
-                CASE WHEN l.platform_fee IS NULL THEN NULL ELSE (-ABS(l.platform_fee)) END AS admin,
-                CASE WHEN l.free_shipping_xtra_fee IS NULL THEN NULL ELSE (-ABS(l.free_shipping_xtra_fee)) END AS shipping,
-                CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (-ABS(l.promo_xtra_service_fee)) END AS promo,
-                CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (-ABS(l.order_processing_fee)) END AS processing,
-                CASE WHEN l.pph22 IS NULL THEN NULL ELSE (-ABS(l.pph22)) END AS tax,
+                CASE WHEN l.platform_fee IS NULL THEN NULL ELSE (l.platform_fee) END AS admin,
+                CASE WHEN l.free_shipping_xtra_fee IS NULL THEN NULL ELSE (l.free_shipping_xtra_fee) END AS shipping,
+                CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (l.promo_xtra_service_fee) END AS promo,
+                CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (l.order_processing_fee) END AS processing,
+                CASE WHEN l.pph22 IS NULL THEN NULL ELSE (l.pph22) END AS tax,
                 CASE WHEN l.cost_status = 'ok' AND l.total_hpp IS NOT NULL THEN l.total_hpp ELSE NULL END AS hpp
             ");
     }
@@ -705,11 +705,11 @@ class MarketplaceReconciliationService
                 l.discounted_price,
                 COALESCE(l.refund_amount, 0) AS refund_amount,
                 (CASE WHEN l.discounted_price IS NULL OR l.quantity IS NULL THEN NULL ELSE l.discounted_price * (CASE WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) END) AS subtotal,
-                CASE WHEN l.platform_fee IS NULL THEN NULL ELSE (-ABS(l.platform_fee)) END AS admin,
-                CASE WHEN l.free_shipping_xtra_fee IS NULL THEN NULL ELSE (-ABS(l.free_shipping_xtra_fee)) END AS shipping,
-                CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (-ABS(l.promo_xtra_service_fee)) END AS promo,
-                CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (-ABS(l.order_processing_fee)) END AS processing,
-                CASE WHEN l.pph22 IS NULL THEN NULL ELSE (-ABS(l.pph22)) END AS tax,
+                CASE WHEN l.platform_fee IS NULL THEN NULL ELSE (l.platform_fee) END AS admin,
+                CASE WHEN l.free_shipping_xtra_fee IS NULL THEN NULL ELSE (l.free_shipping_xtra_fee) END AS shipping,
+                CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (l.promo_xtra_service_fee) END AS promo,
+                CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (l.order_processing_fee) END AS processing,
+                CASE WHEN l.pph22 IS NULL THEN NULL ELSE (l.pph22) END AS tax,
                 l.cost_status,
                 l.total_hpp
             ')
@@ -1128,11 +1128,11 @@ class MarketplaceReconciliationService
         $fulfilled = $row->fulfilled_quantity ?? null;
         $cancelled = $row->cancelled_quantity ?? null;
         $discountedPrice = $row->discounted_price === null ? null : (float) $row->discounted_price;
-        $admin = $row->platform_fee === null ? null : -abs((float) $row->platform_fee);
-        $shipping = $row->free_shipping_xtra_fee === null ? null : -abs((float) $row->free_shipping_xtra_fee);
-        $promo = $row->promo_xtra_service_fee === null ? null : -abs((float) $row->promo_xtra_service_fee);
-        $processing = $row->order_processing_fee === null ? null : -abs((float) $row->order_processing_fee);
-        $tax = $row->pph22 === null ? null : -abs((float) $row->pph22);
+        $admin = $row->platform_fee === null ? null : (float) $row->platform_fee;
+        $shipping = $row->free_shipping_xtra_fee === null ? null : (float) $row->free_shipping_xtra_fee;
+        $promo = $row->promo_xtra_service_fee === null ? null : (float) $row->promo_xtra_service_fee;
+        $processing = $row->order_processing_fee === null ? null : (float) $row->order_processing_fee;
+        $tax = $row->pph22 === null ? null : (float) $row->pph22;
         $legacyNet = $quantity === null ? null : max($quantity - ($returned ?? 0), 0);
         $subtotal = $row->order_subtotal !== null
             ? (float) $row->order_subtotal
