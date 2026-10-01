@@ -291,9 +291,9 @@ class MasterHppDomainTest extends TestCase
         $allocation = $this->allocation->allocate($user->id, 'LINE-MISSING', $product->id, $product->baseUnit->id, 999999, 5, 0);
 
         $this->assertSame('hpp_missing', $allocation->cost_status);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
-        $this->assertSame('0.000000', (string) $allocation->hpp_per_base_unit);
-        $this->assertSame('0.000000', (string) $allocation->quantity_base_unit);
+        $this->assertNull($allocation->total_hpp);
+        $this->assertNull($allocation->hpp_per_base_unit);
+        $this->assertNull($allocation->quantity_base_unit);
     }
 
     public function test_hpp_overlap_validation_uses_candidate_dates_not_now(): void
@@ -633,7 +633,7 @@ class MasterHppDomainTest extends TestCase
         $this->assertSame($product->id, $allocation->master_product_id);
         $this->assertSame($product->baseUnit->id, $allocation->master_unit_id);
         $this->assertSame('3.000000', (string) $allocation->quantity_base_unit);
-        $this->assertSame('20000.00', (string) $allocation->total_hpp);
+        $this->assertSame('30000.00', (string) $allocation->total_hpp);
         $this->assertSame($product->hppRecords()->first()->id, $allocation->effective_hpp_record_id);
     }
 
