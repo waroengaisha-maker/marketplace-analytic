@@ -84,11 +84,11 @@ class MarketplaceReconciliationService
             'discounted_price' => 'rows.discounted_price',
             'order_subtotal' => DB::raw($subtotal),
             'platform_fee' => 'rows.platform_fee',
-            'admin_fee_percent' => DB::raw("CASE WHEN {$subtotal} = 0 THEN 0 ELSE ABS(COALESCE(rows.platform_fee, 0)) / ABS({$subtotal}) * 100 END"),
+            'admin_fee_percent' => DB::raw("CASE WHEN {$subtotal} = 0 THEN 0 ELSE ABS(rows.platform_fee) / ABS({$subtotal}) * 100 END"),
             'free_shipping_xtra_fee' => 'rows.free_shipping_xtra_fee',
-            'free_shipping_xtra_fee_percent' => DB::raw("CASE WHEN {$subtotal} = 0 THEN 0 ELSE ABS(COALESCE(rows.free_shipping_xtra_fee, 0)) / ABS({$subtotal}) * 100 END"),
+            'free_shipping_xtra_fee_percent' => DB::raw("CASE WHEN {$subtotal} = 0 THEN 0 ELSE ABS(rows.free_shipping_xtra_fee) / ABS({$subtotal}) * 100 END"),
             'promo_xtra_service_fee' => 'rows.promo_xtra_service_fee',
-            'promo_xtra_fee_percent' => DB::raw("CASE WHEN {$subtotal} = 0 THEN 0 ELSE ABS(COALESCE(rows.promo_xtra_service_fee, 0)) / ABS({$subtotal}) * 100 END"),
+            'promo_xtra_fee_percent' => DB::raw("CASE WHEN {$subtotal} = 0 THEN 0 ELSE ABS(rows.promo_xtra_service_fee) / ABS({$subtotal}) * 100 END"),
             'fee_subtotal' => DB::raw("({$admin} + {$shipping} + {$promo})"),
             'fee_subtotal_percent' => DB::raw("CASE WHEN {$subtotal} = 0 THEN 0 ELSE ABS({$admin} + {$shipping} + {$promo}) / ABS({$subtotal}) * 100 END"),
             'order_processing_fee' => 'rows.order_processing_fee',
@@ -761,7 +761,7 @@ class MarketplaceReconciliationService
         $isUnmatched = "rows.business_status = 'Unmatched'";
         $sales = $this->salesExpression('rows');
         $netSales = $this->netSalesExpression('rows');
-        $profit = "{$netSales} + COALESCE(rows.platform_fee, 0) + COALESCE(rows.order_processing_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.pph22, 0)";
+        $profit = "CASE WHEN {$netSales} IS NULL OR rows.platform_fee IS NULL OR rows.order_processing_fee IS NULL OR rows.free_shipping_xtra_fee IS NULL OR rows.promo_xtra_service_fee IS NULL OR rows.pph22 IS NULL THEN NULL ELSE {$netSales} + rows.platform_fee + rows.order_processing_fee + rows.free_shipping_xtra_fee + rows.promo_xtra_service_fee + rows.pph22 END";
         $aggregate = DB::query()
             ->fromSub($orders, 'rows')
             ->selectRaw("
@@ -838,7 +838,7 @@ class MarketplaceReconciliationService
     {
         $remainingQuantity = "CASE WHEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) > 0 THEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) ELSE 0 END";
 
-        return "(COALESCE({$tableAlias}.discounted_price, 0) * {$remainingQuantity}) + COALESCE({$tableAlias}.refund_amount, 0)";
+        return "(CASE WHEN {$tableAlias}.discounted_price IS NULL OR {$tableAlias}.quantity IS NULL THEN NULL ELSE {$tableAlias}.discounted_price * {$remainingQuantity} END) + COALESCE({$tableAlias}.refund_amount, 0)";
     }
 
     /** @return array{min: ?string, max: ?string} */
