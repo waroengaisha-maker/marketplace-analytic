@@ -1,0 +1,96 @@
+services:
+    caddy:
+        image: caddy:2-alpine
+        restart: unless-stopped
+        environment:
+            APP_DOMAIN: ${APP_DOMAIN}
+        ports:
+            - "80:80"
+            - "443:443"
+            - "443:443/udp"
+        volumes:
+            - ./Caddyfile.production:/etc/caddy/Caddyfile:ro
+            - caddy-data:/data
+            - caddy-config:/config
+        networks:
+            - app
+        depends_on:
+            laravel.test:
+                condition: service_healthy
+
+    laravel.test:
+        build:
+            context: .
+            dockerfile: Dockerfile.production
+        image: marketplace-analytics:production
+        restart: unless-stopped
+        env_file:
+            - .env.production
+        expose:
+            - "8080"
+        networks:
+            - app
+            - data
+        depends_on:
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+
+    queue:
+        image: marketplace-analytics:production
+        restart: unless-stopped
+        env_file:
+            - .env.production
+        command: ["php", "artisan", "queue:work", "redis", "--sleep=3", "--tries=3", "--timeout=120", "--max-time=3600"]
+        networks:
+            - data
+        depends_on:
+            mysql:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+
+    mysql:
+        image: mysql:8.4
+        restart: unless-stopped
+        environment:
+            MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+            MYSQL_DATABASE: ${DB_DATABASE}
+            MYSQL_USER: ${DB_USERNAME}
+            MYSQL_PASSWORD: ${DB_PASSWORD}
+            MYSQL_ALLOW_EMPTY_PASSWORD: "0"
+        volumes:
+            - mysql-data:/var/lib/mysql
+        networks:
+            - data
+        healthcheck:
+            test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\$$MYSQL_ROOT_PASSWORD --silent"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+
+    redis:
+        image: redis:7-alpine
+        restart: unless-stopped
+        command: ["redis-server", "--appendonly", "yes"]
+        volumes:
+            - redis-data:/data
+        networks:
+            - data
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 10
+
+networks:
+    app:
+    data:
+        internal: true
+
+volumes:
+    caddy-data:
+    caddy-config:
+    mysql-data:
+    redis-data:
