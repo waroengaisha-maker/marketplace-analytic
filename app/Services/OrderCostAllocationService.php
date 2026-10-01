@@ -33,6 +33,12 @@ class OrderCostAllocationService
 
         $mapping = $resolved['mapping'];
 
+        // Automatic matches are suggestions only. They must not become confirmed
+        // HPP allocations until the mapping is explicitly confirmed as manual.
+        if ($mapping->match_method !== 'manual') {
+            return $this->persistMissingCostAllocation($userId, $orderLineIdentity, null, null, null, 'mapping_unconfirmed');
+        }
+
         $product = MasterProduct::query()->forUser($userId)->find($mapping->master_product_id);
         if ($product === null) {
             return $this->persistMissingCostAllocation($userId, $orderLineIdentity, null, null, null, 'mapping_missing');
