@@ -456,6 +456,19 @@ class OrderSummaryPageTest extends TestCase
             ]),
         ]);
 
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => 'STATUS-UNMATCHED',
+            'item_index' => 1,
+            'product_price' => 300,
+            'quantity' => 2,
+            'total_income' => 300,
+            'platform_fee' => 0,
+            'free_shipping_xtra_fee' => 0,
+            'promo_xtra_service_fee' => 0,
+            'order_processing_fee' => 0,
+            'pph22' => 0,
+        ]));
+
         $version = app(HandleInertiaRequests::class)->version(Request::create(route('orders.index')));
 
         $response = $this->actingAs($user)->withHeaders([
