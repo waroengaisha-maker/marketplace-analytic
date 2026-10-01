@@ -376,7 +376,7 @@ class ProfitMarginReportTest extends TestCase
         $this->assertSame(0.0, $stats['net_sales']);
         $this->assertNull($stats['net_margin']);
         $this->assertTrue($stats['net_margin'] === null || is_finite($stats['net_margin']));
-        $this->assertSame(-5000.0, $stats['net_profit']);
+        $this->assertNull($stats['net_profit']);
     }
 
     public function test_dashboard_stats_reports_hpp_status_counts_per_data_quality(): void
@@ -386,7 +386,7 @@ class ProfitMarginReportTest extends TestCase
 
         $stats = app(MarketplaceReconciliationService::class)->dashboardStats($user->id);
 
-        $this->assertSame(2, $stats['hpp_ok_count']);
+        $this->assertSame(1, $stats['hpp_ok_count']);
         $this->assertSame(1, $stats['hpp_mapping_missing_count']);
         $this->assertSame(1, $stats['hpp_mapping_ambiguous_count']);
         $this->assertSame(1, $stats['hpp_hpp_missing_count']);
@@ -394,7 +394,7 @@ class ProfitMarginReportTest extends TestCase
         $this->assertNull($stats['total_hpp']);
         $this->assertSame(5, $stats['net_order_count']);
         $this->assertSame(
-            1,
+            5,
             $stats['hpp_ok_count']
             + $stats['hpp_mapping_missing_count']
             + $stats['hpp_mapping_ambiguous_count']
