@@ -1011,7 +1011,7 @@ class MarketplaceReconciliationService
             'orders.fulfilled_quantity',
             'orders.cancelled_quantity',
             DB::raw('CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END AS net_quantity'),
-            DB::raw('(COALESCE(orders.discounted_price, 0) * COALESCE(orders.quantity, 0)) AS order_subtotal'),
+            DB::raw('(CASE WHEN orders.discounted_price IS NULL OR orders.quantity IS NULL THEN NULL ELSE orders.discounted_price * orders.quantity END) AS order_subtotal'),
             'orders.total_payment',
             'orders.order_created_at',
             'orders.buyer_username',
@@ -1123,27 +1123,33 @@ class MarketplaceReconciliationService
 
     public function calculateFinancials(object $row): object
     {
-        $quantity = (float) ($row->quantity ?? 0);
-        $returned = (float) ($row->returned_quantity ?? 0);
+        $quantity = $row->quantity === null ? null : (float) $row->quantity;
+        $returned = $row->returned_quantity === null ? null : (float) $row->returned_quantity;
         $fulfilled = $row->fulfilled_quantity ?? null;
         $cancelled = $row->cancelled_quantity ?? null;
-        $discountedPrice = (float) ($row->discounted_price ?? 0);
-        $admin = -abs((float) ($row->platform_fee ?? 0));
-        $shipping = -abs((float) ($row->free_shipping_xtra_fee ?? 0));
-        $promo = -abs((float) ($row->promo_xtra_service_fee ?? 0));
-        $processing = -abs((float) ($row->order_processing_fee ?? 0));
-        $tax = -abs((float) ($row->pph22 ?? 0));
-        $legacyNet = max($quantity - $returned, 0);
+        $discountedPrice = $row->discounted_price === null ? null : (float) $row->discounted_price;
+        $admin = $row->platform_fee === null ? null : -abs((float) $row->platform_fee);
+        $shipping = $row->free_shipping_xtra_fee === null ? null : -abs((float) $row->free_shipping_xtra_fee);
+        $promo = $row->promo_xtra_service_fee === null ? null : -abs((float) $row->promo_xtra_service_fee);
+        $processing = $row->order_processing_fee === null ? null : -abs((float) $row->order_processing_fee);
+        $tax = $row->pph22 === null ? null : -abs((float) $row->pph22);
+        $legacyNet = $quantity === null ? null : max($quantity - ($returned ?? 0), 0);
         $subtotal = $row->order_subtotal !== null
             ? (float) $row->order_subtotal
-            : $discountedPrice * $quantity;
-        $feeSubtotal = $admin + $shipping + $promo;
-        $totalFee = $feeSubtotal + $processing;
-        $refund = (float) ($row->refund_amount ?? 0);
-        $earnings = $subtotal + $refund + ($totalFee + $tax);
+            : ($discountedPrice !== null && $quantity !== null ? $discountedPrice * $quantity : null);
+        $feeSubtotal = $admin === null || $shipping === null || $promo === null
+            ? null
+            : $admin + $shipping + $promo;
+        $totalFee = $feeSubtotal === null || $processing === null
+            ? null
+            : $feeSubtotal + $processing;
+        $refund = $row->refund_amount === null ? 0.0 : (float) $row->refund_amount;
+        $earnings = $subtotal === null || $totalFee === null || $tax === null
+            ? null
+            : $subtotal + $refund + $totalFee + $tax;
         $costStatus = trim((string) ($row->cost_status ?? ''));
         $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
-        $hpp = $hppStatus === 'ok' ? (float) ($row->total_hpp ?? 0) : 0.0;
+        $hpp = $hppStatus === 'ok' && $row->total_hpp !== null ? (float) $row->total_hpp : null;
 
         // Legacy display only: this is ordered minus physical returns, not fulfilled/sold quantity.
         $row->net_quantity = $legacyNet;
@@ -1161,14 +1167,14 @@ class MarketplaceReconciliationService
         $row->penghasilan = $earnings;
         $row->hpp = $hpp;
         $row->hpp_status = $hppStatus;
-        $row->laba = $earnings - $hpp;
+        $row->laba = $earnings === null || $hpp === null ? null : $earnings - $hpp;
 
         return $row;
     }
 
-    private function percent(float $value, float $base): float
+    private function percent(?float $value, ?float $base): ?float
     {
-        return $base == 0.0 ? 0.0 : abs($value) / abs($base) * 100;
+        return $value === null || $base === null ? null : ($base == 0.0 ? 0.0 : abs($value) / abs($base) * 100);
     }
 
     public function forOrder(int $userId, string $orderNumber): Builder
