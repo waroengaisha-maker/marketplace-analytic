@@ -26,6 +26,7 @@ final class CanonicalFinancialProjectionService
         $totalFee = $feeSubtotal === null || $processingFee === null ? null : $feeSubtotal + $processingFee;
         $penghasilan = $subtotal === null || $totalFee === null || $tax === null ? null : $subtotal + $refund + $totalFee + $tax;
         $costStatus = trim((string) ($allocationData['cost_status'] ?? $source['cost_status'] ?? ''));
+        $feeProvenance = $this->feeProvenance($source, $feeSubtotal, $totalFee);
         $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
         $hppValue = $allocationData['total_hpp'] ?? $source['total_hpp'] ?? null;
         $hpp = $hppStatus === 'ok' && $hppValue !== null ? $this->number($hppValue) : null;
@@ -38,8 +39,8 @@ final class CanonicalFinancialProjectionService
             $hppStatus, $laba, $legacyNet, $source['fulfilled_quantity'] ?? null,
             $source['cancelled_quantity'] ?? null, $status, [
                 'revenue' => $subtotal === null ? 'unavailable' : 'source_order',
-                'fees' => $feeSubtotal === null || $totalFee === null ? 'unavailable' : 'source_income',
-                'tax' => $tax === null ? 'unavailable' : 'source_income',
+                'fees' => $feeProvenance,
+                'tax' => $this->taxProvenance($source, $tax),
                 'refund' => ($source['refund_amount'] ?? null) === null ? 'default_zero_when_no_refund_evidence' : 'source_income',
                 'hpp' => $hpp === null ? $hppStatus : 'confirmed_allocation',
                 'fulfillment' => ($source['fulfilled_quantity'] ?? null) === null ? 'unknown' : 'source_order',
@@ -73,11 +74,42 @@ final class CanonicalFinancialProjectionService
         return ['status' => $value === null || $totalIncome === null ? 'unavailable' : 'comparable', 'projection_income' => $value, 'settlement_income' => $totalIncome, 'difference' => $value === null || $totalIncome === null ? null : $value - $totalIncome];
     }
 
+    private function feeProvenance(array $source, ?float $feeSubtotal, ?float $totalFee): string
+    {
+        if ($feeSubtotal === null || $totalFee === null) {
+            return 'unavailable';
+        }
+
+        $matchMethod = trim((string) ($source['match_method'] ?? ''));
+        $settlementStatus = trim((string) ($source['settlement_status'] ?? ''));
+
+        if ($matchMethod === 'Estimated' || $settlementStatus === 'Estimated') {
+            return 'estimated';
+        }
+
+        return 'source_income';
+    }
+
+    private function taxProvenance(array $source, ?float $tax): string
+    {
+        if ($tax === null) {
+            return 'unavailable';
+        }
+
+        $matchMethod = trim((string) ($source['match_method'] ?? ''));
+        $settlementStatus = trim((string) ($source['settlement_status'] ?? ''));
+
+        return $matchMethod === 'Estimated' || $settlementStatus === 'Estimated'
+            ? 'estimated'
+            : 'source_income';
+    }
+
     private function number(mixed $value): ?float { return $value === null ? null : (float) $value; }
 
     private function status(?float $subtotal, ?float $fee, ?float $tax, ?float $hpp, string $hppStatus): string
     {
         if ($subtotal === null || $fee === null || $tax === null) return 'unavailable';
-        return $hpp !== null && $hppStatus === 'ok' ? 'confirmed' : 'provisional';
+        if ($hpp !== null && $hppStatus === 'ok') return 'confirmed';
+        return 'provisional';
     }
 }
