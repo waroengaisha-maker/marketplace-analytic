@@ -520,11 +520,12 @@ class MarketplaceReconciliationService
                 SUM(g.subtotal) AS subtotal,
                 SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END) AS revenue_subtotal,
                 (SUM(g.subtotal) - SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END)) AS non_revenue_subtotal,
-                (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
-                SUM(g.tax) AS tax,
-                (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
-                SUM(g.hpp) AS hpp,
-                ((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+                CASE WHEN COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) THEN NULL ELSE SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) END AS total_fee,
+                CASE WHEN COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.tax) END AS tax,
+                CASE WHEN COUNT(g.refund_amount) <> COUNT(*) THEN NULL ELSE SUM(g.refund_amount) END AS refund_amount,
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.refund_amount) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax) END AS penghasilan,
+                CASE WHEN COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE SUM(g.hpp) END AS hpp,
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.refund_amount) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) OR COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp) END AS laba
             ")
             ->groupBy(DB::raw($buyerExpression))
             ->orderBy(DB::raw($buyerExpression));
@@ -638,8 +639,8 @@ class MarketplaceReconciliationService
             'revenue_order_count' => (int) ($row->revenue_order_count ?? 0),
             'non_revenue_order_count' => (int) ($row->non_revenue_order_count ?? 0),
             'line_count' => (int) $row->line_count,
-            'net_quantity' => (float) ($row->net_quantity ?? 0),
-            'subtotal' => (float) $row->subtotal,
+            'net_quantity' => $row->net_quantity === null ? null : (float) $row->net_quantity,
+            'subtotal' => $row->subtotal === null ? null : (float) $row->subtotal,
             'revenue_subtotal' => (float) ($row->revenue_subtotal ?? 0),
             'non_revenue_subtotal' => (float) ($row->non_revenue_subtotal ?? 0),
             'total_fee' => $projection->totalFee,
