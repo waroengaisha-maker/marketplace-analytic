@@ -175,8 +175,7 @@ class OrderReportImporter
                     'shopee_product_name' => $line['product_name'],
                     'shopee_variant_name' => $line['variation_name'],
                 ],
-                $line['quantity'] ?? 0,
-                $line['returned_quantity'] ?? 0,
+                $line['fulfilled_quantity'] ?? null,
             );
         }
 
