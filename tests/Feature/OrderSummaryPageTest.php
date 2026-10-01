@@ -137,12 +137,12 @@ class OrderSummaryPageTest extends TestCase
 
         $this->assertSame(2, data_get($response->json(), 'props.pagination.total'));
 
-        $this->assertEquals(1700.0, data_get($response->json(), 'props.summaries.subtotal'));
-        $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.total_fee'));
-        $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.tax'));
-        $this->assertEquals(1700.0, data_get($response->json(), 'props.summaries.penghasilan'));
-        $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.hpp'));
-        $this->assertEquals(1700.0, data_get($response->json(), 'props.summaries.laba'));
+        $this->assertEquals(2200.0, data_get($response->json(), 'props.summaries.subtotal'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.total_fee'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.tax'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.penghasilan'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.hpp'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.laba'));
 
         $orderA = $ordersByNumber->get('SUM-A');
         $this->assertSame('budi.santoso', $orderA['buyer_username']);
@@ -150,19 +150,19 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(3, $orderA['quantity']);
         $this->assertSame(2, $orderA['net_quantity']);
         $this->assertEquals(500.0, $orderA['discounted_price']);
-        $this->assertEquals(1000.0, $orderA['subtotal']);
-        $this->assertEquals(1000.0, $orderA['penghasilan']);
-        $this->assertEquals(0.0, $orderA['hpp']);
-        $this->assertEquals(1000.0, $orderA['laba']);
+        $this->assertEquals(1500.0, $orderA['subtotal']);
+        $this->assertNull($orderA['penghasilan']);
+        $this->assertNull($orderA['hpp']);
+        $this->assertNull($orderA['laba']);
 
         $orderB = $ordersByNumber->get('SUM-B');
         $this->assertSame(2, $orderB['line_count']);
         $this->assertSame(3, $orderB['net_quantity']);
         $this->assertEquals(233.33, $orderB['discounted_price']);
         $this->assertEquals(700.0, $orderB['subtotal']);
-        $this->assertEquals(700.0, $orderB['penghasilan']);
-        $this->assertEquals(0.0, $orderB['hpp']);
-        $this->assertEquals(700.0, $orderB['laba']);
+        $this->assertNull($orderB['penghasilan']);
+        $this->assertNull($orderB['hpp']);
+        $this->assertNull($orderB['laba']);
     }
 
     public function test_orders_search_filters_by_order_number(): void
@@ -232,10 +232,10 @@ class OrderSummaryPageTest extends TestCase
         $this->assertCount(1, $orders);
         $this->assertSame('SUM-FILTER-HIT', $orders[0]['order_number']);
         $this->assertEquals(400.0, data_get($response->json(), 'props.summaries.subtotal'));
-        $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.total_fee'));
-        $this->assertEquals(400.0, data_get($response->json(), 'props.summaries.penghasilan'));
-        $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.hpp'));
-        $this->assertEquals(400.0, data_get($response->json(), 'props.summaries.laba'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.total_fee'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.penghasilan'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.hpp'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.laba'));
     }
 
     public function test_orders_detail_returns_per_item_rows(): void
@@ -290,14 +290,14 @@ class OrderSummaryPageTest extends TestCase
 
         $row1 = collect($details['rows'])->firstWhere('variation_name', 'Size L');
         $this->assertSame(3, $row1['net_quantity']);
-        $this->assertEquals(750.0, $row1['order_subtotal']);
+        $this->assertEquals(1000.0, $row1['order_subtotal']);
         $this->assertSame('no_allocation', $row1['hpp_status']);
-        $this->assertEquals(750.0, $row1['laba']);
+        $this->assertNull($row1['laba']);
 
         $row2 = collect($details['rows'])->firstWhere('variation_name', 'Size M');
         $this->assertSame(2, $row2['net_quantity']);
         $this->assertEquals(300.0, $row2['order_subtotal']);
-        $this->assertEquals(300.0, $row2['laba']);
+        $this->assertNull($row2['laba']);
     }
 
     public function test_orders_endpoint_accepts_date_range(): void
@@ -623,7 +623,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(-5.0, $row['tax']);
         $this->assertEquals(-185.0, $row['total_fee']);
         $this->assertEquals(810.0, $row['penghasilan']);
-        $this->assertEquals(0.0, $row['hpp']);
+        $this->assertNull($row['hpp']);
         $this->assertSame('no_allocation', $row['hpp_status']);
         $this->assertEquals(810.0, $row['laba']);
     }
