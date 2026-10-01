@@ -255,7 +255,7 @@ class ShopeeApiPromotionTest extends TestCase
 
         $allocation = OrderCostAllocation::query()->where('user_id', $user->id)->first();
         $this->assertSame('mapping_unconfirmed', $allocation->cost_status);
-        $this->assertSame(20000.0, (float) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
         $this->assertSame($order->line_identity, $allocation->order_line_identity);
 
         $income = DB::table('marketplace_income')->where('order_number', $orderSn)->first();
@@ -514,7 +514,8 @@ class ShopeeApiPromotionTest extends TestCase
 
         $missingProduct = $this->registerProduct($user, 'PRD-NOHPP', 'Tanpa HPP', null);
         $this->createMapping($user, $missingProduct, 'exact', 'SKU-NOHPP', 'SKU-NOHPP-V', 'Tanpa HPP', 'M');
-        $this->seedMappedProduct($user, 0);
+        $zeroProduct = $this->registerProduct($user, 'PRD-KEMEJA-ZERO', 'Kemeja Zero', 0);
+        $this->createMapping($user, $zeroProduct, 'manual', 'SKU-A', 'SKU-A-M', 'Kemeja', 'M');
 
         $this->connectedConnection($user, [
             'staging_orders' => [$this->orderStaging($missingSn), $this->orderStaging($zeroSn)],
