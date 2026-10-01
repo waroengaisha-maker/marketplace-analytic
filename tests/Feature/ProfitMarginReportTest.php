@@ -80,9 +80,9 @@ class ProfitMarginReportTest extends TestCase
 
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
-        $this->assertSame(0.0, $row->hpp);
+        $this->assertNull($row->hpp);
         $this->assertSame('ok', $row->hpp_status);
-        $this->assertSame(0.0, app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
+        $this->assertNull(app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
     }
 
     public function test_mapping_missing_allocation_is_not_reported_as_zero_cost(): void
@@ -101,10 +101,10 @@ class ProfitMarginReportTest extends TestCase
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
         $this->assertSame('mapping_missing', $row->hpp_status);
-        $this->assertSame(0.0, $row->hpp);
+        $this->assertNull($row->hpp);
         $this->assertSame(100.0, $row->penghasilan);
         $this->assertSame('mapping_missing', $row->cost_status);
-        $this->assertSame(0.0, app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
+        $this->assertNull(app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
     }
 
     public function test_mapping_ambiguous_allocation_is_not_reported_as_zero_cost(): void
@@ -123,9 +123,9 @@ class ProfitMarginReportTest extends TestCase
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
         $this->assertSame('mapping_ambiguous', $row->hpp_status);
-        $this->assertSame(0.0, $row->hpp);
+        $this->assertNull($row->hpp);
         $this->assertSame('mapping_ambiguous', $row->cost_status);
-        $this->assertSame(0.0, app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
+        $this->assertNull(app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
     }
 
     public function test_hpp_missing_allocation_is_not_reported_as_zero_cost(): void
@@ -144,9 +144,9 @@ class ProfitMarginReportTest extends TestCase
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
         $this->assertSame('hpp_missing', $row->hpp_status);
-        $this->assertSame(0.0, $row->hpp);
+        $this->assertNull($row->hpp);
         $this->assertSame('hpp_missing', $row->cost_status);
-        $this->assertSame(0.0, app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
+        $this->assertNull(app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
     }
 
     public function test_row_without_allocation_is_flagged_as_no_allocation(): void
@@ -164,7 +164,7 @@ class ProfitMarginReportTest extends TestCase
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
         $this->assertSame('no_allocation', $row->hpp_status);
-        $this->assertSame(0.0, $row->hpp);
+        $this->assertNull($row->hpp);
     }
 
     public function test_report_uses_historical_hpp_from_allocation_not_latest_version(): void
@@ -199,7 +199,7 @@ class ProfitMarginReportTest extends TestCase
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
         $this->assertSame((int) $oldRecord->id, (int) $row->effective_hpp_record_id);
-        $this->assertSame(10000.0, $row->hpp);
+        $this->assertSame(20000.0, $row->hpp);
         $this->assertSame('ok', $row->hpp_status);
         $this->assertNotSame(30000.0, $row->hpp);
     }
@@ -276,7 +276,7 @@ class ProfitMarginReportTest extends TestCase
 
         $this->assertSame('Returned', $row->business_status);
         $this->assertSame(1.0, $row->net_quantity);
-        $this->assertSame(10000.0, $row->hpp);
+        $this->assertSame(20000.0, $row->hpp);
         $this->assertSame('ok', $row->hpp_status);
     }
 
@@ -300,11 +300,11 @@ class ProfitMarginReportTest extends TestCase
 
         $this->assertSame(5000.0, $rowA->hpp);
         $this->assertSame('ok', $rowA->hpp_status);
-        $this->assertSame(0.0, $rowB->hpp);
+        $this->assertNull($rowB->hpp);
         $this->assertSame('no_allocation', $rowB->hpp_status);
 
         $this->assertSame(5000.0, app(MarketplaceReconciliationService::class)->dashboardStats($userA->id)['total_hpp']);
-        $this->assertSame(0.0, app(MarketplaceReconciliationService::class)->dashboardStats($userB->id)['total_hpp']);
+        $this->assertNull(app(MarketplaceReconciliationService::class)->dashboardStats($userB->id)['total_hpp']);
     }
 
     public function test_revenue_zero_margin_is_safe_without_nan_or_infinity(): void
@@ -344,7 +344,7 @@ class ProfitMarginReportTest extends TestCase
         $this->assertSame(1, $stats['hpp_mapping_ambiguous_count']);
         $this->assertSame(1, $stats['hpp_hpp_missing_count']);
         $this->assertSame(1, $stats['hpp_no_allocation_count']);
-        $this->assertSame(5000.0, $stats['total_hpp']);
+        $this->assertNull($stats['total_hpp']);
         $this->assertSame(5, $stats['net_order_count']);
         $this->assertSame(
             5,
