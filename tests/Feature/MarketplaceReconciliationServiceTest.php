@@ -1500,6 +1500,63 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(500.0, (float) $row->order_subtotal);
     }
 
+    public function test_missing_hpp_remains_unavailable_in_reconciliation(): void
+    {
+        $user = User::factory()->create();
+        $key = str_repeat('h', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'UNKNOWN-HPP',
+            'product_key' => $key,
+            'quantity' => 1,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
+
+        $this->assertNull($row->hpp);
+        $this->assertSame('no_allocation', $row->hpp_status);
+        $this->assertNull($row->laba);
+    }
+
+    public function test_missing_fee_and_tax_are_not_converted_to_zero(): void
+    {
+        $user = User::factory()->create();
+        $key = str_repeat('i', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'UNKNOWN-FEES',
+            'product_key' => $key,
+            'quantity' => 1,
+            'discounted_price' => 100,
+            'unit_price' => 100,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
+
+        $this->assertNull($row->total_fee);
+        $this->assertNull($row->tax);
+        $this->assertNull($row->penghasilan);
+    }
+
+    public function test_missing_revenue_inputs_remain_unavailable(): void
+    {
+        $user = User::factory()->create();
+        $key = str_repeat('j', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'UNKNOWN-REVENUE',
+            'product_key' => $key,
+            'quantity' => 1,
+            'discounted_price' => null,
+            'unit_price' => null,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
+
+        $this->assertNull($row->order_subtotal);
+        $this->assertNull($row->penghasilan);
+    }
+
     private function order(int $userId, array $overrides = []): array
     {
         return array_merge([
