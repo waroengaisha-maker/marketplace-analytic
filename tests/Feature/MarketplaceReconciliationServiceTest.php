@@ -1584,6 +1584,89 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertNull($row->penghasilan);
     }
 
+    public function test_canonical_projection_preserves_source_fields_status_and_provenance(): void
+    {
+        $projection = app(CanonicalFinancialProjectionService::class)->projectLine((object) [
+            'quantity' => 1,
+            'returned_quantity' => 0,
+            'fulfilled_quantity' => null,
+            'cancelled_quantity' => null,
+            'discounted_price' => 1000,
+            'platform_fee' => -100,
+            'free_shipping_xtra_fee' => -50,
+            'promo_xtra_service_fee' => -25,
+            'order_processing_fee' => -10,
+            'pph22' => -5,
+            'refund_amount' => 0,
+            'cost_status' => 'ok',
+            'total_hpp' => 400,
+        ]);
+
+        $this->assertSame(-190.0, $projection->totalFee);
+        $this->assertSame(-5.0, $projection->tax);
+        $this->assertSame(805.0, $projection->penghasilan);
+        $this->assertSame(405.0, $projection->laba);
+        $this->assertSame('confirmed', $projection->status);
+        $this->assertSame('source_income', $projection->provenance['fees']);
+        $this->assertSame('unknown', $projection->provenance['fulfillment']);
+        $this->assertSame(-100, $projection->source['platform_fee']);
+    }
+
+    public function test_canonical_projection_aggregation_preserves_unavailable_values(): void
+    {
+        $service = app(CanonicalFinancialProjectionService::class);
+        $complete = $service->projectLine((object) [
+            'quantity' => 1,
+            'discounted_price' => 1000,
+            'platform_fee' => -100,
+            'free_shipping_xtra_fee' => -50,
+            'promo_xtra_service_fee' => -25,
+            'order_processing_fee' => -10,
+            'pph22' => -5,
+            'cost_status' => 'ok',
+            'total_hpp' => 400,
+        ]);
+        $missing = $service->projectLine((object) [
+            'quantity' => 1,
+            'discounted_price' => 1000,
+            'platform_fee' => null,
+            'free_shipping_xtra_fee' => -50,
+            'promo_xtra_service_fee' => -25,
+            'order_processing_fee' => -10,
+            'pph22' => -5,
+            'cost_status' => 'ok',
+            'total_hpp' => 400,
+        ]);
+
+        $aggregate = $service->aggregateProjection([$complete, $missing], 'order');
+        $this->assertSame('unavailable', $aggregate['status']);
+        $this->assertNull($aggregate['total_fee']);
+        $this->assertNull($aggregate['penghasilan']);
+        $this->assertNull($aggregate['hpp']);
+    }
+
+    public function test_canonical_projection_settlement_comparison_does_not_replace_projection(): void
+    {
+        $projection = app(CanonicalFinancialProjectionService::class)->projectLine((object) [
+            'quantity' => 1,
+            'discounted_price' => 1000,
+            'platform_fee' => -100,
+            'free_shipping_xtra_fee' => -50,
+            'promo_xtra_service_fee' => -25,
+            'order_processing_fee' => -10,
+            'pph22' => -5,
+            'cost_status' => 'ok',
+            'total_hpp' => 400,
+        ]);
+
+        $comparison = app(CanonicalFinancialProjectionService::class)->compareSettlement($projection, 810.0);
+
+        $this->assertSame('comparable', $comparison['status']);
+        $this->assertSame(810.0, $comparison['settlement_income']);
+        $this->assertSame(810.0, $comparison['projection_income']);
+        $this->assertSame(0.0, $comparison['difference']);
+    }
+
     private function order(int $userId, array $overrides = []): array
     {
         return array_merge([
