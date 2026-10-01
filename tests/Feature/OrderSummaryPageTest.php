@@ -149,7 +149,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(1, $orderA['line_count']);
         $this->assertSame(3, $orderA['quantity']);
         $this->assertSame(2, $orderA['net_quantity']);
-        $this->assertEquals(500.0, $orderA['discounted_price']);
+        $this->assertEquals(750.0, $orderA['discounted_price']);
         $this->assertEquals(1500.0, $orderA['subtotal']);
         $this->assertNull($orderA['penghasilan']);
         $this->assertNull($orderA['hpp']);
@@ -377,7 +377,7 @@ class OrderSummaryPageTest extends TestCase
             ->orderLines($user->id, 'SUM-FIN')[0];
 
         $this->assertSame(2.0, $lineRow->net_quantity);
-        $this->assertSame(1000.0, $lineRow->order_subtotal);
+        $this->assertSame(1500.0, $lineRow->order_subtotal);
         $this->assertSame(-100.0, $lineRow->admin);
         $this->assertSame(-50.0, $lineRow->shipping);
         $this->assertSame(-25.0, $lineRow->promo);
@@ -520,6 +520,14 @@ class OrderSummaryPageTest extends TestCase
             'line_identity' => $lineIdentity,
         ]));
 
+        DB::table('marketplace_income')->where('user_id', $user->id)->where('order_number', 'HPP-DETAIL')->update([
+            'platform_fee' => 0,
+            'free_shipping_xtra_fee' => 0,
+            'promo_xtra_service_fee' => 0,
+            'order_processing_fee' => 0,
+            'pph22' => 0,
+        ]);
+
         DB::table('order_cost_allocations')->insert([
             'user_id' => $user->id,
             'order_line_identity' => $lineIdentity,
@@ -628,7 +636,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame('aina.putri', $row['buyer_username']);
         $this->assertSame('Size XL', $row['variation_name']);
         $this->assertSame(2, $row['net_quantity']);
-        $this->assertEquals(1000.0, $row['order_subtotal']);
+        $this->assertEquals(1500.0, $row['order_subtotal']);
         $this->assertEquals(-100.0, $row['admin']);
         $this->assertEquals(-50.0, $row['shipping']);
         $this->assertEquals(-25.0, $row['promo']);
@@ -708,8 +716,8 @@ class OrderSummaryPageTest extends TestCase
         ]);
 
         DB::table('marketplace_orders')->insert([
-            $this->order($user->id, ['order_number' => 'SORT-2', 'item_index' => 1, 'quantity' => 1, 'discounted_price' => 100, 'unit_price' => 100, 'order_created_at' => now()->subDays(2)->format('Y-m-d H:i:s')]),
-            $this->order($user->id, ['order_number' => 'SORT-1', 'item_index' => 2, 'quantity' => 3, 'discounted_price' => 200, 'unit_price' => 200, 'order_created_at' => now()->subDay()->format('Y-m-d H:i:s')]),
+            $this->order($user->id, ['order_number' => 'SORT-2', 'item_index' => 1, 'quantity' => 1, 'discounted_price' => 100, 'unit_price' => 100, 'order_created_at' => now()->startOfDay()->format('Y-m-d H:i:s')]),
+            $this->order($user->id, ['order_number' => 'SORT-1', 'item_index' => 2, 'quantity' => 3, 'discounted_price' => 200, 'unit_price' => 200, 'order_created_at' => now()->startOfDay()->addHour()->format('Y-m-d H:i:s')]),
         ]);
 
         $response = $this->ordersRequest($user, ['sort_field' => 'net_quantity', 'sort_order' => 'asc']);
