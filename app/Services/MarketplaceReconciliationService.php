@@ -822,12 +822,16 @@ class MarketplaceReconciliationService
             'pending_order_count' => 0,
         ];
         $grossOrders = $netOrders = $settledOrders = $pendingOrders = [];
+        $canonicalStatus = 'confirmed';
 
         foreach ($rows as $row) {
             $projection = $this->canonicalFinancialProjection->projectLine($row, [
                 'cost_status' => $row->cost_status ?? null,
                 'total_hpp' => $row->total_hpp ?? null,
             ]);
+
+            if ($projection->status === 'unavailable') $canonicalStatus = 'unavailable';
+            elseif ($canonicalStatus !== 'unavailable' && $projection->status === 'provisional') $canonicalStatus = 'provisional';
 
             $isCancelled = $row->business_status === 'Cancelled';
             $hasTracking = $row->tracking_number !== null && trim((string) $row->tracking_number) !== '';
@@ -901,7 +905,7 @@ class MarketplaceReconciliationService
             'net_profit' => $totalProfit,
             'net_margin' => $netMargin,
             'canonical_penghasilan' => $canonicalPenghasilan,
-            'canonical_status' => $canonicalPenghasilan === null || $totalProfit === null ? 'unavailable' : 'confirmed',
+            'canonical_status' => $canonicalStatus,
             'hpp_ok_count' => $counts['hpp_ok_count'],
             'hpp_mapping_missing_count' => $counts['hpp_mapping_missing_count'],
             'hpp_mapping_ambiguous_count' => $counts['hpp_mapping_ambiguous_count'],
