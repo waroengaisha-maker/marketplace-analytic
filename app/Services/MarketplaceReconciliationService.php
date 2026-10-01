@@ -1143,7 +1143,7 @@ class MarketplaceReconciliationService
         $totalFee = $feeSubtotal === null || $processing === null
             ? null
             : $feeSubtotal + $processing;
-        $refund = $row->refund_amount === null ? 0.0 : (float) $row->refund_amount;
+        $refund = ($row->refund_amount ?? null) === null ? 0.0 : (float) $row->refund_amount;
         $earnings = $subtotal === null || $totalFee === null || $tax === null
             ? null
             : $subtotal + $refund + $totalFee + $tax;
