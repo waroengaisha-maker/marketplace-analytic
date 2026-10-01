@@ -677,8 +677,8 @@ class MasterHppDomainTest extends TestCase
         $this->assertNull($allocation->master_product_id);
         $this->assertNull($allocation->master_unit_id);
         $this->assertNull($allocation->effective_hpp_record_id);
-        $this->assertSame('0.000000', (string) $allocation->quantity_base_unit);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->quantity_base_unit);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_end_to_end_missing_mapping_produces_no_hpp(): void
@@ -692,7 +692,7 @@ class MasterHppDomainTest extends TestCase
 
         $this->assertSame('mapping_missing', $allocation->cost_status);
         $this->assertNull($allocation->master_product_id);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_end_to_end_missing_hpp_sets_hpp_missing(): void
@@ -729,8 +729,8 @@ class MasterHppDomainTest extends TestCase
         $this->assertSame($product->id, $allocation->master_product_id);
         $this->assertSame($product->baseUnit->id, $allocation->master_unit_id);
         $this->assertNull($allocation->effective_hpp_record_id);
-        $this->assertSame('0.000000', (string) $allocation->quantity_base_unit);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->quantity_base_unit);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_zero_hpp_is_valid_and_not_missing(): void
@@ -1005,7 +1005,7 @@ class MasterHppDomainTest extends TestCase
         $this->assertSame('mapping_missing', $allocation->cost_status);
         $this->assertNull($allocation->master_product_id);
         $this->assertNull($allocation->master_unit_id);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_mapping_with_foreign_unit_is_not_trusted(): void
