@@ -134,7 +134,7 @@ class OrderReportHppAllocationTest extends TestCase
         }
     }
 
-    public function test_order_import_allocates_ok_for_exact_mapping(): void
+    public function test_order_import_keeps_exact_mapping_unconfirmed(): void
     {
         $user = User::factory()->create();
         $product = $this->registerProduct($user, 'IT-EXACT', 'Teh Botol Aqua');
@@ -149,13 +149,13 @@ class OrderReportHppAllocationTest extends TestCase
 
         $this->assertSame(1, OrderCostAllocation::query()->forUser($user->id)->count());
         $this->assertSame($lineIdentity, $allocation->order_line_identity);
-        $this->assertSame('ok', $allocation->cost_status);
+        $this->assertSame('mapping_unconfirmed', $allocation->cost_status);
         $this->assertSame($product->id, $allocation->master_product_id);
         $this->assertSame($product->baseUnit->id, $allocation->master_unit_id);
-        $this->assertSame('20000.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
-    public function test_order_import_allocates_ok_for_normalized_mapping(): void
+    public function test_order_import_keeps_normalized_mapping_unconfirmed(): void
     {
         $user = User::factory()->create();
         $product = $this->registerProduct($user, 'IT-NORM', 'Teh Botol Norm');
@@ -168,9 +168,9 @@ class OrderReportHppAllocationTest extends TestCase
         $allocation = OrderCostAllocation::query()->forUser($user->id)->first();
 
         $this->assertSame(1, OrderCostAllocation::query()->forUser($user->id)->count());
-        $this->assertSame('ok', $allocation->cost_status);
+        $this->assertSame('mapping_unconfirmed', $allocation->cost_status);
         $this->assertSame($product->id, $allocation->master_product_id);
-        $this->assertSame('30000.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_order_import_allocates_ok_for_manual_mapping(): void
@@ -265,13 +265,18 @@ class OrderReportHppAllocationTest extends TestCase
         $user = User::factory()->create();
         $product = $this->registerProduct($user, 'IT-ZEROHPP', 'Teh Botol Gratis', 0);
 
-        $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
+        $this->createMapping($user, $product, 'exact', 'SP-ZEROHPP-1', 'SV-ZEROHPP-1', 'Teh Botol Gratis', 'Original');
+
+        /* automatic mapping must remain unconfirmed even when the effective HPP is zero */
+        /* legacy manual mapping setup removed intentionally */
+        if (false) $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
             'shopee_product_id' => 'SP-ZEROHPP-1',
             'shopee_variant_id' => 'SV-ZEROHPP-1',
             'shopee_product_name' => 'Teh Botol Gratis',
             'shopee_variant_name' => 'Original',
             'manual_override_by' => $user->id,
         ]);
+        }
 
         $this->import($this->writeOrderReport([
             $this->orderLine('ORD-ZEROHPP', 'Teh Botol Gratis', 'Original', 5, 100.0, '2026-08-10 10:00:00', 0, 'SP-ZEROHPP-1', 'SV-ZEROHPP-1'),
@@ -313,7 +318,7 @@ class OrderReportHppAllocationTest extends TestCase
             $identities->sort()->values()->all(),
             $allocations->pluck('order_line_identity')->sort()->values()->all(),
         );
-        $this->assertTrue($allocations->every(fn ($allocation) => $allocation->cost_status === 'mapping_unconfirmed'));
+        $this->assertTrue($allocations->every(fn ($allocation) => $allocation->cost_status === 'ok'));
     }
 
     public function test_repeated_import_is_idempotent_without_duplicate_allocations(): void
