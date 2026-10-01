@@ -1668,6 +1668,47 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(0.0, $comparison['difference']);
     }
 
+    public function test_estimated_fee_and_tax_are_provisional_in_canonical_projection(): void
+    {
+        $projection = app(CanonicalFinancialProjectionService::class)->projectLine((object) [
+            'quantity' => 1,
+            'discounted_price' => 1000,
+            'platform_fee' => -100,
+            'free_shipping_xtra_fee' => -50,
+            'promo_xtra_service_fee' => -25,
+            'order_processing_fee' => -10,
+            'pph22' => -5,
+            'match_method' => 'Estimated',
+            'settlement_status' => 'Estimated',
+            'cost_status' => 'ok',
+            'total_hpp' => 400,
+        ]);
+
+        $this->assertSame('provisional', $projection->status);
+        $this->assertSame('estimated', $projection->provenance['fees']);
+        $this->assertSame('estimated', $projection->provenance['tax']);
+    }
+
+    public function test_order_export_keeps_missing_hpp_unavailable(): void
+    {
+        $user = User::factory()->create();
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'EXPORT-UNKNOWN-HPP',
+            'quantity' => 2,
+            'discounted_price' => 100,
+            'platform_fee' => null,
+        ]));
+
+        $rows = app(MarketplaceReconciliationService::class)->orderExportLines($user->id, null, null, []);
+
+        $row = collect($rows)->firstWhere('order_number', 'EXPORT-UNKNOWN-HPP');
+
+        $this->assertNotNull($row);
+        $this->assertNull($row['hpp']);
+        $this->assertNull($row['laba']);
+        $this->assertSame(200.0, $row['order_subtotal']);
+    }
+
     private function order(int $userId, array $overrides = []): array
     {
         return array_merge([
