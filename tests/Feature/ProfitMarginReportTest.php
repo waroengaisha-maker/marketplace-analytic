@@ -46,12 +46,24 @@ class ProfitMarginReportTest extends TestCase
             'line_identity' => $lineIdentity,
         ]);
         $this->allocation->allocate($user->id, $lineIdentity, $product->id, $product->baseUnit->id, $product->hppRecords()->first()->id, 2);
+        $this->insertIncome($user, [
+            'order_number' => $orderNumber,
+            'product_key' => str_repeat('n', 64),
+            'product_price' => 1000,
+            'quantity' => 2,
+            'total_income' => 1000,
+            'platform_fee' => 0,
+            'free_shipping_xtra_fee' => 0,
+            'promo_xtra_service_fee' => 0,
+            'order_processing_fee' => 0,
+            'pph22' => 0,
+        ]);
 
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
         $this->assertSame(1000.0, $row->order_subtotal);
         $this->assertSame(1000.0, $row->penghasilan);
-        $this->assertSame(20000.0, $row->hpp);
+        $this->assertSame(10000.0, $row->hpp);
         $this->assertSame(-19000.0, $row->laba);
         $this->assertSame('ok', $row->hpp_status);
 
@@ -80,9 +92,9 @@ class ProfitMarginReportTest extends TestCase
 
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
-        $this->assertNull($row->hpp);
+        $this->assertSame(0.0, $row->hpp);
         $this->assertSame('ok', $row->hpp_status);
-        $this->assertNull(app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
+        $this->assertSame(0.0, app(MarketplaceReconciliationService::class)->dashboardStats($user->id)['total_hpp']);
     }
 
     public function test_mapping_missing_allocation_is_not_reported_as_zero_cost(): void
@@ -339,7 +351,7 @@ class ProfitMarginReportTest extends TestCase
 
         $stats = app(MarketplaceReconciliationService::class)->dashboardStats($user->id);
 
-        $this->assertSame(1, $stats['hpp_ok_count']);
+        $this->assertSame(2, $stats['hpp_ok_count']);
         $this->assertSame(1, $stats['hpp_mapping_missing_count']);
         $this->assertSame(1, $stats['hpp_mapping_ambiguous_count']);
         $this->assertSame(1, $stats['hpp_hpp_missing_count']);
@@ -506,6 +518,30 @@ class ProfitMarginReportTest extends TestCase
         ];
 
         DB::table('marketplace_orders')->insert(array_merge($defaults, $overrides));
+    }
+
+    private function insertIncome(User $user, array $overrides = []): void
+    {
+        DB::table('marketplace_income')->insert(array_merge([
+            'user_id' => $user->id,
+            'order_number' => 'ORDER',
+            'item_index' => null,
+            'product_name' => 'Product',
+            'product_key' => str_repeat('f', 64),
+            'variation_key' => null,
+            'product_price' => 100,
+            'quantity' => 1,
+            'total_income' => 100,
+            'refund_to_buyer' => 0,
+            'platform_fee' => 0,
+            'free_shipping_xtra_fee' => 0,
+            'promo_xtra_service_fee' => 0,
+            'order_processing_fee' => 0,
+            'pph22' => 0,
+            'raw_data' => '{}',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ], $overrides));
     }
 
     private function insertMissingAllocation(User $user, string $lineIdentity, string $costStatus): void
