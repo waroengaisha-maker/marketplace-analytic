@@ -117,7 +117,7 @@ class OrderCostAllocationService
         });
     }
 
-    protected function persistMissingCostAllocation(int $userId, string $orderLineIdentity, ?MasterProduct $product, ?MasterProductUnit $unit, ?MasterProductHpp $hppRecord, string $costStatus, ?float $quantityBaseUnit = 0, ?float $totalHpp = 0): OrderCostAllocation
+    protected function persistMissingCostAllocation(int $userId, string $orderLineIdentity, ?MasterProduct $product, ?MasterProductUnit $unit, ?MasterProductHpp $hppRecord, string $costStatus, ?float $quantityBaseUnit = null, ?float $totalHpp = null): OrderCostAllocation
     {
         return DB::transaction(function () use ($userId, $orderLineIdentity, $product, $unit, $hppRecord, $costStatus, $quantityBaseUnit, $totalHpp): OrderCostAllocation {
             return OrderCostAllocation::query()->updateOrCreate(
@@ -129,7 +129,7 @@ class OrderCostAllocationService
                     'master_product_id' => $product?->id,
                     'master_unit_id' => $unit?->id,
                     'effective_hpp_record_id' => $hppRecord?->id,
-                    'hpp_per_base_unit' => 0,
+                    'hpp_per_base_unit' => $hppRecord?->hpp_per_base_unit,
                     'quantity_base_unit' => $quantityBaseUnit,
                     'total_hpp' => $totalHpp,
                     'cost_status' => $costStatus,
