@@ -838,7 +838,7 @@ class MarketplaceReconciliationService
     {
         $remainingQuantity = "CASE WHEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) > 0 THEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) ELSE 0 END";
 
-        return "(CASE WHEN {$tableAlias}.discounted_price IS NULL OR {$tableAlias}.quantity IS NULL THEN NULL ELSE {$tableAlias}.discounted_price * {$remainingQuantity} END) + COALESCE({$tableAlias}.refund_amount, 0)";
+        return "CASE WHEN {$tableAlias}.discounted_price IS NULL OR {$tableAlias}.quantity IS NULL THEN NULL ELSE ({$tableAlias}.discounted_price * {$remainingQuantity}) + COALESCE({$tableAlias}.refund_amount, 0) END";
     }
 
     /** @return array{min: ?string, max: ?string} */
