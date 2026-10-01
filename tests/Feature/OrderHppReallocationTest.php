@@ -274,7 +274,6 @@ class OrderHppReallocationTest extends TestCase
             'match_confidence' => 1.0,
         ]);
     }
-}
 
     public function test_reallocate_does_not_infer_fulfilled_quantity_from_order_or_returned_quantity(): void
     {
@@ -308,3 +307,4 @@ class OrderHppReallocationTest extends TestCase
         $this->assertNull($allocation->quantity_base_unit);
         $this->assertNull($allocation->total_hpp);
     }
+}
