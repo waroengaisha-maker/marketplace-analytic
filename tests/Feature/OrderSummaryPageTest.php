@@ -151,7 +151,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(2, $orderA['net_quantity']);
         $this->assertEquals(750.0, $orderA['discounted_price']);
         $this->assertEquals(1500.0, $orderA['subtotal']);
-        $this->assertNull($orderA['penghasilan']);
+        $this->assertEquals(1500.0, $orderA['penghasilan']);
         $this->assertNull($orderA['hpp']);
         $this->assertNull($orderA['laba']);
 
@@ -160,7 +160,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(3, $orderB['net_quantity']);
         $this->assertEquals(233.33, $orderB['discounted_price']);
         $this->assertEquals(700.0, $orderB['subtotal']);
-        $this->assertNull($orderB['penghasilan']);
+        $this->assertEquals(700.0, $orderB['penghasilan']);
         $this->assertNull($orderB['hpp']);
         $this->assertNull($orderB['laba']);
     }
@@ -480,7 +480,7 @@ class OrderSummaryPageTest extends TestCase
             'X-Inertia-Version' => $version,
             'X-Requested-With' => 'XMLHttpRequest',
             'Accept' => 'text/html, application/xhtml+xml',
-        ])->get(route('orders.index', ['statuses' => ['Unmatched'], 'from' => '2026-08-01', 'to' => '2026-08-31']));
+        ])->get(route('orders.index', ['statuses' => ['Settled'], 'from' => '2026-08-01', 'to' => '2026-08-31']));
 
         $response->assertOk();
 
