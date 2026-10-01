@@ -151,7 +151,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(2, $orderA['net_quantity']);
         $this->assertEquals(750.0, $orderA['discounted_price']);
         $this->assertEquals(1500.0, $orderA['subtotal']);
-        $this->assertEquals(1500.0, $orderA['penghasilan']);
+        $this->assertNull($orderA['penghasilan']);
         $this->assertNull($orderA['hpp']);
         $this->assertNull($orderA['laba']);
 
@@ -160,7 +160,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(3, $orderB['net_quantity']);
         $this->assertEquals(233.33, $orderB['discounted_price']);
         $this->assertEquals(700.0, $orderB['subtotal']);
-        $this->assertEquals(700.0, $orderB['penghasilan']);
+        $this->assertNull($orderB['penghasilan']);
         $this->assertNull($orderB['hpp']);
         $this->assertNull($orderB['laba']);
     }
@@ -383,8 +383,8 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(-25.0, $lineRow->promo);
         $this->assertSame(-10.0, $lineRow->processing);
         $this->assertSame(-5.0, $lineRow->tax);
-        $this->assertSame(810.0, $lineRow->penghasilan);
-        $this->assertSame(810.0, $lineRow->laba);
+        $this->assertSame(1310.0, $lineRow->penghasilan);
+        $this->assertSame(1310.0, $lineRow->laba);
 
         $version = app(HandleInertiaRequests::class)->version(Request::create(route('orders.index')));
 
@@ -403,8 +403,8 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(1500.0, $order['subtotal']);
         $this->assertEquals(-185.0, $order['total_fee']);
         $this->assertEquals(-5.0, $order['tax']);
-        $this->assertEquals(810.0, $order['penghasilan']);
-        $this->assertEquals(810.0, $order['laba']);
+        $this->assertEquals(1310.0, $order['penghasilan']);
+        $this->assertEquals(1310.0, $order['laba']);
     }
 
     public function test_orders_without_date_range_defaults_to_current_month_through_today(): void
@@ -489,7 +489,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame('STATUS-UNMATCHED', $orders[0]['order_number']);
         $this->assertSame(1, data_get($response->json(), 'props.pagination.total'));
         $this->assertEquals(300.0, data_get($response->json(), 'props.summaries.subtotal'));
-        $this->assertEquals(300.0, data_get($response->json(), 'props.summaries.penghasilan'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.penghasilan'));
     }
 
     public function test_orders_detail_with_hpp_allocations_shows_ok_status(): void
@@ -647,10 +647,10 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(-10.0, $row['processing']);
         $this->assertEquals(-5.0, $row['tax']);
         $this->assertEquals(-185.0, $row['total_fee']);
-        $this->assertEquals(810.0, $row['penghasilan']);
+        $this->assertEquals(1310.0, $row['penghasilan']);
         $this->assertNull($row['hpp']);
         $this->assertSame('no_allocation', $row['hpp_status']);
-        $this->assertEquals(810.0, $row['laba']);
+        $this->assertNull($row['laba']);
     }
 
     public function test_orders_search_matches_buyer_username(): void
