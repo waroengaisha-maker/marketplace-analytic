@@ -384,7 +384,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(-10.0, $lineRow->processing);
         $this->assertSame(-5.0, $lineRow->tax);
         $this->assertSame(1310.0, $lineRow->penghasilan);
-        $this->assertSame(1310.0, $lineRow->laba);
+        $this->assertNull($lineRow->laba);
 
         $version = app(HandleInertiaRequests::class)->version(Request::create(route('orders.index')));
 
@@ -593,6 +593,7 @@ class OrderSummaryPageTest extends TestCase
             'order_number' => 'EXP-ORDER',
             'product_key' => $productKey,
             'item_index' => 1,
+            'variation_key' => str_repeat('v', 64),
             'product_price' => 500,
             'quantity' => 3,
             'total_income' => 1310,
