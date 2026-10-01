@@ -587,6 +587,7 @@ class OrderSummaryPageTest extends TestCase
             ]),
             $this->order($user->id, [
                 'order_number' => 'EXP-OTHER',
+                'line_identity' => ReportLineIdentity::make('EXP-OTHER', str_repeat('f', 64), null, 100.0, 1),
                 'item_index' => 2,
                 'order_created_at' => '2026-09-10 10:00:00',
             ]),
