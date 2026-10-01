@@ -15,9 +15,9 @@ return new class extends Migration
             $table->foreignId('master_product_id')->nullable()->constrained('master_products')->nullOnDelete();
             $table->foreignId('master_unit_id')->nullable()->constrained('master_product_units')->nullOnDelete();
             $table->foreignId('effective_hpp_record_id')->nullable()->constrained('master_product_hpp')->nullOnDelete();
-            $table->decimal('hpp_per_base_unit', 18, 6);
-            $table->decimal('quantity_base_unit', 18, 6);
-            $table->decimal('total_hpp', 18, 2);
+            $table->decimal('hpp_per_base_unit', 18, 6)->nullable();
+            $table->decimal('quantity_base_unit', 18, 6)->nullable();
+            $table->decimal('total_hpp', 18, 2)->nullable();
             $table->string('cost_status', 32)->default('ok');
             $table->timestamps();
 
