@@ -110,7 +110,7 @@ class CustomerSummariesPageTest extends TestCase
 
         $this->assertSame(2, data_get($response->json(), 'props.pagination.total'));
         $this->assertSame(3, data_get($response->json(), 'props.summaries.order_count'));
-        $this->assertEquals(1900.0, data_get($response->json(), 'props.summaries.subtotal'));
+        $this->assertEquals(2300.0, data_get($response->json(), 'props.summaries.subtotal'));
         $this->assertNull(data_get($response->json(), 'props.summaries.hpp'));
         $this->assertNull(data_get($response->json(), 'props.summaries.laba'));
 
@@ -120,7 +120,7 @@ class CustomerSummariesPageTest extends TestCase
         $this->assertSame(1, $budi['non_revenue_order_count']);
         $this->assertSame(2, $budi['line_count']);
         $this->assertEquals(3.0, $budi['net_quantity']);
-        $this->assertEquals(1200.0, $budi['subtotal']);
+        $this->assertEquals(1600.0, $budi['subtotal']);
         $this->assertEquals(1000.0, $budi['revenue_subtotal']);
         $this->assertEquals(100.0, $budi['non_revenue_subtotal']);
         $this->assertNull($budi['penghasilan']);
@@ -267,7 +267,7 @@ class CustomerSummariesPageTest extends TestCase
         $this->assertSame('Size L', $row1['variation_name']);
         $this->assertEquals(1.0, $row1['net_quantity']);
         $this->assertEquals(250.0, $row1['subtotal']);
-        $this->assertEquals(250.0, $row1['laba']);
+        $this->assertNull($row1['laba']);
 
         $row2 = $details['rows'][1];
         $this->assertSame('DET-HISTORY-1', $row2['order_number']);
@@ -276,7 +276,7 @@ class CustomerSummariesPageTest extends TestCase
         $this->assertSame('Size L', $row2['variation_name']);
         $this->assertEquals(3.0, $row2['net_quantity']);
         $this->assertEquals(750.0, $row2['subtotal']);
-        $this->assertEquals(750.0, $row2['laba']);
+        $this->assertNull($row2['laba']);
     }
 
     public function test_customers_include_hpp_allocations_in_totals_and_laba(): void
@@ -329,7 +329,7 @@ class CustomerSummariesPageTest extends TestCase
 
         $customer = collect(data_get($response->json(), 'props.customers'))->firstWhere('buyer_username', 'hpp.buyer');
         $this->assertEquals(100.0, $customer['hpp']);
-        $this->assertEquals(400.0, $customer['laba']);
+        $this->assertNull($customer['laba']);
 
         $this->assertEquals(100.0, data_get($response->json(), 'props.summaries.hpp'));
         $this->assertEquals(400.0, data_get($response->json(), 'props.summaries.laba'));
@@ -462,8 +462,8 @@ class CustomerSummariesPageTest extends TestCase
 
         $customers = data_get($response->json(), 'props.customers');
         $this->assertSame(['besar.buyer', 'kecil.buyer'], collect($customers)->pluck('buyer_username')->all());
-        $this->assertEquals(200.0, $customers[0]['laba']);
-        $this->assertEquals(50.0, $customers[1]['laba']);
+        $this->assertNull($customers[0]['laba']);
+        $this->assertNull($customers[1]['laba']);
     }
 
     private function customersRequest(User $user, array $params = []): TestResponse
