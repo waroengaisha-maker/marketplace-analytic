@@ -348,6 +348,7 @@ class OrderSummaryPageTest extends TestCase
         DB::table('marketplace_orders')->insert([
             $this->order($user->id, [
                 'order_number' => 'SUM-FIN',
+                'line_identity' => ReportLineIdentity::make('SUM-FIN', $productKey, null, 500.0, 3),
                 'product_key' => $productKey,
                 'item_index' => 100,
                 'discounted_price' => 500,
@@ -360,6 +361,7 @@ class OrderSummaryPageTest extends TestCase
 
         DB::table('marketplace_income')->insert($this->income($user->id, [
             'order_number' => 'SUM-FIN',
+            'line_identity' => ReportLineIdentity::make('SUM-FIN', $productKey, null, 500.0, 3),
             'product_key' => $productKey,
             'item_index' => 100,
             'product_price' => 500,
@@ -404,7 +406,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(-185.0, $order['total_fee']);
         $this->assertEquals(-5.0, $order['tax']);
         $this->assertEquals(1310.0, $order['penghasilan']);
-        $this->assertEquals(1310.0, $order['laba']);
+        $this->assertNull($order['laba']);
     }
 
     public function test_orders_without_date_range_defaults_to_current_month_through_today(): void
@@ -571,6 +573,7 @@ class OrderSummaryPageTest extends TestCase
         DB::table('marketplace_orders')->insert([
             $this->order($user->id, [
                 'order_number' => 'EXP-ORDER',
+                'line_identity' => ReportLineIdentity::make('EXP-ORDER', $productKey, str_repeat('v', 64), 500.0, 3),
                 'product_key' => $productKey,
                 'variation_key' => str_repeat('v', 64),
                 'variation_name' => 'Size XL',
@@ -591,6 +594,7 @@ class OrderSummaryPageTest extends TestCase
 
         DB::table('marketplace_income')->insert($this->income($user->id, [
             'order_number' => 'EXP-ORDER',
+            'line_identity' => ReportLineIdentity::make('EXP-ORDER', $productKey, str_repeat('v', 64), 500.0, 3),
             'product_key' => $productKey,
             'item_index' => 1,
             'variation_key' => str_repeat('v', 64),
