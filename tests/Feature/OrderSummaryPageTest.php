@@ -140,7 +140,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(2200.0, data_get($response->json(), 'props.summaries.subtotal'));
         $this->assertNull(data_get($response->json(), 'props.summaries.total_fee'));
         $this->assertNull(data_get($response->json(), 'props.summaries.tax'));
-        $this->assertEquals(300.0, data_get($response->json(), 'props.summaries.penghasilan'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.penghasilan'));
         $this->assertNull(data_get($response->json(), 'props.summaries.hpp'));
         $this->assertNull(data_get($response->json(), 'props.summaries.laba'));
 
@@ -491,7 +491,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame('STATUS-UNMATCHED', $orders[0]['order_number']);
         $this->assertSame(1, data_get($response->json(), 'props.pagination.total'));
         $this->assertEquals(300.0, data_get($response->json(), 'props.summaries.subtotal'));
-        $this->assertNull(data_get($response->json(), 'props.summaries.penghasilan'));
+        $this->assertEquals(300.0, data_get($response->json(), 'props.summaries.penghasilan'));
     }
 
     public function test_orders_detail_with_hpp_allocations_shows_ok_status(): void
