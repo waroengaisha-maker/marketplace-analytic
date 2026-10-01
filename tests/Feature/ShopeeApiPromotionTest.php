@@ -750,7 +750,7 @@ class ShopeeApiPromotionTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $recon = new MarketplaceReconciliationService($user->id);
+        $recon = app(MarketplaceReconciliationService::class);
         $row = $recon->joinedQuery($user->id)->where('orders.order_number', $orderSn)->first();
 
         $this->assertNotNull($row);
