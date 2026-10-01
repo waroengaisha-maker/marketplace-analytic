@@ -1385,6 +1385,29 @@ class MarketplaceReconciliationServiceTest extends TestCase
         }
     }
 
+    public function test_reconciliation_keeps_fulfillment_unknown_and_does_not_use_returned_quantity_as_sold_quantity(): void
+    {
+        $user = User::factory()->create();
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-FULFILLMENT-UNKNOWN',
+            'quantity' => 5,
+            'returned_quantity' => 2,
+            'fulfilled_quantity' => null,
+            'cancelled_quantity' => null,
+            'discounted_price' => 100,
+            'order_subtotal' => 500,
+        ]));
+
+        $row = app(MarketplaceReconciliationService::class)
+            ->reconciliationRows($user->id)[0];
+
+        $this->assertNull($row->fulfilled_quantity);
+        $this->assertNull($row->cancelled_quantity);
+        $this->assertSame(3, $row->net_quantity);
+        $this->assertSame(500.0, (float) $row->order_subtotal);
+    }
+
     private function order(int $userId, array $overrides = []): array
     {
         return array_merge([

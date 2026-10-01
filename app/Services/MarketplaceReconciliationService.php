@@ -56,8 +56,8 @@ class MarketplaceReconciliationService
     {
         $query = $this->lineScope($userId, $from, $to, $parameters);
 
-        $netQuantity = 'CASE WHEN COALESCE(rows.quantity, 0) - COALESCE(rows.returned_quantity, 0) > 0 THEN COALESCE(rows.quantity, 0) - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
-        $subtotal = '(COALESCE(rows.discounted_price, 0) * '.$netQuantity.')';
+        $legacyNetQuantity = 'CASE WHEN COALESCE(rows.quantity, 0) - COALESCE(rows.returned_quantity, 0) > 0 THEN COALESCE(rows.quantity, 0) - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
+        $subtotal = 'COALESCE(rows.order_subtotal, COALESCE(rows.discounted_price, 0) * COALESCE(rows.quantity, 0))';
         $admin = '(-ABS(COALESCE(rows.platform_fee, 0)))';
         $shipping = '(-ABS(COALESCE(rows.free_shipping_xtra_fee, 0)))';
         $promo = '(-ABS(COALESCE(rows.promo_xtra_service_fee, 0)))';
@@ -75,9 +75,11 @@ class MarketplaceReconciliationService
             'refund_type' => DB::raw('rows.refund_type'),
             'order_number' => 'rows.order_number',
             'order_product_name' => 'rows.order_product_name',
-            'net_quantity' => DB::raw($netQuantity),
+            'net_quantity' => DB::raw($legacyNetQuantity),
             'quantity' => 'rows.quantity',
             'returned_quantity' => 'rows.returned_quantity',
+            'fulfilled_quantity' => 'rows.fulfilled_quantity',
+            'cancelled_quantity' => 'rows.cancelled_quantity',
             'discounted_price' => 'rows.discounted_price',
             'order_subtotal' => DB::raw($subtotal),
             'platform_fee' => 'rows.platform_fee',
@@ -176,7 +178,7 @@ class MarketplaceReconciliationService
             });
         }
 
-        $netQuantityExpression = 'CASE WHEN rows.quantity - COALESCE(rows.returned_quantity, 0) > 0 THEN rows.quantity - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
+        $legacyNetQuantityExpression = 'CASE WHEN rows.quantity - COALESCE(rows.returned_quantity, 0) > 0 THEN rows.quantity - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
         $filterExpressions = [
             'business_status' => $statusExpression,
             'settlement_status' => $statusExpression,
@@ -185,8 +187,8 @@ class MarketplaceReconciliationService
             'quantity' => 'rows.quantity',
             'discounted_price' => 'rows.discounted_price',
             'returned_quantity' => 'rows.returned_quantity',
-            'net_quantity' => $netQuantityExpression,
-            'order_subtotal' => '(rows.discounted_price * '.$netQuantityExpression.')',
+            'net_quantity' => $legacyNetQuantityExpression,
+            'order_subtotal' => 'COALESCE(rows.order_subtotal, rows.discounted_price * rows.quantity)',
             'platform_fee' => 'COALESCE(rows.platform_fee, 0)',
             'free_shipping_xtra_fee' => 'COALESCE(rows.free_shipping_xtra_fee, 0)',
             'promo_xtra_service_fee' => 'COALESCE(rows.promo_xtra_service_fee, 0)',
@@ -230,8 +232,10 @@ class MarketplaceReconciliationService
                 l.item_index,
                 l.quantity,
                 l.returned_quantity,
+                l.fulfilled_quantity,
+                l.cancelled_quantity,
                 (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
-                (COALESCE(l.discounted_price, 0) * (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END)) AS subtotal,
+                COALESCE(l.order_subtotal, COALESCE(l.discounted_price, 0) * COALESCE(l.quantity, 0)) AS subtotal,
                 (-ABS(COALESCE(l.platform_fee, 0))) AS admin,
                 (-ABS(COALESCE(l.free_shipping_xtra_fee, 0))) AS shipping,
                 (-ABS(COALESCE(l.promo_xtra_service_fee, 0))) AS promo,
@@ -1113,14 +1117,18 @@ class MarketplaceReconciliationService
     {
         $quantity = (float) ($row->quantity ?? 0);
         $returned = (float) ($row->returned_quantity ?? 0);
+        $fulfilled = $row->fulfilled_quantity ?? null;
+        $cancelled = $row->cancelled_quantity ?? null;
         $discountedPrice = (float) ($row->discounted_price ?? 0);
         $admin = -abs((float) ($row->platform_fee ?? 0));
         $shipping = -abs((float) ($row->free_shipping_xtra_fee ?? 0));
         $promo = -abs((float) ($row->promo_xtra_service_fee ?? 0));
         $processing = -abs((float) ($row->order_processing_fee ?? 0));
         $tax = -abs((float) ($row->pph22 ?? 0));
-        $net = max($quantity - $returned, 0);
-        $subtotal = $discountedPrice * $net;
+        $legacyNet = max($quantity - $returned, 0);
+        $subtotal = $row->order_subtotal !== null
+            ? (float) $row->order_subtotal
+            : $discountedPrice * $quantity;
         $feeSubtotal = $admin + $shipping + $promo;
         $totalFee = $feeSubtotal + $processing;
         $earnings = $subtotal + ($totalFee + $tax);
@@ -1128,7 +1136,11 @@ class MarketplaceReconciliationService
         $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
         $hpp = $hppStatus === 'ok' ? (float) ($row->total_hpp ?? 0) : 0.0;
 
-        $row->net_quantity = $net;
+        // Legacy display only: this is ordered minus physical returns, not fulfilled/sold quantity.
+        $row->net_quantity = $legacyNet;
+        $row->provisional_net_quantity = $legacyNet;
+        $row->fulfilled_quantity = $fulfilled === null ? null : (int) $fulfilled;
+        $row->cancelled_quantity = $cancelled === null ? null : (int) $cancelled;
         $row->order_subtotal = $subtotal;
         $row->admin_fee_percent = $this->percent($admin, $subtotal);
         $row->free_shipping_xtra_fee_percent = $this->percent($shipping, $subtotal);

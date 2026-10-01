@@ -29,6 +29,7 @@ class OrderHppSyncService
             'mapping_missing' => 0,
             'mapping_ambiguous' => 0,
             'hpp_missing' => 0,
+            'quantity_unavailable' => 0,
             'failed' => 0,
         ];
 
@@ -43,6 +44,8 @@ class OrderHppSyncService
                 'variation_name',
                 'quantity',
                 'returned_quantity',
+                'fulfilled_quantity',
+                'cancelled_quantity',
                 'order_created_at',
                 'payment_at',
                 'shipped_at',
@@ -63,8 +66,7 @@ class OrderHppSyncService
                                 'shopee_product_name' => $line->product_name,
                                 'shopee_variant_name' => $line->variation_name,
                             ],
-                            (int) ($line->quantity ?? 0),
-                            (int) ($line->returned_quantity ?? 0),
+                            $line->fulfilled_quantity === null ? null : (int) $line->fulfilled_quantity,
                         );
 
                         $counts[$this->statusKey($allocation)]++;
@@ -94,6 +96,7 @@ class OrderHppSyncService
             $allocation->cost_status === 'mapping_missing' => 'mapping_missing',
             $allocation->cost_status === 'mapping_ambiguous' => 'mapping_ambiguous',
             $allocation->cost_status === 'hpp_missing' => 'hpp_missing',
+            $allocation->cost_status === 'quantity_unavailable' => 'quantity_unavailable',
             $allocation->cost_status === 'ok' => 'ok_count',
             default => 'failed',
         };

@@ -38,7 +38,7 @@ class OrderReportImporter
             $itemKey = $this->lineKey(
                 $orderNumber,
                 $data['Nama Produk'] ?? null,
-                $discountedPrice === null || $quantity === null ? null : $discountedPrice * max(0, $quantity - $returnedQuantity)
+                $discountedPrice === null || $quantity === null ? null : $discountedPrice * $quantity
             );
 
             $payload[] = [
@@ -64,6 +64,8 @@ class OrderReportImporter
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
                 'returned_quantity' => $returnedQuantity,
+                'fulfilled_quantity' => null,
+                'cancelled_quantity' => null,
                 'order_subtotal' => $this->number($data['Subtotal Pesanan'] ?? null),
                 'total_payment' => $this->number($data['Total Pembayaran'] ?? null),
                 'buyer_shipping_paid' => $this->number($data['Ongkos Kirim Dibayar oleh Pembeli'] ?? null),
@@ -122,8 +124,7 @@ class OrderReportImporter
                     'shopee_product_name' => $line['product_name'],
                     'shopee_variant_name' => $line['variation_name'],
                 ],
-                $line['quantity'] ?? 0,
-                $line['returned_quantity'] ?? 0,
+                $line['fulfilled_quantity'] ?? null,
             );
         }
 

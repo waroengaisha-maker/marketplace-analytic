@@ -60,6 +60,8 @@ class OrderHppReallocationTest extends TestCase
             'discounted_price' => 5000.0,
             'quantity' => 2,
             'returned_quantity' => 0,
+            'fulfilled_quantity' => 2,
+            'cancelled_quantity' => null,
             'order_created_at' => now(),
             'raw_data' => json_encode(['order_number' => 'ORD-1']),
         ];
@@ -99,6 +101,7 @@ class OrderHppReallocationTest extends TestCase
             'ok_count' => 1,
             'mapping_missing' => 0,
             'hpp_missing' => 0,
+            'quantity_unavailable' => 0,
             'failed' => 0,
         ]);
 
@@ -272,3 +275,36 @@ class OrderHppReallocationTest extends TestCase
         ]);
     }
 }
+
+    public function test_reallocate_does_not_infer_fulfilled_quantity_from_order_or_returned_quantity(): void
+    {
+        $user = $this->activeUser();
+        $product = $this->syncTemplate($user);
+        $unit = $product->units()->where('unit_code', 'PCS')->firstOrFail();
+
+        app(ShopeeProductMappingService::class)->createManualMapping($user->id, $product, $unit->id, [
+            'shopee_product_id' => 'SKU1',
+            'shopee_product_name' => 'Produk Contoh',
+            'match_confidence' => 1.00,
+        ]);
+
+        $this->insertOrderLine($user, [
+            'quantity' => 5,
+            'returned_quantity' => 2,
+            'fulfilled_quantity' => null,
+        ]);
+
+        $this->actingAs($user)->postJson(route('products.hpp-mapping.reallocate'))
+            ->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'total' => 1,
+                'quantity_unavailable' => 1,
+                'failed' => 0,
+            ]);
+
+        $allocation = OrderCostAllocation::query()->where('user_id', $user->id)->firstOrFail();
+        $this->assertSame('quantity_unavailable', $allocation->cost_status);
+        $this->assertNull($allocation->quantity_base_unit);
+        $this->assertNull($allocation->total_hpp);
+    }

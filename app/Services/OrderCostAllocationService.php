@@ -19,7 +19,7 @@ class OrderCostAllocationService
     ) {}
 
     /** @return array{status: string, match_method: string, mapping: ?ShopeeProductMapping, candidates?: array} */
-    public function allocateForOrderLine(int $userId, string $orderLineIdentity, CarbonInterface $transactionAt, array $shopeeIdentity, int $quantity, int $returnedQuantity = 0): OrderCostAllocation
+    public function allocateForOrderLine(int $userId, string $orderLineIdentity, CarbonInterface $transactionAt, array $shopeeIdentity, ?int $fulfilledQuantity): OrderCostAllocation
     {
         $resolved = $this->mappingService->resolve($userId, $shopeeIdentity);
 
@@ -51,10 +51,10 @@ class OrderCostAllocationService
             return $this->persistMissingCostAllocation($userId, $orderLineIdentity, $product, $unit, null, 'hpp_missing');
         }
 
-        return $this->allocate($userId, $orderLineIdentity, $product->id, $unit->id, $hppRecord->id, $quantity, $returnedQuantity);
+        return $this->allocate($userId, $orderLineIdentity, $product->id, $unit->id, $hppRecord->id, $fulfilledQuantity);
     }
 
-    public function allocate(int $userId, string $orderLineIdentity, int $productId, int $unitId, int $effectiveHppRecordId, int $quantity, int $returnedQuantity = 0): OrderCostAllocation
+    public function allocate(int $userId, string $orderLineIdentity, int $productId, int $unitId, int $effectiveHppRecordId, ?int $fulfilledQuantity): OrderCostAllocation
     {
         $product = MasterProduct::query()->forUser($userId)->findOrFail($productId);
         $unit = $product->units()->findOrFail($unitId);
@@ -72,8 +72,24 @@ class OrderCostAllocationService
             throw new InvalidArgumentException('Unit conversion must be greater than zero.');
         }
 
-        $netQuantity = max(0, $quantity - $returnedQuantity);
-        $quantityBaseUnit = $netQuantity * $unit->conversion_to_base;
+        if ($fulfilledQuantity === null) {
+            return $this->persistMissingCostAllocation(
+                $userId,
+                $orderLineIdentity,
+                $product,
+                $unit,
+                $hppRecord,
+                'quantity_unavailable',
+                null,
+                null,
+            );
+        }
+
+        if ($fulfilledQuantity < 0) {
+            throw new InvalidArgumentException('Fulfilled quantity cannot be negative.');
+        }
+
+        $quantityBaseUnit = $fulfilledQuantity * $unit->conversion_to_base;
         $totalHpp = $quantityBaseUnit * $hppRecord->hpp_per_base_unit;
 
         return DB::transaction(function () use ($userId, $orderLineIdentity, $product, $unit, $hppRecord, $quantityBaseUnit, $totalHpp): OrderCostAllocation {
@@ -95,7 +111,7 @@ class OrderCostAllocationService
         });
     }
 
-    protected function persistMissingCostAllocation(int $userId, string $orderLineIdentity, ?MasterProduct $product, ?MasterProductUnit $unit, ?MasterProductHpp $hppRecord, string $costStatus): OrderCostAllocation
+    protected function persistMissingCostAllocation(int $userId, string $orderLineIdentity, ?MasterProduct $product, ?MasterProductUnit $unit, ?MasterProductHpp $hppRecord, string $costStatus, ?float $quantityBaseUnit = 0, ?float $totalHpp = 0): OrderCostAllocation
     {
         return DB::transaction(function () use ($userId, $orderLineIdentity, $product, $unit, $hppRecord, $costStatus): OrderCostAllocation {
             return OrderCostAllocation::query()->updateOrCreate(
@@ -108,8 +124,8 @@ class OrderCostAllocationService
                     'master_unit_id' => $unit?->id,
                     'effective_hpp_record_id' => $hppRecord?->id,
                     'hpp_per_base_unit' => 0,
-                    'quantity_base_unit' => 0,
-                    'total_hpp' => 0,
+                    'quantity_base_unit' => $quantityBaseUnit,
+                    'total_hpp' => $totalHpp,
                     'cost_status' => $costStatus,
                 ]
             );
