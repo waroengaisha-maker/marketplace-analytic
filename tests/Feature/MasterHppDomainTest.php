@@ -583,7 +583,7 @@ class MasterHppDomainTest extends TestCase
         $this->assertSame(2, ShopeeProductMapping::query()->forUser($user->id)->count());
     }
 
-    public function test_order_allocation_formula_is_idempotent_and_uses_non_returned_quantity(): void
+    public function test_order_allocation_formula_is_idempotent_and_uses_explicit_order_quantity(): void
     {
         $user = User::factory()->create();
         $product = $this->catalog->registerTemplateItem($user->id, [
@@ -604,7 +604,7 @@ class MasterHppDomainTest extends TestCase
 
         $this->assertSame('LINE-1', $allocation->order_line_identity);
         $this->assertSame('ok', $allocation->cost_status);
-        $this->assertSame('36000.00', (string) $allocation->total_hpp);
+        $this->assertSame('60000.00', (string) $allocation->total_hpp);
         $this->assertSame($allocation->id, $sameAllocation->id);
     }
 
@@ -632,7 +632,7 @@ class MasterHppDomainTest extends TestCase
         $this->assertSame('LINE-E2E-1', $allocation->order_line_identity);
         $this->assertSame($product->id, $allocation->master_product_id);
         $this->assertSame($product->baseUnit->id, $allocation->master_unit_id);
-        $this->assertSame('2.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('3.000000', (string) $allocation->quantity_base_unit);
         $this->assertSame('20000.00', (string) $allocation->total_hpp);
         $this->assertSame($product->hppRecords()->first()->id, $allocation->effective_hpp_record_id);
     }
@@ -879,8 +879,8 @@ class MasterHppDomainTest extends TestCase
 
         $allocation = $this->allocation->allocate($user->id, 'LINE-E2E-10', $product->id, $pak->id, $pak->hppRecords()->first()->id, 2, 1);
 
-        $this->assertSame('14.000000', (string) $allocation->quantity_base_unit);
-        $this->assertSame('140000.00', (string) $allocation->total_hpp);
+        $this->assertSame('28.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('280000.00', (string) $allocation->total_hpp);
         $this->assertSame('10000.000000', (string) $allocation->hpp_per_base_unit);
     }
 
@@ -1053,7 +1053,7 @@ class MasterHppDomainTest extends TestCase
         $this->allocation->allocate($user->id, 'LINE-CROSS', $productA->id, $productA->baseUnit->id, $foreignHpp->id, 1, 0);
     }
 
-    public function test_refund_returns_product_reduce_allocated_quantity(): void
+    public function test_returned_quantity_does_not_reduce_confirmed_hpp_quantity(): void
     {
         $user = User::factory()->create();
         $product = $this->registerProduct($user, 'IT-E2E-17', 'Produk Retur');
@@ -1076,7 +1076,7 @@ class MasterHppDomainTest extends TestCase
         $allocation = $this->allocation->allocateForOrderLine($user->id, 'LINE-RETUR', CarbonImmutable::parse('2026-08-10 10:00:00'), $identity, 10, 4);
 
         $this->assertSame('ok', $allocation->cost_status);
-        $this->assertSame('6.000000', (string) $allocation->quantity_base_unit);
-        $this->assertSame('60000.00', (string) $allocation->total_hpp);
+        $this->assertSame('10.000000', (string) $allocation->quantity_base_unit);
+        $this->assertSame('100000.00', (string) $allocation->total_hpp);
     }
 }
