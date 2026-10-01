@@ -57,16 +57,16 @@ class MarketplaceReconciliationService
         $query = $this->lineScope($userId, $from, $to, $parameters);
 
         $legacyNetQuantity = 'CASE WHEN COALESCE(rows.quantity, 0) - COALESCE(rows.returned_quantity, 0) > 0 THEN COALESCE(rows.quantity, 0) - COALESCE(rows.returned_quantity, 0) ELSE 0 END';
-        $subtotal = 'COALESCE(rows.order_subtotal, COALESCE(rows.discounted_price, 0) * COALESCE(rows.quantity, 0))';
-        $admin = '(-ABS(COALESCE(rows.platform_fee, 0)))';
-        $shipping = '(-ABS(COALESCE(rows.free_shipping_xtra_fee, 0)))';
-        $promo = '(-ABS(COALESCE(rows.promo_xtra_service_fee, 0)))';
-        $processing = '(-ABS(COALESCE(rows.order_processing_fee, 0)))';
-        $tax = '(-ABS(COALESCE(rows.pph22, 0)))';
-        $totalFee = "({$admin} + {$shipping} + {$promo} + {$processing})";
+        $subtotal = 'CASE WHEN rows.order_subtotal IS NOT NULL THEN rows.order_subtotal WHEN rows.discounted_price IS NOT NULL AND rows.quantity IS NOT NULL THEN rows.discounted_price * rows.quantity ELSE NULL END';
+        $admin = 'CASE WHEN rows.platform_fee IS NULL THEN NULL ELSE (-ABS(rows.platform_fee)) END';
+        $shipping = 'CASE WHEN rows.free_shipping_xtra_fee IS NULL THEN NULL ELSE (-ABS(rows.free_shipping_xtra_fee)) END';
+        $promo = 'CASE WHEN rows.promo_xtra_service_fee IS NULL THEN NULL ELSE (-ABS(rows.promo_xtra_service_fee)) END';
+        $processing = 'CASE WHEN rows.order_processing_fee IS NULL THEN NULL ELSE (-ABS(rows.order_processing_fee)) END';
+        $tax = 'CASE WHEN rows.pph22 IS NULL THEN NULL ELSE (-ABS(rows.pph22)) END';
+        $totalFee = "CASE WHEN {$admin} IS NULL OR {$shipping} IS NULL OR {$promo} IS NULL OR {$processing} IS NULL THEN NULL ELSE ({$admin} + {$shipping} + {$promo} + {$processing}) END";
         $refund = 'COALESCE(rows.refund_amount, 0)';
-        $earnings = "({$subtotal} + {$refund} + {$totalFee} + {$tax})";
-        $hpp = "(CASE WHEN rows.cost_status = 'ok' THEN COALESCE(rows.total_hpp, 0) ELSE 0 END)";
+        $earnings = "CASE WHEN {$subtotal} IS NULL OR {$totalFee} IS NULL OR {$tax} IS NULL THEN NULL ELSE ({$subtotal} + {$refund} + {$totalFee} + {$tax}) END";
+        $hpp = "CASE WHEN rows.cost_status = 'ok' AND rows.total_hpp IS NOT NULL THEN rows.total_hpp ELSE NULL END";
         $sortFields = [
             'business_status' => DB::raw('rows.business_status'),
             'settlement_status' => DB::raw('rows.settlement_status'),
@@ -97,7 +97,7 @@ class MarketplaceReconciliationService
             'penghasilan' => DB::raw($earnings),
             'hpp' => DB::raw($hpp),
             'hpp_status' => DB::raw("COALESCE(NULLIF(TRIM(rows.cost_status), ''), 'no_allocation')"),
-            'laba' => DB::raw("({$earnings} - {$hpp})"),
+            'laba' => DB::raw("CASE WHEN {$earnings} IS NULL OR {$hpp} IS NULL THEN NULL ELSE ({$earnings} - {$hpp}) END"),
             'order_created_at' => 'rows.order_created_at',
         ];
         $multiSortMeta = json_decode((string) ($parameters['multi_sort_meta'] ?? '[]'), true);
@@ -189,12 +189,12 @@ class MarketplaceReconciliationService
             'discounted_price' => 'rows.discounted_price',
             'returned_quantity' => 'rows.returned_quantity',
             'net_quantity' => $legacyNetQuantityExpression,
-            'order_subtotal' => 'COALESCE(rows.order_subtotal, rows.discounted_price * rows.quantity)',
-            'platform_fee' => 'COALESCE(rows.platform_fee, 0)',
-            'free_shipping_xtra_fee' => 'COALESCE(rows.free_shipping_xtra_fee, 0)',
-            'promo_xtra_service_fee' => 'COALESCE(rows.promo_xtra_service_fee, 0)',
-            'order_processing_fee' => 'COALESCE(rows.order_processing_fee, 0)',
-            'tax' => 'COALESCE(rows.pph22, 0)',
+            'order_subtotal' => 'CASE WHEN rows.order_subtotal IS NOT NULL THEN rows.order_subtotal WHEN rows.discounted_price IS NOT NULL AND rows.quantity IS NOT NULL THEN rows.discounted_price * rows.quantity ELSE NULL END',
+            'platform_fee' => 'rows.platform_fee',
+            'free_shipping_xtra_fee' => 'rows.free_shipping_xtra_fee',
+            'promo_xtra_service_fee' => 'rows.promo_xtra_service_fee',
+            'order_processing_fee' => 'rows.order_processing_fee',
+            'tax' => 'rows.pph22',
         ];
 
         foreach ($filterExpressions as $field => $expression) {
@@ -235,15 +235,15 @@ class MarketplaceReconciliationService
                 l.returned_quantity,
                 l.fulfilled_quantity,
                 l.cancelled_quantity,
-                COALESCE(l.refund_amount, 0) AS refund_amount,
-                (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
-                COALESCE(l.order_subtotal, COALESCE(l.discounted_price, 0) * COALESCE(l.quantity, 0)) AS subtotal,
-                (-ABS(COALESCE(l.platform_fee, 0))) AS admin,
-                (-ABS(COALESCE(l.free_shipping_xtra_fee, 0))) AS shipping,
-                (-ABS(COALESCE(l.promo_xtra_service_fee, 0))) AS promo,
-                (-ABS(COALESCE(l.order_processing_fee, 0))) AS processing,
-                (-ABS(COALESCE(l.pph22, 0))) AS tax,
-                (CASE WHEN l.cost_status = 'ok' THEN COALESCE(l.total_hpp, 0) ELSE 0 END) AS hpp
+                l.refund_amount AS refund_amount,
+                (CASE WHEN l.quantity IS NULL THEN NULL WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
+                CASE WHEN l.order_subtotal IS NOT NULL THEN l.order_subtotal WHEN l.discounted_price IS NOT NULL AND l.quantity IS NOT NULL THEN l.discounted_price * l.quantity ELSE NULL END AS subtotal,
+                CASE WHEN l.platform_fee IS NULL THEN NULL ELSE (-ABS(l.platform_fee)) END AS admin,
+                CASE WHEN l.free_shipping_xtra_fee IS NULL THEN NULL ELSE (-ABS(l.free_shipping_xtra_fee)) END AS shipping,
+                CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (-ABS(l.promo_xtra_service_fee)) END AS promo,
+                CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (-ABS(l.order_processing_fee)) END AS processing,
+                CASE WHEN l.pph22 IS NULL THEN NULL ELSE (-ABS(l.pph22)) END AS tax,
+                CASE WHEN l.cost_status = 'ok' AND l.total_hpp IS NOT NULL THEN l.total_hpp ELSE NULL END AS hpp
             ");
     }
 
@@ -260,22 +260,22 @@ class MarketplaceReconciliationService
         $totals = DB::query()
             ->fromSub($this->orderSummaryLines($userId, $from, $to, $parameters), 'g')
             ->selectRaw('
-                COALESCE(SUM(g.subtotal), 0) AS subtotal,
-                COALESCE(SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing), 0) AS total_fee,
-                COALESCE(SUM(g.tax), 0) AS tax,
-                COALESCE(SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax), 0) AS penghasilan,
-                COALESCE(SUM(g.hpp), 0) AS hpp,
-                COALESCE((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp), 0) AS laba
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) END AS subtotal,
+                CASE WHEN COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) THEN NULL ELSE SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) END AS total_fee,
+                CASE WHEN COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.tax) END AS tax,
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax) END AS penghasilan,
+                CASE WHEN COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE SUM(g.hpp) END AS hpp,
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) OR COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp) END AS laba
             ')
             ->first();
 
         return [
-            'subtotal' => (float) ($totals->subtotal ?? 0),
-            'total_fee' => (float) ($totals->total_fee ?? 0),
-            'tax' => (float) ($totals->tax ?? 0),
-            'penghasilan' => (float) ($totals->penghasilan ?? 0),
-            'hpp' => (float) ($totals->hpp ?? 0),
-            'laba' => (float) ($totals->laba ?? 0),
+            'subtotal' => $totals->subtotal === null ? null : (float) $totals->subtotal,
+            'total_fee' => $totals->total_fee === null ? null : (float) $totals->total_fee,
+            'tax' => $totals->tax === null ? null : (float) $totals->tax,
+            'penghasilan' => $totals->penghasilan === null ? null : (float) $totals->penghasilan,
+            'hpp' => $totals->hpp === null ? null : (float) $totals->hpp,
+            'laba' => $totals->laba === null ? null : (float) $totals->laba,
         ];
     }
 
