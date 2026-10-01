@@ -848,9 +848,15 @@ class MarketplaceReconciliationService
                 : ($projection->orderSubtotal * ($row->quantity == 0 ? 0 : $remainingQuantity / (float) $row->quantity)) + ($projection->refundAmount ?? 0);
 
             if ($gross !== null) $metrics['gross_sales'] += $gross; else $availability['gross_sales'] = false;
+            if ($projection->hpp === null) {
+                $availability['total_hpp'] = false;
+            } else {
+                $metrics['total_hpp'] += $projection->hpp;
+            }
+
             if (!$isCancelled && $hasTracking) {
                 if ($legacyNetSales !== null) $metrics['net_sales'] += $legacyNetSales; else $availability['net_sales'] = false;
-                foreach (['total_fee', 'total_tax', 'hpp', 'canonical_penghasilan', 'total_profit'] as $key) {
+                foreach (['total_fee', 'total_tax', 'canonical_penghasilan', 'total_profit'] as $key) {
                     $value = match ($key) {
                         'total_fee' => $projection->totalFee,
                         'total_tax' => $projection->tax,
