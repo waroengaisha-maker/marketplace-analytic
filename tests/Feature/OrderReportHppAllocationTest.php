@@ -232,7 +232,7 @@ class OrderReportHppAllocationTest extends TestCase
         $this->assertSame(1, OrderCostAllocation::query()->forUser($user->id)->count());
         $this->assertSame('mapping_ambiguous', $allocation->cost_status);
         $this->assertNull($allocation->master_product_id);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_order_import_persists_hpp_missing_allocation(): void
