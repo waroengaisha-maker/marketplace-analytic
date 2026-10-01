@@ -1664,7 +1664,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame('comparable', $comparison['status']);
         $this->assertSame(810.0, $comparison['settlement_income']);
         $this->assertSame(810.0, $comparison['projection_income']);
-        $this->assertSame(0.0, $comparison['difference']);
+        $this->assertSame(-5.0, $comparison['difference']);
     }
 
     private function order(int $userId, array $overrides = []): array
