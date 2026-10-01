@@ -146,7 +146,9 @@ class OrderHppReallocationTest extends TestCase
 
         $allocation = OrderCostAllocation::query()->where('user_id', $user->id)->firstOrFail();
         $this->assertSame('mapping_unconfirmed', $allocation->cost_status);
-        $this->assertNull($allocation->effective_hpp_record_id);
+        $this->assertNotNull($allocation->effective_hpp_record_id);
+        $this->assertSame($product->id, $allocation->master_product_id);
+        $this->assertSame($unit->id, $allocation->master_unit_id);
         $this->assertNull($allocation->quantity_base_unit);
         $this->assertNull($allocation->total_hpp);
     }
