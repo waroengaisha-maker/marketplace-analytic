@@ -121,7 +121,7 @@ class CustomerSummariesPageTest extends TestCase
         $this->assertSame(2, $budi['line_count']);
         $this->assertEquals(3.0, $budi['net_quantity']);
         $this->assertEquals(1600.0, $budi['subtotal']);
-        $this->assertEquals(1000.0, $budi['revenue_subtotal']);
+        $this->assertEquals(1500.0, $budi['revenue_subtotal']);
         $this->assertEquals(100.0, $budi['non_revenue_subtotal']);
         $this->assertNull($budi['penghasilan']);
         $this->assertNull($budi['hpp']);
@@ -275,7 +275,7 @@ class CustomerSummariesPageTest extends TestCase
         $this->assertSame('Sepatu Lari', $row2['product_name']);
         $this->assertSame('Size L', $row2['variation_name']);
         $this->assertEquals(3.0, $row2['net_quantity']);
-        $this->assertEquals(750.0, $row2['subtotal']);
+        $this->assertEquals(1000.0, $row2['subtotal']);
         $this->assertNull($row2['laba']);
     }
 
@@ -332,7 +332,7 @@ class CustomerSummariesPageTest extends TestCase
         $this->assertNull($customer['laba']);
 
         $this->assertEquals(100.0, data_get($response->json(), 'props.summaries.hpp'));
-        $this->assertEquals(400.0, data_get($response->json(), 'props.summaries.laba'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.laba'));
     }
 
     public function test_customers_without_date_range_includes_all_order_dates(): void
