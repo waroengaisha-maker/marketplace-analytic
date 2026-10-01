@@ -1040,6 +1040,8 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'promo_xtra_service_fee' => 25,
             'order_processing_fee' => 10,
             'pph22' => 5,
+            'cost_status' => 'ok',
+            'total_hpp' => 0,
         ];
 
         $result = app(MarketplaceReconciliationService::class)->calculateFinancials($row);
