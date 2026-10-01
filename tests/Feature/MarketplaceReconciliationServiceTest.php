@@ -1696,7 +1696,6 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'order_number' => 'EXPORT-UNKNOWN-HPP',
             'quantity' => 2,
             'discounted_price' => 100,
-            'platform_fee' => null,
         ]));
 
         $rows = app(MarketplaceReconciliationService::class)->orderExportLines($user->id, null, null, []);
