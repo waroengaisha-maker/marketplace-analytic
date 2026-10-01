@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class MarketplaceReconciliationService
 {
+    public function __construct(
+        private readonly CanonicalFinancialProjectionService $canonicalFinancialProjection,
+    ) {}
+
     public function reconciliationRows(int $userId, ?string $from = null, ?string $to = null): array
     {
         return $this->joinedQuery($userId, true)
@@ -1123,51 +1127,29 @@ class MarketplaceReconciliationService
 
     public function calculateFinancials(object $row): object
     {
-        $quantity = $row->quantity === null ? null : (float) $row->quantity;
-        $returned = $row->returned_quantity === null ? null : (float) $row->returned_quantity;
-        $fulfilled = $row->fulfilled_quantity ?? null;
-        $cancelled = $row->cancelled_quantity ?? null;
-        $discountedPrice = $row->discounted_price === null ? null : (float) $row->discounted_price;
-        $admin = $row->platform_fee === null ? null : (float) $row->platform_fee;
-        $shipping = $row->free_shipping_xtra_fee === null ? null : (float) $row->free_shipping_xtra_fee;
-        $promo = $row->promo_xtra_service_fee === null ? null : (float) $row->promo_xtra_service_fee;
-        $processing = $row->order_processing_fee === null ? null : (float) $row->order_processing_fee;
-        $tax = $row->pph22 === null ? null : (float) $row->pph22;
-        $legacyNet = $quantity === null ? null : max($quantity - ($returned ?? 0), 0);
-        $subtotal = $row->order_subtotal !== null
-            ? (float) $row->order_subtotal
-            : ($discountedPrice !== null && $quantity !== null ? $discountedPrice * $quantity : null);
-        $feeSubtotal = $admin === null || $shipping === null || $promo === null
-            ? null
-            : $admin + $shipping + $promo;
-        $totalFee = $feeSubtotal === null || $processing === null
-            ? null
-            : $feeSubtotal + $processing;
-        $refund = ($row->refund_amount ?? null) === null ? 0.0 : (float) $row->refund_amount;
-        $earnings = $subtotal === null || $totalFee === null || $tax === null
-            ? null
-            : $subtotal + $refund + $totalFee + $tax;
-        $costStatus = trim((string) ($row->cost_status ?? ''));
-        $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
-        $hpp = $hppStatus === 'ok' && $row->total_hpp !== null ? (float) $row->total_hpp : null;
+        $projection = $this->canonicalFinancialProjection->projectLine($row, [
+            'cost_status' => $row->cost_status ?? null,
+            'total_hpp' => $row->total_hpp ?? null,
+        ]);
 
-        // Legacy display only: this is ordered minus physical returns, not fulfilled/sold quantity.
-        $row->net_quantity = $legacyNet;
-        $row->provisional_net_quantity = $legacyNet;
-        $row->fulfilled_quantity = $fulfilled === null ? null : (int) $fulfilled;
-        $row->cancelled_quantity = $cancelled === null ? null : (int) $cancelled;
-        $row->order_subtotal = $subtotal;
-        $row->admin_fee_percent = $this->percent($admin, $subtotal);
-        $row->free_shipping_xtra_fee_percent = $this->percent($shipping, $subtotal);
-        $row->promo_xtra_fee_percent = $this->percent($promo, $subtotal);
-        $row->fee_subtotal = $feeSubtotal;
-        $row->fee_subtotal_percent = $this->percent($feeSubtotal, $subtotal);
-        $row->total_fee = $totalFee;
-        $row->tax = $tax;
-        $row->penghasilan = $earnings;
-        $row->hpp = $hpp;
-        $row->hpp_status = $hppStatus;
-        $row->laba = $earnings === null || $hpp === null ? null : $earnings - $hpp;
+        $row->net_quantity = $projection->legacyNetQuantity;
+        $row->provisional_net_quantity = $projection->legacyNetQuantity;
+        $row->fulfilled_quantity = $projection->fulfilledQuantity;
+        $row->cancelled_quantity = $projection->cancelledQuantity;
+        $row->order_subtotal = $projection->orderSubtotal;
+        $row->admin_fee_percent = $this->percent($projection->platformFee, $projection->orderSubtotal);
+        $row->free_shipping_xtra_fee_percent = $this->percent($projection->freeShippingFee, $projection->orderSubtotal);
+        $row->promo_xtra_fee_percent = $this->percent($projection->promoFee, $projection->orderSubtotal);
+        $row->fee_subtotal = $projection->feeSubtotal;
+        $row->fee_subtotal_percent = $this->percent($projection->feeSubtotal, $projection->orderSubtotal);
+        $row->total_fee = $projection->totalFee;
+        $row->tax = $projection->tax;
+        $row->penghasilan = $projection->penghasilan;
+        $row->hpp = $projection->hpp;
+        $row->hpp_status = $projection->hppStatus;
+        $row->laba = $projection->laba;
+        $row->canonical_status = $projection->status;
+        $row->canonical_provenance = $projection->provenance;
 
         return $row;
     }
