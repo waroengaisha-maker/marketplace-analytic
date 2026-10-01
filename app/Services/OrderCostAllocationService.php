@@ -113,7 +113,7 @@ class OrderCostAllocationService
 
     protected function persistMissingCostAllocation(int $userId, string $orderLineIdentity, ?MasterProduct $product, ?MasterProductUnit $unit, ?MasterProductHpp $hppRecord, string $costStatus, ?float $quantityBaseUnit = 0, ?float $totalHpp = 0): OrderCostAllocation
     {
-        return DB::transaction(function () use ($userId, $orderLineIdentity, $product, $unit, $hppRecord, $costStatus): OrderCostAllocation {
+        return DB::transaction(function () use ($userId, $orderLineIdentity, $product, $unit, $hppRecord, $costStatus, $quantityBaseUnit, $totalHpp): OrderCostAllocation {
             return OrderCostAllocation::query()->updateOrCreate(
                 [
                     'user_id' => $userId,
