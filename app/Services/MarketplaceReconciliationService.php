@@ -715,11 +715,10 @@ class MarketplaceReconciliationService
             ->get();
 
         return $lines->map(function (object $row): array {
-            $costStatus = trim((string) ($row->cost_status ?? ''));
-            $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
-            $totalFee = (float) $row->admin + (float) $row->shipping + (float) $row->promo + (float) $row->processing;
-            $penghasilan = (float) $row->subtotal + (float) ($row->refund_amount ?? 0) + $totalFee + (float) $row->tax;
-            $hpp = $hppStatus === 'ok' ? (float) ($row->total_hpp ?? 0) : 0.0;
+            $projection = $this->canonicalFinancialProjection->projectLine($row, [
+                'cost_status' => $row->cost_status ?? null,
+                'total_hpp' => $row->total_hpp ?? null,
+            ]);
 
             return [
                 'order_number' => (string) $row->order_number,
@@ -730,17 +729,19 @@ class MarketplaceReconciliationService
                 'variation_name' => $row->variation_name,
                 'net_quantity' => (float) $row->net_quantity,
                 'discounted_price' => (float) round($row->discounted_price ?? 0, 2),
-                'order_subtotal' => (float) $row->subtotal,
-                'admin' => (float) $row->admin,
-                'shipping' => (float) $row->shipping,
-                'promo' => (float) $row->promo,
-                'processing' => (float) $row->processing,
-                'tax' => (float) $row->tax,
-                'total_fee' => $totalFee,
-                'penghasilan' => $penghasilan,
-                'hpp' => $hpp,
-                'hpp_status' => $hppStatus,
-                'laba' => $penghasilan - $hpp,
+                'order_subtotal' => $projection->orderSubtotal,
+                'admin' => $projection->platformFee,
+                'shipping' => $projection->freeShippingFee,
+                'promo' => $projection->promoFee,
+                'processing' => $projection->processingFee,
+                'tax' => $projection->tax,
+                'total_fee' => $projection->totalFee,
+                'penghasilan' => $projection->penghasilan,
+                'hpp' => $projection->hpp,
+                'hpp_status' => $projection->hppStatus,
+                'laba' => $projection->laba,
+                'canonical_status' => $projection->status,
+                'canonical_provenance' => $projection->provenance,
             ];
         })->all();
     }
