@@ -257,7 +257,7 @@ class OrderReportHppAllocationTest extends TestCase
         $this->assertSame(1, OrderCostAllocation::query()->forUser($user->id)->count());
         $this->assertSame('hpp_missing', $allocation->cost_status);
         $this->assertSame($product->id, $allocation->master_product_id);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_order_import_with_automatic_mapping_remains_unconfirmed_even_for_zero_hpp(): void
