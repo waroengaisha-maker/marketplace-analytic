@@ -704,12 +704,12 @@ class MarketplaceReconciliationService
                 (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
                 l.discounted_price,
                 COALESCE(l.refund_amount, 0) AS refund_amount,
-                (COALESCE(l.discounted_price, 0) * (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END)) AS subtotal,
-                (-ABS(COALESCE(l.platform_fee, 0))) AS admin,
-                (-ABS(COALESCE(l.free_shipping_xtra_fee, 0))) AS shipping,
-                (-ABS(COALESCE(l.promo_xtra_service_fee, 0))) AS promo,
-                (-ABS(COALESCE(l.order_processing_fee, 0))) AS processing,
-                (-ABS(COALESCE(l.pph22, 0))) AS tax,
+                (CASE WHEN l.discounted_price IS NULL OR l.quantity IS NULL THEN NULL ELSE l.discounted_price * (CASE WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) END) AS subtotal,
+                CASE WHEN l.platform_fee IS NULL THEN NULL ELSE (-ABS(l.platform_fee)) END AS admin,
+                CASE WHEN l.free_shipping_xtra_fee IS NULL THEN NULL ELSE (-ABS(l.free_shipping_xtra_fee)) END AS shipping,
+                CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (-ABS(l.promo_xtra_service_fee)) END AS promo,
+                CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (-ABS(l.order_processing_fee)) END AS processing,
+                CASE WHEN l.pph22 IS NULL THEN NULL ELSE (-ABS(l.pph22)) END AS tax,
                 l.cost_status,
                 l.total_hpp
             ')
