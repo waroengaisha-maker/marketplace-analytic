@@ -32,7 +32,7 @@ final class CanonicalFinancialProjectionService
         $hpp = $hppStatus === 'ok' && $hppValue !== null ? $this->number($hppValue) : null;
         $laba = $penghasilan === null || $hpp === null ? null : $penghasilan - $hpp;
         $legacyNet = $quantity === null ? null : max($quantity - ($returned ?? 0), 0);
-        $status = $this->status($subtotal, $totalFee, $tax, $hpp, $hppStatus);
+        $status = $this->status($subtotal, $totalFee, $tax, $hpp, $hppStatus, $feeProvenance, $this->taxProvenance($source, $tax));
         return new CanonicalFinancialProjection(
             $source, $allocationData, $subtotal, $platformFee, $shippingFee, $promoFee,
             $feeSubtotal, $processingFee, $totalFee, $tax, $refund, $penghasilan, $hpp,
@@ -106,9 +106,10 @@ final class CanonicalFinancialProjectionService
 
     private function number(mixed $value): ?float { return $value === null ? null : (float) $value; }
 
-    private function status(?float $subtotal, ?float $fee, ?float $tax, ?float $hpp, string $hppStatus): string
+    private function status(?float $subtotal, ?float $fee, ?float $tax, ?float $hpp, string $hppStatus, string $feeProvenance, string $taxProvenance): string
     {
         if ($subtotal === null || $fee === null || $tax === null) return 'unavailable';
+        if ($feeProvenance === 'estimated' || $taxProvenance === 'estimated') return 'provisional';
         if ($hpp !== null && $hppStatus === 'ok') return 'confirmed';
         return 'provisional';
     }
