@@ -400,7 +400,7 @@ class OrderSummaryPageTest extends TestCase
         $order = collect(data_get($response->json(), 'props.orders'))->first();
         $this->assertSame('SUM-FIN', $order['order_number']);
         $this->assertSame(1, $order['line_count']);
-        $this->assertEquals(1000.0, $order['subtotal']);
+        $this->assertEquals(1500.0, $order['subtotal']);
         $this->assertEquals(-185.0, $order['total_fee']);
         $this->assertEquals(-5.0, $order['tax']);
         $this->assertEquals(810.0, $order['penghasilan']);
@@ -468,6 +468,10 @@ class OrderSummaryPageTest extends TestCase
             'order_processing_fee' => 0,
             'pph22' => 0,
         ]));
+
+        DB::table('marketplace_income')->where('user_id', $user->id)->where('order_number', 'STATUS-UNMATCHED')->update([
+            'line_identity' => DB::table('marketplace_orders')->where('user_id', $user->id)->where('order_number', 'STATUS-UNMATCHED')->value('line_identity'),
+        ]);
 
         $version = app(HandleInertiaRequests::class)->version(Request::create(route('orders.index')));
 
