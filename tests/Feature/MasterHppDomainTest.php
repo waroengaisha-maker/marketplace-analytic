@@ -1038,7 +1038,7 @@ class MasterHppDomainTest extends TestCase
 
         $this->assertSame('mapping_missing', $allocation->cost_status);
         $this->assertNull($allocation->master_product_id);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_allocate_rejects_hpp_record_not_belonging_to_product_and_unit(): void
