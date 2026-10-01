@@ -1046,10 +1046,35 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $result = app(MarketplaceReconciliationService::class)->calculateFinancials($row);
 
+        $this->assertSame(175.0, $result->fee_subtotal);
+        $this->assertSame(185.0, $result->total_fee);
+        $this->assertSame(1190.0, $result->penghasilan);
+        $this->assertSame(0.0, $result->hpp);
+        $this->assertSame(810.0, $result->laba);
+    }
+
+    public function test_financial_columns_preserve_negative_source_fee_and_tax_signs(): void
+    {
+        $row = (object) [
+            'quantity' => 1,
+            'returned_quantity' => 0,
+            'discounted_price' => 1000,
+            'order_subtotal' => 1000,
+            'platform_fee' => -100,
+            'free_shipping_xtra_fee' => -50,
+            'promo_xtra_service_fee' => -25,
+            'order_processing_fee' => -10,
+            'pph22' => -5,
+            'cost_status' => 'ok',
+            'total_hpp' => 0,
+        ];
+
+        $result = app(MarketplaceReconciliationService::class)->calculateFinancials($row);
+
         $this->assertSame(-175.0, $result->fee_subtotal);
         $this->assertSame(-185.0, $result->total_fee);
+        $this->assertSame(-5.0, $result->tax);
         $this->assertSame(810.0, $result->penghasilan);
-        $this->assertSame(0.0, $result->hpp);
         $this->assertSame(810.0, $result->laba);
     }
 
