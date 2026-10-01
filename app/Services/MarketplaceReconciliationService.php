@@ -670,13 +670,7 @@ class MarketplaceReconciliationService
             ->orderBy('orders.item_index')
             ->get()
             ->map(function (object $row): object {
-                $row = $this->calculateFinancials($row);
-                $row->admin = -abs((float) ($row->platform_fee ?? 0));
-                $row->shipping = -abs((float) ($row->free_shipping_xtra_fee ?? 0));
-                $row->promo = -abs((float) ($row->promo_xtra_service_fee ?? 0));
-                $row->processing = -abs((float) ($row->order_processing_fee ?? 0));
-
-                return $row;
+                return $this->calculateFinancials($row);
             })
             ->values()
             ->all();
@@ -704,11 +698,10 @@ class MarketplaceReconciliationService
                 l.item_index,
                 l.quantity,
                 l.returned_quantity,
-                COALESCE(l.refund_amount, 0) AS refund_amount,
-                (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
+                l.refund_amount AS refund_amount,
+                (CASE WHEN l.quantity IS NULL THEN NULL WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
                 l.discounted_price,
-                COALESCE(l.refund_amount, 0) AS refund_amount,
-                (CASE WHEN l.discounted_price IS NULL OR l.quantity IS NULL THEN NULL ELSE l.discounted_price * (CASE WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) END) AS subtotal,
+                (CASE WHEN l.discounted_price IS NULL OR l.quantity IS NULL THEN NULL ELSE l.discounted_price * l.quantity END) AS subtotal,
                 CASE WHEN l.platform_fee IS NULL THEN NULL ELSE (l.platform_fee) END AS admin,
                 CASE WHEN l.free_shipping_xtra_fee IS NULL THEN NULL ELSE (l.free_shipping_xtra_fee) END AS shipping,
                 CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (l.promo_xtra_service_fee) END AS promo,
