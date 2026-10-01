@@ -64,7 +64,8 @@ class MarketplaceReconciliationService
         $processing = '(-ABS(COALESCE(rows.order_processing_fee, 0)))';
         $tax = '(-ABS(COALESCE(rows.pph22, 0)))';
         $totalFee = "({$admin} + {$shipping} + {$promo} + {$processing})";
-        $earnings = "({$subtotal} + {$totalFee} + {$tax})";
+        $refund = 'COALESCE(rows.refund_amount, 0)';
+        $earnings = "({$subtotal} + {$refund} + {$totalFee} + {$tax})";
         $hpp = "(CASE WHEN rows.cost_status = 'ok' THEN COALESCE(rows.total_hpp, 0) ELSE 0 END)";
         $sortFields = [
             'business_status' => DB::raw('rows.business_status'),
@@ -234,6 +235,7 @@ class MarketplaceReconciliationService
                 l.returned_quantity,
                 l.fulfilled_quantity,
                 l.cancelled_quantity,
+                COALESCE(l.refund_amount, 0) AS refund_amount,
                 (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
                 COALESCE(l.order_subtotal, COALESCE(l.discounted_price, 0) * COALESCE(l.quantity, 0)) AS subtotal,
                 (-ABS(COALESCE(l.platform_fee, 0))) AS admin,
@@ -261,9 +263,9 @@ class MarketplaceReconciliationService
                 COALESCE(SUM(g.subtotal), 0) AS subtotal,
                 COALESCE(SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing), 0) AS total_fee,
                 COALESCE(SUM(g.tax), 0) AS tax,
-                COALESCE(SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax), 0) AS penghasilan,
+                COALESCE(SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax), 0) AS penghasilan,
                 COALESCE(SUM(g.hpp), 0) AS hpp,
-                COALESCE((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp), 0) AS laba
+                COALESCE((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp), 0) AS laba
             ')
             ->first();
 
@@ -316,8 +318,8 @@ class MarketplaceReconciliationService
                     ELSE 6
                 END) AS status_rank,
                 (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
-                (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
-                ((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+                (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
+                ((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
             ")
             ->groupBy('g.order_number');
 
@@ -381,8 +383,8 @@ class MarketplaceReconciliationService
                 SUM(g.hpp) AS hpp,
                 GROUP_CONCAT(DISTINCT g.status SEPARATOR ',') AS statuses,
                 (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
-                (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
-                ((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+                (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
+                ((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
             ")
             ->groupBy('g.order_number')
             ->orderBy('order_created_at', 'desc')
@@ -410,9 +412,9 @@ class MarketplaceReconciliationService
                 COALESCE(SUM(g.subtotal), 0) AS subtotal,
                 COALESCE(SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing), 0) AS total_fee,
                 COALESCE(SUM(g.tax), 0) AS tax,
-                COALESCE(SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax), 0) AS penghasilan,
+                COALESCE(SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax), 0) AS penghasilan,
                 COALESCE(SUM(g.hpp), 0) AS hpp,
-                COALESCE((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp), 0) AS laba
+                COALESCE((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp), 0) AS laba
             ')
             ->first();
 
@@ -455,9 +457,9 @@ class MarketplaceReconciliationService
                 (SUM(g.subtotal) - SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END)) AS non_revenue_subtotal,
                 (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
                 SUM(g.tax) AS tax,
-                (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
+                (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
                 SUM(g.hpp) AS hpp,
-                ((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+                ((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
             ")
             ->groupBy(DB::raw($buyerExpression));
 
@@ -515,9 +517,9 @@ class MarketplaceReconciliationService
                 (SUM(g.subtotal) - SUM(CASE WHEN {$revenueStatus} THEN g.subtotal ELSE 0 END)) AS non_revenue_subtotal,
                 (SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing)) AS total_fee,
                 SUM(g.tax) AS tax,
-                (SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
+                (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) AS penghasilan,
                 SUM(g.hpp) AS hpp,
-                ((SUM(g.subtotal) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
+                ((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp)) AS laba
             ")
             ->groupBy(DB::raw($buyerExpression))
             ->orderBy(DB::raw($buyerExpression));
@@ -550,9 +552,9 @@ class MarketplaceReconciliationService
                 g.subtotal,
                 (g.admin + g.shipping + g.promo + g.processing) AS total_fee,
                 g.tax,
-                (g.subtotal + g.admin + g.shipping + g.promo + g.processing + g.tax) AS penghasilan,
+                (g.subtotal + g.refund_amount + g.admin + g.shipping + g.promo + g.processing + g.tax) AS penghasilan,
                 g.hpp,
-                ((g.subtotal + g.admin + g.shipping + g.promo + g.processing + g.tax) - g.hpp) AS laba
+                ((g.subtotal + g.refund_amount + g.admin + g.shipping + g.promo + g.processing + g.tax) - g.hpp) AS laba
             ');
 
         $query->where(function (Builder $query) use ($buyer): void {
@@ -698,8 +700,10 @@ class MarketplaceReconciliationService
                 l.item_index,
                 l.quantity,
                 l.returned_quantity,
+                COALESCE(l.refund_amount, 0) AS refund_amount,
                 (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
                 l.discounted_price,
+                COALESCE(l.refund_amount, 0) AS refund_amount,
                 (COALESCE(l.discounted_price, 0) * (CASE WHEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) > 0 THEN COALESCE(l.quantity, 0) - COALESCE(l.returned_quantity, 0) ELSE 0 END)) AS subtotal,
                 (-ABS(COALESCE(l.platform_fee, 0))) AS admin,
                 (-ABS(COALESCE(l.free_shipping_xtra_fee, 0))) AS shipping,
@@ -717,7 +721,7 @@ class MarketplaceReconciliationService
             $costStatus = trim((string) ($row->cost_status ?? ''));
             $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
             $totalFee = (float) $row->admin + (float) $row->shipping + (float) $row->promo + (float) $row->processing;
-            $penghasilan = (float) $row->subtotal + $totalFee + (float) $row->tax;
+            $penghasilan = (float) $row->subtotal + (float) ($row->refund_amount ?? 0) + $totalFee + (float) $row->tax;
             $hpp = $hppStatus === 'ok' ? (float) ($row->total_hpp ?? 0) : 0.0;
 
             return [
@@ -757,7 +761,7 @@ class MarketplaceReconciliationService
         $isUnmatched = "rows.business_status = 'Unmatched'";
         $sales = $this->salesExpression('rows');
         $netSales = $this->netSalesExpression('rows');
-        $profit = "COALESCE(rows.total_income, {$sales}) + COALESCE(rows.platform_fee, 0) + COALESCE(rows.order_processing_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.pph22, 0)";
+        $profit = "{$netSales} + COALESCE(rows.platform_fee, 0) + COALESCE(rows.order_processing_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.pph22, 0)";
         $aggregate = DB::query()
             ->fromSub($orders, 'rows')
             ->selectRaw("
@@ -832,7 +836,7 @@ class MarketplaceReconciliationService
 
     private function netSalesExpression(string $tableAlias): string
     {
-        return "COALESCE({$tableAlias}.discounted_price, 0) * CASE WHEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) > 0 THEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) ELSE 0 END";
+        return "(COALESCE({$tableAlias}.discounted_price, 0) * COALESCE({$tableAlias}.quantity, 0)) + COALESCE({$tableAlias}.refund_amount, 0)";
     }
 
     /** @return array{min: ?string, max: ?string} */
@@ -1131,7 +1135,8 @@ class MarketplaceReconciliationService
             : $discountedPrice * $quantity;
         $feeSubtotal = $admin + $shipping + $promo;
         $totalFee = $feeSubtotal + $processing;
-        $earnings = $subtotal + ($totalFee + $tax);
+        $refund = (float) ($row->refund_amount ?? 0);
+        $earnings = $subtotal + $refund + ($totalFee + $tax);
         $costStatus = trim((string) ($row->cost_status ?? ''));
         $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
         $hpp = $hppStatus === 'ok' ? (float) ($row->total_hpp ?? 0) : 0.0;

@@ -1385,6 +1385,98 @@ class MarketplaceReconciliationServiceTest extends TestCase
         }
     }
 
+    public function test_refund_with_zero_returned_quantity_is_preserved_in_financial_projection(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('r', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => '2608125PE48NT9',
+            'product_name' => 'Refunded Product',
+            'product_key' => $productKey,
+            'item_index' => 4025513973,
+            'discounted_price' => 38000,
+            'unit_price' => 38000,
+            'quantity' => 1,
+            'returned_quantity' => 0,
+        ]));
+
+        DB::table('marketplace_income')->insert($this->income($user->id, [
+            'order_number' => '2608125PE48NT9',
+            'product_name' => 'Refunded Product',
+            'product_key' => $productKey,
+            'item_index' => 4025513973,
+            'product_price' => 38000,
+            'quantity' => 1,
+            'total_income' => 0,
+            'refund_to_buyer' => -38000,
+        ]));
+
+        $service = app(MarketplaceReconciliationService::class);
+        $row = $service->reconciliationRows($user->id)[0];
+        $dashboard = $service->dashboardStats($user->id);
+        $totals = $service->orderSummariesTotals($user->id, null, null, []);
+
+        $this->assertSame(0, (int) $row->returned_quantity);
+        $this->assertSame(-38000.0, (float) $row->refund_amount);
+        $this->assertSame(0.0, (float) $row->penghasilan);
+        $this->assertSame(0.0, (float) $row->laba);
+        $this->assertSame(0.0, (float) $dashboard['net_sales']);
+        $this->assertSame(0.0, (float) $totals['penghasilan']);
+    }
+
+    public function test_duplicate_refund_summary_and_detail_rows_are_not_double_counted(): void
+    {
+        $user = User::factory()->create();
+        $productKey = str_repeat('d', 64);
+
+        DB::table('marketplace_orders')->insert($this->order($user->id, [
+            'order_number' => 'ORDER-REFUND-DUPLICATE',
+            'product_key' => $productKey,
+            'item_index' => 777,
+            'discounted_price' => 38000,
+            'unit_price' => 38000,
+            'quantity' => 1,
+            'returned_quantity' => 0,
+        ]));
+
+        DB::table('marketplace_income')->insert([
+            $this->income($user->id, [
+                'order_number' => 'ORDER-REFUND-DUPLICATE',
+                'product_key' => $productKey,
+                'item_index' => 777,
+                'product_price' => 38000,
+                'quantity' => 1,
+                'total_income' => 0,
+                'refund_to_buyer' => -38000,
+                'row_type' => 'Sku',
+                'source_row' => 10,
+                'line_identity' => str_repeat('a', 64),
+            ]),
+            $this->income($user->id, [
+                'order_number' => 'ORDER-REFUND-DUPLICATE',
+                'product_key' => $productKey,
+                'item_index' => 777,
+                'product_price' => 38000,
+                'quantity' => 1,
+                'total_income' => 0,
+                'refund_to_buyer' => -38000,
+                'row_type' => 'Detail',
+                'source_row' => 11,
+                'line_identity' => str_repeat('b', 64),
+            ]),
+        ]);
+
+        $rows = app(MarketplaceReconciliationService::class)
+            ->joinedQuery($user->id, true)
+            ->where('orders.order_number', 'ORDER-REFUND-DUPLICATE')
+            ->get();
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(-38000.0, (float) $rows[0]->refund_amount);
+        $this->assertSame('Refunded', $rows[0]->business_status);
+    }
+
     public function test_reconciliation_keeps_fulfillment_unknown_and_does_not_use_returned_quantity_as_sold_quantity(): void
     {
         $user = User::factory()->create();
