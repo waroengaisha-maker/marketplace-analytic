@@ -1003,7 +1003,7 @@ class MarketplaceReconciliationService
             'orders.quantity',
             'orders.returned_quantity',
             DB::raw('CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END AS net_quantity'),
-            DB::raw('(COALESCE(orders.discounted_price, 0) * CASE WHEN orders.quantity - COALESCE(orders.returned_quantity, 0) > 0 THEN orders.quantity - COALESCE(orders.returned_quantity, 0) ELSE 0 END) AS order_subtotal'),
+            DB::raw('(COALESCE(orders.discounted_price, 0) * COALESCE(orders.quantity, 0)) AS order_subtotal'),
             'orders.total_payment',
             'orders.order_created_at',
             'orders.buyer_username',
