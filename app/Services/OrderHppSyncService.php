@@ -18,7 +18,7 @@ class OrderHppSyncService
      * Re-runs HPP allocation for every existing order line of a user so the
      * reconciliation page reflects the current master mapping and HPP data.
      *
-     * @return array{ok: bool, total: int, ok_count: int, mapping_missing: int, mapping_ambiguous: int, hpp_missing: int, failed: int}
+     * @return array{ok: bool, total: int, ok_count: int, mapping_missing: int, mapping_ambiguous: int, hpp_missing: int, mapping_unconfirmed: int, failed: int}
      */
     public function sync(int $userId): array
     {
@@ -30,6 +30,7 @@ class OrderHppSyncService
             'mapping_ambiguous' => 0,
             'hpp_missing' => 0,
             'quantity_unavailable' => 0,
+            'mapping_unconfirmed' => 0,
             'failed' => 0,
         ];
 
@@ -97,6 +98,7 @@ class OrderHppSyncService
             $allocation->cost_status === 'mapping_ambiguous' => 'mapping_ambiguous',
             $allocation->cost_status === 'hpp_missing' => 'hpp_missing',
             $allocation->cost_status === 'quantity_unavailable' => 'quantity_unavailable',
+            $allocation->cost_status === 'mapping_unconfirmed' => 'mapping_unconfirmed',
             $allocation->cost_status === 'ok' => 'ok_count',
             default => 'failed',
         };
