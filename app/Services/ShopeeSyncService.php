@@ -21,6 +21,8 @@ class ShopeeSyncService
 {
     private const MAX_RETRIES = 3;
 
+    private const GENERIC_API_ERROR = 'Shopee API request failed. Please try again later.';
+
     public function __construct(
         private readonly ShopeeApiClient $client,
         private readonly ShopeeOAuthService $oauth,
@@ -78,7 +80,7 @@ class ShopeeSyncService
                 $envelope = $this->withBackoff(fn (): array => $this->client->getOrderList($params));
             } catch (ShopeeApiException $exception) {
                 $failure = [
-                    'error' => $exception->getMessage(),
+                    'error' => $this->safeError($exception),
                     'rate_limited' => $exception->isRateLimited(),
                 ];
                 break;
@@ -168,7 +170,7 @@ class ShopeeSyncService
                 $envelope = $this->withBackoff(fn (): array => $this->client->getIncomeDetail($params));
             } catch (ShopeeApiException $exception) {
                 $failure = [
-                    'error' => $exception->getMessage(),
+                    'error' => $this->safeError($exception),
                     'rate_limited' => $exception->isRateLimited(),
                 ];
                 break;
@@ -287,7 +289,7 @@ class ShopeeSyncService
             'capped' => $serialSList->count() > $limit,
             'error' => $errors === [] ? null : 'Escrow sync failed for '.count($errors).' order(s).',
             'rate_limited' => $rateLimited,
-            'errors' => $errors,
+            'errors' => config('app.debug') ? $errors : [],
             'normalized' => collect($merged)
                 ->flatMap(fn (array $stagedRow): array => $this->normalizer->normalizeOrderLines(
                     (array) data_get($stagedRow, 'response.order_income', [])
@@ -407,6 +409,13 @@ class ShopeeSyncService
     /**
      * @param  array<int, mixed>|null  $failure
      */
+    private function safeError(ShopeeApiException $exception): string
+    {
+        return config('app.debug')
+            ? $exception->getMessage()
+            : self::GENERIC_API_ERROR;
+    }
+
     private function markOutcome(ShopeeApiConnection $connection, ?array $failure): void
     {
         $connection->last_sync_at = now();
