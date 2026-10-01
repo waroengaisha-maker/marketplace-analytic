@@ -453,7 +453,7 @@ class OrderReportHppAllocationTest extends TestCase
         $this->assertSame(1, OrderCostAllocation::query()->forUser($user->id)->count());
         $this->assertSame('mapping_missing', $allocation->cost_status);
         $this->assertNull($allocation->master_product_id);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_variant_less_manual_override_does_not_hijack_existing_variant_mapping(): void
