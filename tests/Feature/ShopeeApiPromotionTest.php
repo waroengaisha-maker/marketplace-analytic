@@ -254,7 +254,7 @@ class ShopeeApiPromotionTest extends TestCase
         $this->assertNotEmpty($order->line_identity);
 
         $allocation = OrderCostAllocation::query()->where('user_id', $user->id)->first();
-        $this->assertSame('ok', $allocation->cost_status);
+        $this->assertSame('mapping_unconfirmed', $allocation->cost_status);
         $this->assertSame(20000.0, (float) $allocation->total_hpp);
         $this->assertSame($order->line_identity, $allocation->order_line_identity);
 
