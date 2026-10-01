@@ -239,7 +239,7 @@ class MarketplaceReconciliationService
                 l.returned_quantity,
                 l.fulfilled_quantity,
                 l.cancelled_quantity,
-                l.refund_amount AS refund_amount,
+                COALESCE(l.refund_amount, 0) AS refund_amount,
                 (CASE WHEN l.quantity IS NULL THEN NULL WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
                 CASE WHEN l.order_subtotal IS NOT NULL THEN l.order_subtotal WHEN l.discounted_price IS NOT NULL AND l.quantity IS NOT NULL THEN l.discounted_price * l.quantity ELSE NULL END AS subtotal,
                 CASE WHEN l.platform_fee IS NULL THEN NULL ELSE (l.platform_fee) END AS admin,
