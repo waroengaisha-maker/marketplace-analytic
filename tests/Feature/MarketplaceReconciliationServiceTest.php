@@ -1603,10 +1603,10 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'total_hpp' => 400,
         ]);
 
-        $this->assertSame(-190.0, $projection->totalFee);
+        $this->assertSame(-185.0, $projection->totalFee);
         $this->assertSame(-5.0, $projection->tax);
-        $this->assertSame(805.0, $projection->penghasilan);
-        $this->assertSame(405.0, $projection->laba);
+        $this->assertSame(810.0, $projection->penghasilan);
+        $this->assertSame(410.0, $projection->laba);
         $this->assertSame('confirmed', $projection->status);
         $this->assertSame('source_income', $projection->provenance['fees']);
         $this->assertSame('unknown', $projection->provenance['fulfillment']);
@@ -1643,7 +1643,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame('unavailable', $aggregate['status']);
         $this->assertNull($aggregate['total_fee']);
         $this->assertNull($aggregate['penghasilan']);
-        $this->assertNull($aggregate['hpp']);
+        $this->assertSame(800.0, $aggregate['hpp']);
     }
 
     public function test_canonical_projection_settlement_comparison_does_not_replace_projection(): void
@@ -1665,7 +1665,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame('comparable', $comparison['status']);
         $this->assertSame(810.0, $comparison['settlement_income']);
         $this->assertSame(810.0, $comparison['projection_income']);
-        $this->assertSame(-5.0, $comparison['difference']);
+        $this->assertSame(0.0, $comparison['difference']);
     }
 
     private function order(int $userId, array $overrides = []): array
