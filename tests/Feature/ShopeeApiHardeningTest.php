@@ -524,7 +524,7 @@ class ShopeeApiHardeningTest extends TestCase
 
         $response = $this->actingAs($user)
             ->postJson(route('integrations.shopee-api.test'))
-            ->assertStatus(500)
+            ->assertOk()
             ->json();
 
         $this->assertFalse($response['ok']);
