@@ -754,7 +754,17 @@ class MarketplaceReconciliationService
             ->get();
 
         return $lines->map(function (object $row): array {
-            $projection = $this->canonicalFinancialProjection->projectLine($row, [
+            $projection = $this->canonicalFinancialProjection->projectLine([
+                'order_subtotal' => $row->subtotal ?? null,
+                'discounted_price' => $row->discounted_price ?? null,
+                'quantity' => $row->quantity ?? null,
+                'platform_fee' => $row->admin ?? null,
+                'free_shipping_xtra_fee' => $row->shipping ?? null,
+                'promo_xtra_service_fee' => $row->promo ?? null,
+                'order_processing_fee' => $row->processing ?? null,
+                'pph22' => $row->tax ?? null,
+                'refund_amount' => $row->refund_amount ?? null,
+            ], [
                 'cost_status' => $row->cost_status ?? null,
                 'total_hpp' => $row->total_hpp ?? null,
             ]);
