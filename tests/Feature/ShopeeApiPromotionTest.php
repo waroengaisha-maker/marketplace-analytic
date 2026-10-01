@@ -576,9 +576,9 @@ class ShopeeApiPromotionTest extends TestCase
         $this->assertSame(2, (int) $order->returned_quantity);
 
         $allocation = OrderCostAllocation::query()->where('user_id', $user->id)->first();
-        $this->assertSame('ok', $allocation->cost_status);
-        $this->assertSame(3.0, (float) $allocation->quantity_base_unit);
-        $this->assertSame(30000.0, (float) $allocation->total_hpp);
+        $this->assertSame('mapping_unconfirmed', $allocation->cost_status);
+        $this->assertNull($allocation->quantity_base_unit);
+        $this->assertNull($allocation->total_hpp);
 
         $income = DB::table('marketplace_income')->where('order_number', $orderSn)->first();
         $this->assertSame('Refund', $income->row_type);
