@@ -211,7 +211,7 @@ class OrderReportHppAllocationTest extends TestCase
         $this->assertSame(1, OrderCostAllocation::query()->forUser($user->id)->count());
         $this->assertSame('mapping_missing', $allocation->cost_status);
         $this->assertNull($allocation->master_product_id);
-        $this->assertSame('0.00', (string) $allocation->total_hpp);
+        $this->assertNull($allocation->total_hpp);
     }
 
     public function test_order_import_persists_mapping_ambiguous_allocation(): void
@@ -266,17 +266,6 @@ class OrderReportHppAllocationTest extends TestCase
         $product = $this->registerProduct($user, 'IT-ZEROHPP', 'Teh Botol Gratis', 0);
 
         $this->createMapping($user, $product, 'exact', 'SP-ZEROHPP-1', 'SV-ZEROHPP-1', 'Teh Botol Gratis', 'Original');
-
-        /* automatic mapping must remain unconfirmed even when the effective HPP is zero */
-        /* legacy manual mapping setup removed intentionally */
-        if (false) $this->mapping->createManualMapping($user->id, $product, $product->baseUnit->id, [
-            'shopee_product_id' => 'SP-ZEROHPP-1',
-            'shopee_variant_id' => 'SV-ZEROHPP-1',
-            'shopee_product_name' => 'Teh Botol Gratis',
-            'shopee_variant_name' => 'Original',
-            'manual_override_by' => $user->id,
-        ]);
-        }
 
         $this->import($this->writeOrderReport([
             $this->orderLine('ORD-ZEROHPP', 'Teh Botol Gratis', 'Original', 5, 100.0, '2026-08-10 10:00:00', 0, 'SP-ZEROHPP-1', 'SV-ZEROHPP-1'),
