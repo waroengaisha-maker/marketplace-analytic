@@ -831,7 +831,7 @@ class MarketplaceReconciliationService
 
     private function salesExpression(string $tableAlias): string
     {
-        return "COALESCE({$tableAlias}.discounted_price, 0) * COALESCE({$tableAlias}.quantity, 0)";
+        return "CASE WHEN {$tableAlias}.discounted_price IS NULL OR {$tableAlias}.quantity IS NULL THEN NULL ELSE {$tableAlias}.discounted_price * {$tableAlias}.quantity END";
     }
 
     private function netSalesExpression(string $tableAlias): string
