@@ -111,6 +111,46 @@ class OrderHppReallocationTest extends TestCase
         $this->assertSame(20000.0, (float) $allocation->total_hpp);
     }
 
+    public function test_reallocate_keeps_automatic_mapping_unconfirmed(): void
+    {
+        $user = $this->activeUser();
+        $product = $this->syncTemplate($user);
+        $unit = $product->units()->where('unit_code', 'PCS')->firstOrFail();
+
+        ShopeeProductMapping::query()->create([
+            'user_id' => $user->id,
+            'master_product_id' => $product->id,
+            'master_unit_id' => $unit->id,
+            'shopee_product_id' => 'SKU1',
+            'shopee_variant_id' => null,
+            'shopee_product_name' => 'Produk Contoh',
+            'shopee_variant_name' => null,
+            'normalized_shopee_name' => 'produk contoh',
+            'match_method' => 'exact',
+            'match_confidence' => 1.00,
+            'is_active' => true,
+            'ambiguous' => false,
+        ]);
+
+        $this->insertOrderLine($user);
+
+        $this->actingAs($user)->postJson(route('products.hpp-mapping.reallocate'))
+            ->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'total' => 1,
+                'ok_count' => 0,
+                'mapping_unconfirmed' => 1,
+                'failed' => 0,
+            ]);
+
+        $allocation = OrderCostAllocation::query()->where('user_id', $user->id)->firstOrFail();
+        $this->assertSame('mapping_unconfirmed', $allocation->cost_status);
+        $this->assertNull($allocation->effective_hpp_record_id);
+        $this->assertNull($allocation->quantity_base_unit);
+        $this->assertNull($allocation->total_hpp);
+    }
+
     public function test_reallocate_reports_missing_mapping(): void
     {
         $user = $this->activeUser();
