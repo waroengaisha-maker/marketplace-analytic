@@ -4,6 +4,10 @@ namespace App\Services;
 
 final class CanonicalFinancialProjectionService
 {
+    /**
+     * Single financial projection boundary used by migrated consumers.
+     * Legacy response fields remain adapters until semantic validation is complete.
+     */
     public function projectLine(object|array $sourceFields, object|array|null $allocation = null): CanonicalFinancialProjection
     {
         $source = is_object($sourceFields) ? get_object_vars($sourceFields) : $sourceFields;
