@@ -140,7 +140,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(2200.0, data_get($response->json(), 'props.summaries.subtotal'));
         $this->assertNull(data_get($response->json(), 'props.summaries.total_fee'));
         $this->assertNull(data_get($response->json(), 'props.summaries.tax'));
-        $this->assertNull(data_get($response->json(), 'props.summaries.penghasilan'));
+        $this->assertEquals(300.0, data_get($response->json(), 'props.summaries.penghasilan'));
         $this->assertNull(data_get($response->json(), 'props.summaries.hpp'));
         $this->assertNull(data_get($response->json(), 'props.summaries.laba'));
 
