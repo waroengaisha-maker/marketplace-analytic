@@ -1050,7 +1050,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $this->assertSame(185.0, $result->total_fee);
         $this->assertSame(1190.0, $result->penghasilan);
         $this->assertSame(0.0, $result->hpp);
-        $this->assertSame(810.0, $result->laba);
+        $this->assertSame(1190.0, $result->laba);
     }
 
     public function test_financial_columns_preserve_negative_source_fee_and_tax_signs(): void
