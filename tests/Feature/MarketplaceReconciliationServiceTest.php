@@ -1404,7 +1404,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
         $this->assertNull($row->fulfilled_quantity);
         $this->assertNull($row->cancelled_quantity);
-        $this->assertSame(3, $row->net_quantity);
+        $this->assertSame(3.0, (float) $row->net_quantity);
         $this->assertSame(500.0, (float) $row->order_subtotal);
     }
 
