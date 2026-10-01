@@ -409,23 +409,23 @@ class MarketplaceReconciliationService
             ->fromSub($lines, 'g')
             ->selectRaw('
                 COUNT(DISTINCT g.order_number) AS order_count,
-                COALESCE(SUM(g.subtotal), 0) AS subtotal,
-                COALESCE(SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing), 0) AS total_fee,
-                COALESCE(SUM(g.tax), 0) AS tax,
-                COALESCE(SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax), 0) AS penghasilan,
-                COALESCE(SUM(g.hpp), 0) AS hpp,
-                COALESCE((SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp), 0) AS laba
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) END AS subtotal,
+                CASE WHEN COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) THEN NULL ELSE SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) END AS total_fee,
+                CASE WHEN COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.tax) END AS tax,
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax) END AS penghasilan,
+                CASE WHEN COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE SUM(g.hpp) END AS hpp,
+                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) OR COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp) END AS laba
             ')
             ->first();
 
         return [
             'order_count' => (int) ($totals->order_count ?? 0),
-            'subtotal' => (float) ($totals->subtotal ?? 0),
-            'total_fee' => (float) ($totals->total_fee ?? 0),
-            'tax' => (float) ($totals->tax ?? 0),
-            'penghasilan' => (float) ($totals->penghasilan ?? 0),
-            'hpp' => (float) ($totals->hpp ?? 0),
-            'laba' => (float) ($totals->laba ?? 0),
+            'subtotal' => $totals->subtotal === null ? null : (float) $totals->subtotal,
+            'total_fee' => $totals->total_fee === null ? null : (float) $totals->total_fee,
+            'tax' => $totals->tax === null ? null : (float) $totals->tax,
+            'penghasilan' => $totals->penghasilan === null ? null : (float) $totals->penghasilan,
+            'hpp' => $totals->hpp === null ? null : (float) $totals->hpp,
+            'laba' => $totals->laba === null ? null : (float) $totals->laba,
         ];
     }
 
