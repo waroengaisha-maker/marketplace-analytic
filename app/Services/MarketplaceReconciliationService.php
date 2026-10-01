@@ -668,17 +668,17 @@ class MarketplaceReconciliationService
             'line_count' => (int) $row->line_count,
             'quantity' => (float) ($row->quantity ?? 0),
             'net_quantity' => (float) $row->net_quantity,
-            'discounted_price' => (float) round((float) ($row->discounted_price ?? 0), 2),
-            'subtotal' => (float) $row->subtotal,
-            'admin' => (float) $row->admin,
-            'shipping' => (float) $row->shipping,
-            'promo' => (float) $row->promo,
-            'processing' => (float) $row->processing,
-            'tax' => (float) $row->tax,
-            'total_fee' => (float) $row->total_fee,
-            'penghasilan' => (float) $row->penghasilan,
-            'hpp' => (float) $row->hpp,
-            'laba' => (float) $row->laba,
+            'discounted_price' => $row->discounted_price === null ? null : (float) round((float) $row->discounted_price, 2),
+            'subtotal' => $row->subtotal === null ? null : (float) $row->subtotal,
+            'admin' => $row->admin === null ? null : (float) $row->admin,
+            'shipping' => $row->shipping === null ? null : (float) $row->shipping,
+            'promo' => $row->promo === null ? null : (float) $row->promo,
+            'processing' => $row->processing === null ? null : (float) $row->processing,
+            'tax' => $row->tax === null ? null : (float) $row->tax,
+            'total_fee' => $row->total_fee === null ? null : (float) $row->total_fee,
+            'penghasilan' => $row->penghasilan === null ? null : (float) $row->penghasilan,
+            'hpp' => $row->hpp === null ? null : (float) $row->hpp,
+            'laba' => $row->laba === null ? null : (float) $row->laba,
         ];
     }
 
@@ -877,11 +877,13 @@ class MarketplaceReconciliationService
             if ($isCancelled && $sales !== null) $metrics['cancelled_sales'] += $sales;
 
             $status = $row->cost_status;
-            if ($status === 'ok') $counts['hpp_ok_count']++;
-            elseif ($status === 'mapping_missing') $counts['hpp_mapping_missing_count']++;
-            elseif ($status === 'mapping_ambiguous') $counts['hpp_mapping_ambiguous_count']++;
-            elseif ($status === 'hpp_missing') $counts['hpp_hpp_missing_count']++;
-            elseif ($status === null || trim((string) $status) === '') $counts['hpp_no_allocation_count']++;
+            if (! $isCancelled) {
+                if ($status === 'ok') $counts['hpp_ok_count']++;
+                elseif ($status === 'mapping_missing') $counts['hpp_mapping_missing_count']++;
+                elseif ($status === 'mapping_ambiguous') $counts['hpp_mapping_ambiguous_count']++;
+                elseif ($status === 'hpp_missing') $counts['hpp_hpp_missing_count']++;
+                elseif ($status === null || trim((string) $status) === '') $counts['hpp_no_allocation_count']++;
+            }
             if ($isInvalid) $counts['valid_without_tracking']++;
             if ($isCancelled) $counts['cancelled_order_count']++;
             if (!$isCancelled && $hasTracking) $netOrders[$row->order_number] = true;
@@ -1238,6 +1240,11 @@ class MarketplaceReconciliationService
         $row->fulfilled_quantity = $projection->fulfilledQuantity;
         $row->cancelled_quantity = $projection->cancelledQuantity;
         $row->order_subtotal = $projection->orderSubtotal;
+        $row->admin = $projection->platformFee;
+        $row->shipping = $projection->freeShippingFee;
+        $row->promo = $projection->promoFee;
+        $row->processing = $projection->processingFee;
+        $row->tax = $projection->tax;
         $row->admin_fee_percent = $this->percent($projection->platformFee, $projection->orderSubtotal);
         $row->free_shipping_xtra_fee_percent = $this->percent($projection->freeShippingFee, $projection->orderSubtotal);
         $row->promo_xtra_fee_percent = $this->percent($projection->promoFee, $projection->orderSubtotal);
