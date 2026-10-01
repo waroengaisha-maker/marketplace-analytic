@@ -766,82 +766,139 @@ class MarketplaceReconciliationService
 
     public function dashboardStats(int $userId, ?string $from = null, ?string $to = null): array
     {
-        $orders = $this->joinedQuery($userId, true)
+        $rows = $this->joinedQuery($userId, true)
             ->when($from, fn (Builder $query) => $query->where('orders.order_created_at', '>=', CarbonImmutable::parse($from)->startOfDay()))
-            ->when($to, fn (Builder $query) => $query->where('orders.order_created_at', '<', CarbonImmutable::parse($to)->addDay()->startOfDay()));
+            ->when($to, fn (Builder $query) => $query->where('orders.order_created_at', '<', CarbonImmutable::parse($to)->addDay()->startOfDay()))
+            ->get();
 
-        $hasTracking = "(rows.tracking_number IS NOT NULL AND TRIM(rows.tracking_number) <> '')";
-        $isCancelled = "rows.business_status = 'Cancelled'";
-        $isInvalid = "rows.business_status = 'Invalid'";
-        $isSettled = "rows.business_status = 'Settled'";
-        $isUnmatched = "rows.business_status = 'Unmatched'";
-        $sales = $this->salesExpression('rows');
-        $netSales = $this->netSalesExpression('rows');
-        $profit = "CASE WHEN {$netSales} IS NULL OR rows.platform_fee IS NULL OR rows.order_processing_fee IS NULL OR rows.free_shipping_xtra_fee IS NULL OR rows.promo_xtra_service_fee IS NULL OR rows.pph22 IS NULL THEN NULL ELSE {$netSales} + rows.platform_fee + rows.order_processing_fee + rows.free_shipping_xtra_fee + rows.promo_xtra_service_fee + rows.pph22 END";
-        $aggregate = DB::query()
-            ->fromSub($orders, 'rows')
-            ->selectRaw("
-                COALESCE(SUM({$sales}), 0) AS gross_sales,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN {$netSales} ELSE 0 END), 0) AS net_sales,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN COALESCE(rows.platform_fee, 0) + COALESCE(rows.free_shipping_xtra_fee, 0) + COALESCE(rows.promo_xtra_service_fee, 0) + COALESCE(rows.order_processing_fee, 0) ELSE 0 END), 0) AS total_fee,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN COALESCE(rows.pph22, 0) ELSE 0 END), 0) AS total_tax,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'ok' THEN rows.total_hpp ELSE 0 END), 0) AS total_hpp,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'ok' THEN 1 ELSE 0 END), 0) AS hpp_ok_count,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'mapping_missing' THEN 1 ELSE 0 END), 0) AS hpp_mapping_missing_count,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'mapping_ambiguous' THEN 1 ELSE 0 END), 0) AS hpp_mapping_ambiguous_count,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status = 'hpp_missing' THEN 1 ELSE 0 END), 0) AS hpp_hpp_missing_count,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} AND rows.cost_status IS NULL THEN 1 ELSE 0 END), 0) AS hpp_no_allocation_count,
-                COALESCE(SUM(CASE WHEN {$isSettled} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS settled_sales,
-                COALESCE(SUM(CASE WHEN {$isUnmatched} AND {$hasTracking} THEN {$sales} ELSE 0 END), 0) AS pending_sales,
-                COALESCE(SUM(CASE WHEN {$isSettled} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS settled_profit,
-                COALESCE(SUM(CASE WHEN {$isUnmatched} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS pending_profit,
-                COALESCE(SUM(CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN {$profit} ELSE 0 END), 0) AS total_profit,
-                COUNT(DISTINCT CASE WHEN {$isInvalid} THEN rows.order_number END) AS valid_without_tracking,
-                COALESCE(SUM(CASE WHEN {$isInvalid} THEN {$sales} ELSE 0 END), 0) AS valid_without_tracking_sales,
-                COALESCE(SUM(CASE WHEN {$isCancelled} THEN {$sales} ELSE 0 END), 0) AS cancelled_sales,
-                COUNT(DISTINCT CASE WHEN {$isCancelled} THEN rows.order_number END) AS cancelled_order_count,
-                COUNT(DISTINCT rows.order_number) AS gross_order_count,
-                COUNT(DISTINCT CASE WHEN NOT {$isCancelled} AND {$hasTracking} THEN rows.order_number END) AS net_order_count,
-                COUNT(DISTINCT CASE WHEN {$isSettled} AND {$hasTracking} THEN rows.order_number END) AS settled_order_count,
-                COUNT(DISTINCT CASE WHEN {$isUnmatched} AND {$hasTracking} THEN rows.order_number END) AS pending_order_count
-            ")
-            ->first();
+        $metrics = [
+            'gross_sales' => 0.0,
+            'net_sales' => 0.0,
+            'total_fee' => 0.0,
+            'total_tax' => 0.0,
+            'total_hpp' => 0.0,
+            'canonical_penghasilan' => 0.0,
+            'total_profit' => 0.0,
+            'settled_sales' => 0.0,
+            'pending_sales' => 0.0,
+            'settled_profit' => 0.0,
+            'pending_profit' => 0.0,
+            'valid_without_tracking_sales' => 0.0,
+            'cancelled_sales' => 0.0,
+        ];
+        $availability = array_fill_keys(['gross_sales', 'net_sales', 'total_fee', 'total_tax', 'total_hpp', 'canonical_penghasilan', 'total_profit'], true);
+        $counts = [
+            'hpp_ok_count' => 0,
+            'hpp_mapping_missing_count' => 0,
+            'hpp_mapping_ambiguous_count' => 0,
+            'hpp_hpp_missing_count' => 0,
+            'hpp_no_allocation_count' => 0,
+            'valid_without_tracking' => 0,
+            'cancelled_order_count' => 0,
+            'gross_order_count' => 0,
+            'net_order_count' => 0,
+            'settled_order_count' => 0,
+            'pending_order_count' => 0,
+        ];
+        $grossOrders = $netOrders = $settledOrders = $pendingOrders = [];
 
-        $netSales = (float) $aggregate->net_sales;
-        $totalFee = (float) $aggregate->total_fee;
-        $totalTax = (float) $aggregate->total_tax;
-        $totalHpp = (float) $aggregate->total_hpp;
-        $grossProfit = $netSales - $totalFee - $totalTax;
-        $netProfit = $grossProfit - $totalHpp;
-        $netMargin = $netSales == 0.0 ? 0.0 : $netProfit / $netSales * 100;
+        foreach ($rows as $row) {
+            $projection = $this->canonicalFinancialProjection->projectLine($row, [
+                'cost_status' => $row->cost_status ?? null,
+                'total_hpp' => $row->total_hpp ?? null,
+            ]);
+
+            $isCancelled = $row->business_status === 'Cancelled';
+            $hasTracking = $row->tracking_number !== null && trim((string) $row->tracking_number) !== '';
+            $isInvalid = $row->business_status === 'Invalid';
+            $isSettled = $row->business_status === 'Settled';
+            $isUnmatched = $row->business_status === 'Unmatched';
+
+            $grossOrders[$row->order_number] = true;
+            $gross = $projection->orderSubtotal;
+            $remainingQuantity = $row->quantity === null ? null : max((float) $row->quantity - (float) ($row->returned_quantity ?? 0), 0);
+            $legacyNetSales = $projection->orderSubtotal === null || $remainingQuantity === null
+                ? null
+                : ($projection->orderSubtotal * ($row->quantity == 0 ? 0 : $remainingQuantity / (float) $row->quantity)) + ($projection->refundAmount ?? 0);
+
+            if ($gross !== null) $metrics['gross_sales'] += $gross; else $availability['gross_sales'] = false;
+            if (!$isCancelled && $hasTracking) {
+                if ($legacyNetSales !== null) $metrics['net_sales'] += $legacyNetSales; else $availability['net_sales'] = false;
+                foreach (['total_fee', 'total_tax', 'hpp', 'canonical_penghasilan', 'total_profit'] as $key) {
+                    $value = match ($key) {
+                        'total_fee' => $projection->totalFee,
+                        'total_tax' => $projection->tax,
+                        'hpp' => $projection->hpp,
+                        'canonical_penghasilan' => $projection->penghasilan,
+                        'total_profit' => $projection->laba,
+                    };
+                    if ($value === null) $availability[$key] = false; else $metrics[$key] += $value;
+                }
+            }
+
+            $sales = $gross;
+            if ($isSettled && $hasTracking && $sales !== null) $metrics['settled_sales'] += $sales;
+            if ($isUnmatched && $hasTracking && $sales !== null) $metrics['pending_sales'] += $sales;
+            if ($isSettled && $hasTracking && $projection->laba !== null) $metrics['settled_profit'] += $projection->laba;
+            if ($isUnmatched && $hasTracking && $projection->laba !== null) $metrics['pending_profit'] += $projection->laba;
+            if ($isInvalid && $sales !== null) $metrics['valid_without_tracking_sales'] += $sales;
+            if ($isCancelled && $sales !== null) $metrics['cancelled_sales'] += $sales;
+
+            $status = $row->cost_status;
+            if ($status === 'ok') $counts['hpp_ok_count']++;
+            elseif ($status === 'mapping_missing') $counts['hpp_mapping_missing_count']++;
+            elseif ($status === 'mapping_ambiguous') $counts['hpp_mapping_ambiguous_count']++;
+            elseif ($status === 'hpp_missing') $counts['hpp_hpp_missing_count']++;
+            elseif ($status === null || trim((string) $status) === '') $counts['hpp_no_allocation_count']++;
+            if ($isInvalid) $counts['valid_without_tracking']++;
+            if ($isCancelled) $counts['cancelled_order_count']++;
+            if (!$isCancelled && $hasTracking) $netOrders[$row->order_number] = true;
+            if ($isSettled && $hasTracking) $settledOrders[$row->order_number] = true;
+            if ($isUnmatched && $hasTracking) $pendingOrders[$row->order_number] = true;
+        }
+
+        $counts['gross_order_count'] = count($grossOrders);
+        $counts['net_order_count'] = count($netOrders);
+        $counts['settled_order_count'] = count($settledOrders);
+        $counts['pending_order_count'] = count($pendingOrders);
+
+        $nullable = fn (string $key): ?float => $availability[$key] ? $metrics[$key] : null;
+        $netSales = $nullable('net_sales');
+        $canonicalPenghasilan = $nullable('canonical_penghasilan');
+        $totalProfit = $nullable('total_profit');
+        $netMargin = $canonicalPenghasilan === null || $canonicalPenghasilan == 0.0 || $totalProfit === null
+            ? null
+            : $totalProfit / $canonicalPenghasilan * 100;
 
         return [
-            'gross_sales' => (float) $aggregate->gross_sales,
-            'net_sales' => (float) $aggregate->net_sales,
-            'total_fee' => $totalFee,
-            'total_tax' => $totalTax,
-            'total_hpp' => $totalHpp,
-            'gross_profit' => $grossProfit,
-            'net_profit' => $netProfit,
+            'gross_sales' => $nullable('gross_sales'),
+            'net_sales' => $netSales,
+            'total_fee' => $nullable('total_fee'),
+            'total_tax' => $nullable('total_tax'),
+            'total_hpp' => $nullable('total_hpp'),
+            'gross_profit' => $canonicalPenghasilan,
+            'net_profit' => $totalProfit,
             'net_margin' => $netMargin,
-            'hpp_ok_count' => (int) $aggregate->hpp_ok_count,
-            'hpp_mapping_missing_count' => (int) $aggregate->hpp_mapping_missing_count,
-            'hpp_mapping_ambiguous_count' => (int) $aggregate->hpp_mapping_ambiguous_count,
-            'hpp_hpp_missing_count' => (int) $aggregate->hpp_hpp_missing_count,
-            'hpp_no_allocation_count' => (int) $aggregate->hpp_no_allocation_count,
-            'settled_sales' => (float) $aggregate->settled_sales,
-            'pending_sales' => (float) $aggregate->pending_sales,
-            'settled_profit' => (float) $aggregate->settled_profit,
-            'pending_profit' => (float) $aggregate->pending_profit,
-            'total_profit' => (float) $aggregate->total_profit,
-            'valid_without_tracking' => (int) $aggregate->valid_without_tracking,
-            'valid_without_tracking_sales' => (float) $aggregate->valid_without_tracking_sales,
-            'cancelled_sales' => (float) $aggregate->cancelled_sales,
-            'cancelled_order_count' => (int) $aggregate->cancelled_order_count,
-            'gross_order_count' => (int) $aggregate->gross_order_count,
-            'net_order_count' => (int) $aggregate->net_order_count,
-            'settled_order_count' => (int) $aggregate->settled_order_count,
-            'pending_order_count' => (int) $aggregate->pending_order_count,
+            'canonical_penghasilan' => $canonicalPenghasilan,
+            'canonical_status' => $canonicalPenghasilan === null || $totalProfit === null ? 'unavailable' : 'confirmed',
+            'hpp_ok_count' => $counts['hpp_ok_count'],
+            'hpp_mapping_missing_count' => $counts['hpp_mapping_missing_count'],
+            'hpp_mapping_ambiguous_count' => $counts['hpp_mapping_ambiguous_count'],
+            'hpp_hpp_missing_count' => $counts['hpp_hpp_missing_count'],
+            'hpp_no_allocation_count' => $counts['hpp_no_allocation_count'],
+            'settled_sales' => $metrics['settled_sales'],
+            'pending_sales' => $metrics['pending_sales'],
+            'settled_profit' => $metrics['settled_profit'],
+            'pending_profit' => $metrics['pending_profit'],
+            'total_profit' => $totalProfit,
+            'valid_without_tracking' => $counts['valid_without_tracking'],
+            'valid_without_tracking_sales' => $metrics['valid_without_tracking_sales'],
+            'cancelled_sales' => $metrics['cancelled_sales'],
+            'cancelled_order_count' => $counts['cancelled_order_count'],
+            'gross_order_count' => $counts['gross_order_count'],
+            'net_order_count' => $counts['net_order_count'],
+            'settled_order_count' => $counts['settled_order_count'],
+            'pending_order_count' => $counts['pending_order_count'],
         ];
     }
 
