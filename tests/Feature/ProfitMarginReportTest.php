@@ -558,6 +558,11 @@ class ProfitMarginReportTest extends TestCase
 
     private function insertIncome(User $user, array $overrides = []): void
     {
+        $order = DB::table('marketplace_orders')
+            ->where('user_id', $user->id)
+            ->where('order_number', $overrides['order_number'] ?? 'ORDER')
+            ->first();
+
         DB::table('marketplace_income')->insert(array_merge([
             'user_id' => $user->id,
             'order_number' => 'ORDER',
@@ -565,6 +570,7 @@ class ProfitMarginReportTest extends TestCase
             'product_name' => 'Product',
             'product_key' => str_repeat('f', 64),
             'variation_key' => null,
+            'line_identity' => $order?->line_identity,
             'product_price' => 100,
             'quantity' => 1,
             'total_income' => 100,
