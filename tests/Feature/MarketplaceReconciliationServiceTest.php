@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\IncomeReconciliationService;
 use App\Services\IncomeReportImporter;
 use App\Services\MarketplaceReconciliationService;
+use App\Services\CanonicalFinancialProjectionService;
 use App\Services\OrderReportImporter;
 use App\Services\ReportImportService;
 use App\Services\ReportLineIdentity;
