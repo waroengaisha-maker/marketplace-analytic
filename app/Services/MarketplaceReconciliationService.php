@@ -555,11 +555,13 @@ class MarketplaceReconciliationService
                 g.variation_name,
                 g.net_quantity,
                 g.subtotal,
-                (g.admin + g.shipping + g.promo + g.processing) AS total_fee,
+                g.admin,
+                g.shipping,
+                g.promo,
+                g.processing,
                 g.tax,
-                (g.subtotal + g.refund_amount + g.admin + g.shipping + g.promo + g.processing + g.tax) AS penghasilan,
-                g.hpp,
-                ((g.subtotal + g.refund_amount + g.admin + g.shipping + g.promo + g.processing + g.tax) - g.hpp) AS laba
+                g.refund_amount,
+                g.hpp
             ');
 
         $query->where(function (Builder $query) use ($buyer): void {
@@ -573,21 +575,39 @@ class MarketplaceReconciliationService
         return $query->orderBy('g.order_created_at', 'desc')
             ->orderBy('g.item_index')
             ->get()
-            ->map(fn (object $row): array => [
+            ->map(function (object $row): array {
+                $projection = $this->canonicalFinancialProjection->projectLine([
+                    'quantity' => $row->net_quantity,
+                    'order_subtotal' => $row->subtotal,
+                    'platform_fee' => $row->admin,
+                    'free_shipping_xtra_fee' => $row->shipping,
+                    'promo_xtra_service_fee' => $row->promo,
+                    'order_processing_fee' => $row->processing,
+                    'pph22' => $row->tax,
+                    'refund_amount' => $row->refund_amount,
+                ], [
+                    'cost_status' => $row->hpp === null ? 'hpp_missing' : 'ok',
+                    'total_hpp' => $row->hpp,
+                ]);
+
+                return [
                 'order_number' => $row->order_number,
                 'order_created_at' => $row->order_created_at,
                 'business_status' => $row->status,
                 'order_status' => $row->order_status,
                 'product_name' => $row->product_name,
                 'variation_name' => $row->variation_name,
-                'net_quantity' => (float) $row->net_quantity,
-                'subtotal' => (float) $row->subtotal,
-                'total_fee' => (float) $row->total_fee,
-                'tax' => (float) $row->tax,
-                'penghasilan' => (float) $row->penghasilan,
-                'hpp' => (float) $row->hpp,
-                'laba' => (float) $row->laba,
-            ])
+                'net_quantity' => $row->net_quantity === null ? null : (float) $row->net_quantity,
+                'subtotal' => $row->subtotal === null ? null : (float) $row->subtotal,
+                'total_fee' => $projection->totalFee,
+                'tax' => $projection->tax,
+                'penghasilan' => $projection->penghasilan,
+                'hpp' => $projection->hpp,
+                'laba' => $projection->laba,
+                'canonical_status' => $projection->status,
+                'canonical_provenance' => $projection->provenance,
+                ];
+            })
             ->values()
             ->all();
     }
