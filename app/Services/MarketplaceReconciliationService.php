@@ -798,6 +798,7 @@ class MarketplaceReconciliationService
             'total_fee' => 0.0,
             'total_tax' => 0.0,
             'total_hpp' => 0.0,
+            'hpp' => 0.0,
             'canonical_penghasilan' => 0.0,
             'total_profit' => 0.0,
             'settled_sales' => 0.0,
