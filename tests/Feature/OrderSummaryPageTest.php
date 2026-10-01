@@ -695,8 +695,8 @@ class OrderSummaryPageTest extends TestCase
         ]);
 
         DB::table('marketplace_orders')->insert([
-            $this->order($user->id, ['order_number' => 'SORT-2', 'item_index' => 1, 'quantity' => 1, 'discounted_price' => 100, 'unit_price' => 100, 'order_created_at' => now()->startOfMonth()->addDay()->format('Y-m-d H:i:s')]),
-            $this->order($user->id, ['order_number' => 'SORT-1', 'item_index' => 2, 'quantity' => 3, 'discounted_price' => 200, 'unit_price' => 200, 'order_created_at' => now()->startOfMonth()->addDays(2)->format('Y-m-d H:i:s')]),
+            $this->order($user->id, ['order_number' => 'SORT-2', 'item_index' => 1, 'quantity' => 1, 'discounted_price' => 100, 'unit_price' => 100, 'order_created_at' => now()->subDays(2)->format('Y-m-d H:i:s')]),
+            $this->order($user->id, ['order_number' => 'SORT-1', 'item_index' => 2, 'quantity' => 3, 'discounted_price' => 200, 'unit_price' => 200, 'order_created_at' => now()->subDay()->format('Y-m-d H:i:s')]),
         ]);
 
         $response = $this->ordersRequest($user, ['sort_field' => 'net_quantity', 'sort_order' => 'asc']);
