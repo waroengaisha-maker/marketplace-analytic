@@ -63,7 +63,7 @@ class ProfitMarginReportTest extends TestCase
 
         $this->assertSame(1000.0, $row->order_subtotal);
         $this->assertSame(1000.0, $row->penghasilan);
-        $this->assertSame(10000.0, $row->hpp);
+        $this->assertSame(20000.0, $row->hpp);
         $this->assertSame(-19000.0, $row->laba);
         $this->assertSame('ok', $row->hpp_status);
 
@@ -109,6 +109,18 @@ class ProfitMarginReportTest extends TestCase
             'line_identity' => $lineIdentity,
         ]);
         $this->insertMissingAllocation($user, $lineIdentity, 'mapping_missing');
+        $this->insertIncome($user, [
+            'order_number' => 'ORDER-MAPPING-MISSING',
+            'product_key' => str_repeat('m', 64),
+            'product_price' => 100,
+            'quantity' => 1,
+            'total_income' => 100,
+            'platform_fee' => 0,
+            'free_shipping_xtra_fee' => 0,
+            'promo_xtra_service_fee' => 0,
+            'order_processing_fee' => 0,
+            'pph22' => 0,
+        ]);
 
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
@@ -131,6 +143,18 @@ class ProfitMarginReportTest extends TestCase
             'line_identity' => $lineIdentity,
         ]);
         $this->insertMissingAllocation($user, $lineIdentity, 'mapping_ambiguous');
+        $this->insertIncome($user, [
+            'order_number' => 'ORDER-MAPPING-AMBIGUOUS',
+            'product_key' => str_repeat('a', 64),
+            'product_price' => 100,
+            'quantity' => 1,
+            'total_income' => 100,
+            'platform_fee' => 0,
+            'free_shipping_xtra_fee' => 0,
+            'promo_xtra_service_fee' => 0,
+            'order_processing_fee' => 0,
+            'pph22' => 0,
+        ]);
 
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
@@ -152,6 +176,18 @@ class ProfitMarginReportTest extends TestCase
             'line_identity' => $lineIdentity,
         ]);
         $this->insertMissingAllocation($user, $lineIdentity, 'hpp_missing');
+        $this->insertIncome($user, [
+            'order_number' => 'ORDER-HPP-MISSING',
+            'product_key' => str_repeat('h', 64),
+            'product_price' => 100,
+            'quantity' => 1,
+            'total_income' => 100,
+            'platform_fee' => 0,
+            'free_shipping_xtra_fee' => 0,
+            'promo_xtra_service_fee' => 0,
+            'order_processing_fee' => 0,
+            'pph22' => 0,
+        ]);
 
         $row = app(MarketplaceReconciliationService::class)->reconciliationRows($user->id)[0];
 
