@@ -836,7 +836,9 @@ class MarketplaceReconciliationService
 
     private function netSalesExpression(string $tableAlias): string
     {
-        return "(COALESCE({$tableAlias}.discounted_price, 0) * COALESCE({$tableAlias}.quantity, 0)) + COALESCE({$tableAlias}.refund_amount, 0)";
+        $remainingQuantity = "CASE WHEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) > 0 THEN COALESCE({$tableAlias}.quantity, 0) - COALESCE({$tableAlias}.returned_quantity, 0) ELSE 0 END";
+
+        return "(COALESCE({$tableAlias}.discounted_price, 0) * {$remainingQuantity}) + COALESCE({$tableAlias}.refund_amount, 0)";
     }
 
     /** @return array{min: ?string, max: ?string} */
