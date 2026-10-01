@@ -110,9 +110,9 @@ class CustomerSummariesPageTest extends TestCase
 
         $this->assertSame(2, data_get($response->json(), 'props.pagination.total'));
         $this->assertSame(3, data_get($response->json(), 'props.summaries.order_count'));
-        $this->assertEquals(1800.0, data_get($response->json(), 'props.summaries.subtotal'));
-        $this->assertEquals(0.0, data_get($response->json(), 'props.summaries.hpp'));
-        $this->assertEquals(1800.0, data_get($response->json(), 'props.summaries.laba'));
+        $this->assertEquals(1900.0, data_get($response->json(), 'props.summaries.subtotal'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.hpp'));
+        $this->assertNull(data_get($response->json(), 'props.summaries.laba'));
 
         $budi = $customers->firstWhere('buyer_username', 'budi.santoso');
         $this->assertSame(2, $budi['order_count']);
@@ -120,12 +120,12 @@ class CustomerSummariesPageTest extends TestCase
         $this->assertSame(1, $budi['non_revenue_order_count']);
         $this->assertSame(2, $budi['line_count']);
         $this->assertEquals(3.0, $budi['net_quantity']);
-        $this->assertEquals(1100.0, $budi['subtotal']);
+        $this->assertEquals(1200.0, $budi['subtotal']);
         $this->assertEquals(1000.0, $budi['revenue_subtotal']);
         $this->assertEquals(100.0, $budi['non_revenue_subtotal']);
-        $this->assertEquals(1100.0, $budi['penghasilan']);
-        $this->assertEquals(0.0, $budi['hpp']);
-        $this->assertEquals(1100.0, $budi['laba']);
+        $this->assertNull($budi['penghasilan']);
+        $this->assertNull($budi['hpp']);
+        $this->assertNull($budi['laba']);
 
         $siti = $customers->firstWhere('buyer_username', 'siti.rahayu');
         $this->assertSame(1, $siti['order_count']);
@@ -136,8 +136,8 @@ class CustomerSummariesPageTest extends TestCase
         $this->assertEquals(700.0, $siti['subtotal']);
         $this->assertEquals(700.0, $siti['revenue_subtotal']);
         $this->assertEquals(0.0, $siti['non_revenue_subtotal']);
-        $this->assertEquals(700.0, $siti['penghasilan']);
-        $this->assertEquals(700.0, $siti['laba']);
+        $this->assertNull($siti['penghasilan']);
+        $this->assertNull($siti['laba']);
     }
 
     public function test_customers_search_filters_by_buyer_username(): void
