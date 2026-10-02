@@ -173,10 +173,6 @@ class IncomeReportImporter
 
         return array_values(array_filter($rows, static function (array $row) use (&$seen): bool {
             $eventIdentity = $row['refund_event_identity'] ?? null;
-            if ($eventIdentity === null) {
-                return true;
-            }
-
             if ($eventIdentity !== null) {
                 $key = $row['user_id'].'|'.$row['line_identity'].'|'.$eventIdentity;
             } else {
