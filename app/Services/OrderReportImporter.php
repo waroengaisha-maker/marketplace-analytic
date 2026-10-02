@@ -64,8 +64,10 @@ class OrderReportImporter
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
                 'returned_quantity' => $returnedQuantity,
-                'fulfilled_quantity' => null,
-                'cancelled_quantity' => null,
+                // Only consume fulfillment when the source explicitly provides it.
+                // Never derive it from ordered quantity, tracking, shipment time, or returns.
+                'fulfilled_quantity' => $this->integer($data['Fulfilled quantity'] ?? null),
+                'cancelled_quantity' => $this->integer($data['Cancelled quantity'] ?? null),
                 'order_subtotal' => $this->number($data['Subtotal Pesanan'] ?? null),
                 'total_payment' => $this->number($data['Total Pembayaran'] ?? null),
                 'buyer_shipping_paid' => $this->number($data['Ongkos Kirim Dibayar oleh Pembeli'] ?? null),
