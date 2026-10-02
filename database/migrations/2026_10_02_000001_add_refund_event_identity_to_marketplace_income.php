@@ -70,7 +70,7 @@ return new class extends Migration
             if (Schema::hasColumn('marketplace_income', 'refund_event_identity')) {
                 $table->dropColumn('refund_event_identity');
             }
-            $table->unique(['user_id', 'line_identity'], 'income_user_line_identity_unique');
+            $table->unique(['user_id', 'line_identity'], 'income_line_identity_unique');
         });
     }
 };
