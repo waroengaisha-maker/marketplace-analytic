@@ -1068,7 +1068,6 @@ class MarketplaceReconciliationService
                 'variation_key',
                 'line_identity',
                 'refund_event_identity',
-                DB::raw('CASE WHEN refund_event_identity IS NULL THEN product_price END'),
                 DB::raw('CASE WHEN refund_event_identity IS NULL THEN refund_to_buyer END')
             );
         $incomeRefund = DB::query()
