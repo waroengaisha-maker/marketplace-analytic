@@ -548,7 +548,7 @@ class ShopeeApiPromotionTest extends TestCase
         $this->assertNotNull($zeroAllocation);
         $this->assertSame('quantity_unavailable', $zeroAllocation->cost_status);
         $this->assertNull($zeroAllocation->total_hpp);
-        $this->assertNull($zeroAllocation->effective_hpp_record_id);
+        $this->assertNotNull($zeroAllocation->effective_hpp_record_id);
     }
 
     public function test_returned_quantity_and_refund_income_are_preserved(): void
