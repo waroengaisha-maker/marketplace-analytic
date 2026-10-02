@@ -1053,11 +1053,12 @@ class MarketplaceReconciliationService
                 variation_key,
                 line_identity,
                 refund_event_identity,
+                source_row,
                 MAX(product_price) AS product_price,
                 MAX(total_income) AS total_income,
                 SUM(refund_to_buyer) AS refund_to_buyer
             ')
-            ->groupBy('user_id', 'order_number', 'product_key', 'item_index', 'variation_key', 'line_identity', 'refund_event_identity');
+            ->groupBy('user_id', 'order_number', 'product_key', 'item_index', 'variation_key', 'line_identity', 'refund_event_identity', 'source_row');
 
         $incomeRefund = DB::query()
             ->fromSub($incomeRefundEvents, 'refund_events')
