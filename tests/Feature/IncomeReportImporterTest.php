@@ -39,6 +39,7 @@ class IncomeReportImporterTest extends TestCase
                 'Harga Produk',
                 'Jumlah',
                 'Total Penghasilan',
+                'Total Pendapatan',
                 'Biaya Gratis Ongkir XTRA - Ukuran Biasa (Kategori E)',
                 'Biaya Gratis Ongkir XTRA - Ukuran Khusus (Kategori E)',
                 'Lihat berdasarkan',
@@ -50,8 +51,15 @@ class IncomeReportImporterTest extends TestCase
         return $path;
     }
 
-    protected function incomeLine(string $orderNumber, string $product, string $variant, float $price = 100.0, int $quantity = 1, ?string $total = null): array
-    {
+    protected function incomeLine(
+        string $orderNumber,
+        string $product,
+        string $variant,
+        float $price = 100.0,
+        int $quantity = 1,
+        ?string $total = null,
+        ?string $revenue = null,
+    ): array {
         return [
             $orderNumber,
             $product,
@@ -59,6 +67,7 @@ class IncomeReportImporterTest extends TestCase
             $price,
             $quantity,
             $total ?? (string) ($price * $quantity),
+            $revenue,
             0,
             0,
             'Sku',
@@ -69,8 +78,8 @@ class IncomeReportImporterTest extends TestCase
     {
         $user = User::factory()->create();
         $line = $this->incomeLine('INC-FEE-E', 'Teh Botol', 'Original');
-        $line[6] = 12.5;
-        $line[7] = 37.5;
+        $line[7] = 12.5;
+        $line[8] = 37.5;
         $path = $this->writeIncomeReport([$line]);
 
         try {
@@ -138,5 +147,74 @@ class IncomeReportImporterTest extends TestCase
         }
 
         $this->assertSame(1, DB::table('marketplace_income')->where('user_id', $user->id)->count());
+    }
+
+    public function test_income_import_preserves_total_income_and_total_revenue_as_distinct_sources(): void
+    {
+        $user = User::factory()->create();
+
+        $path = $this->writeIncomeReport([
+            $this->incomeLine(
+                'INC-SOURCE-SEPARATION',
+                'Teh Botol',
+                'Original',
+                100.0,
+                1,
+                '123.45',
+                '678.90',
+            ),
+        ]);
+
+        try {
+            $this->importer->import($path, $user->id);
+        } finally {
+            unlink($path);
+        }
+
+        $row = DB::table('marketplace_income')
+            ->where('user_id', $user->id)
+            ->where('order_number', 'INC-SOURCE-SEPARATION')
+            ->first();
+
+        $this->assertNotNull($row);
+        $this->assertSame(123.45, (float) $row->total_income);
+        $this->assertSame(678.90, (float) $row->total_revenue);
+
+        $rawData = json_decode((string) $row->raw_data, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame('123.45', $rawData['Total Penghasilan']);
+        $this->assertSame('678.90', $rawData['Total Pendapatan']);
+    }
+
+    public function test_income_import_does_not_fallback_to_total_revenue_when_total_income_is_missing(): void
+    {
+        $user = User::factory()->create();
+
+        $line = $this->incomeLine(
+            'INC-NO-INCOME-FALLBACK',
+            'Teh Botol',
+            'Original',
+            100.0,
+            1,
+            null,
+            '678.90',
+        );
+        $line[5] = null;
+
+        $path = $this->writeIncomeReport([$line]);
+
+        try {
+            $this->importer->import($path, $user->id);
+        } finally {
+            unlink($path);
+        }
+
+        $row = DB::table('marketplace_income')
+            ->where('user_id', $user->id)
+            ->where('order_number', 'INC-NO-INCOME-FALLBACK')
+            ->first();
+
+        $this->assertNotNull($row);
+        $this->assertNull($row->total_income);
+        $this->assertSame(678.90, (float) $row->total_revenue);
     }
 }
