@@ -627,8 +627,8 @@ class MarketplaceReconciliationServiceTest extends TestCase
                 && ($index['columns'] ?? []) === ['user_id', 'line_identity'];
         }));
         $this->assertTrue($incomeIndexes->contains(function (array $index): bool {
-            return ($index['name'] ?? null) === 'income_user_line_identity_unique'
-                && ($index['columns'] ?? []) === ['user_id', 'line_identity'];
+            return ($index['name'] ?? null) === 'income_user_line_event_identity_unique'
+                && ($index['columns'] ?? []) === ['user_id', 'line_identity', 'refund_event_identity'];
         }));
 
         $userA = User::factory()->create();
