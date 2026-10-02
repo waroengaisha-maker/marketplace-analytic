@@ -1045,28 +1045,7 @@ class MarketplaceReconciliationService
 
         $incomeRefundEvents = DB::table('marketplace_income')
             ->where('refund_to_buyer', '<', 0)
-            ->where(function (Builder $query): void {
-                $query->where('row_type', 'Sku')
-                    ->orWhere(function (Builder $detail): void {
-                        $detail->where('row_type', 'Detail')
-                            ->whereNotExists(function (Builder $summary): void {
-                                $summary->selectRaw('1')
-                                    ->from('marketplace_income as summary')
-                                    ->where('summary.row_type', 'Sku')
-                                    ->where('summary.refund_to_buyer', '<', 0)
-                                    ->whereColumn('summary.user_id', 'marketplace_income.user_id')
-                                    ->whereColumn('summary.order_number', 'marketplace_income.order_number')
-                                    ->whereColumn('summary.product_key', 'marketplace_income.product_key')
-                                    ->whereColumn('summary.item_index', 'marketplace_income.item_index')
-                                    ->whereColumn('summary.variation_key', 'marketplace_income.variation_key')
-                                    ->whereColumn('summary.line_identity', 'marketplace_income.line_identity')
-                                    ->whereColumn('summary.refund_to_buyer', 'marketplace_income.refund_to_buyer')
-                                    ->whereColumn('summary.product_price', 'marketplace_income.product_price')
-                                    ->whereColumn('summary.refund_event_identity', 'marketplace_income.refund_event_identity');
-                            });
-                    });
-            })
-            ->selectRaw('
+            ->selectRaw("
                 user_id,
                 order_number,
                 product_key,
@@ -1074,13 +1053,24 @@ class MarketplaceReconciliationService
                 variation_key,
                 line_identity,
                 refund_event_identity,
-                MAX(source_row) AS source_row,
                 MAX(product_price) AS product_price,
                 MAX(total_income) AS total_income,
-                SUM(refund_to_buyer) AS refund_to_buyer
-            ')
-            ->groupBy('user_id', 'order_number', 'product_key', 'item_index', 'variation_key', 'line_identity', 'refund_event_identity');
-
+                CASE
+                    WHEN refund_event_identity IS NULL THEN MAX(refund_to_buyer)
+                    ELSE SUM(refund_to_buyer)
+                END AS refund_to_buyer
+            ")
+            ->groupBy(
+                'user_id',
+                'order_number',
+                'product_key',
+                'item_index',
+                'variation_key',
+                'line_identity',
+                'refund_event_identity',
+                DB::raw('CASE WHEN refund_event_identity IS NULL THEN product_price END'),
+                DB::raw('CASE WHEN refund_event_identity IS NULL THEN refund_to_buyer END')
+            );
         $incomeRefund = DB::query()
             ->fromSub($incomeRefundEvents, 'refund_events')
             ->selectRaw('
