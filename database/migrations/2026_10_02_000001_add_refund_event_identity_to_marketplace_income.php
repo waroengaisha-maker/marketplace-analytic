@@ -10,6 +10,29 @@ return new class extends Migration
 {
     public function up(): void
     {
+        DB::table('marketplace_income')
+            ->whereNotNull('application_number')
+            ->where('application_number', '<>', '')
+            ->orderBy('id')
+            ->each(function (object $row): void {
+                DB::table('marketplace_income')->where('id', $row->id)->update([
+                    'refund_event_identity' => RefundEventIdentity::make((string) $row->order_number, (string) $row->application_number),
+                ]);
+            });
+
+        DB::table('marketplace_income as duplicate')
+            ->whereNotNull('duplicate.application_number')
+            ->where('duplicate.application_number', '<>', '')
+            ->whereExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('marketplace_income as keeper')
+                    ->whereColumn('keeper.user_id', 'duplicate.user_id')
+                    ->whereColumn('keeper.line_identity', 'duplicate.line_identity')
+                    ->whereColumn('keeper.refund_event_identity', 'duplicate.refund_event_identity')
+                    ->whereColumn('keeper.id', '<', 'duplicate.id');
+            })
+            ->delete();
+
         Schema::table('marketplace_income', function (Blueprint $table): void {
             if (! Schema::hasColumn('marketplace_income', 'refund_event_identity')) {
                 $table->string('refund_event_identity', 64)->nullable()->after('line_identity');
