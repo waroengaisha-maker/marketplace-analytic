@@ -217,4 +217,39 @@ class IncomeReportImporterTest extends TestCase
         $this->assertNull($row->total_income);
         $this->assertSame(678.90, (float) $row->total_revenue);
     }
+    public function test_income_replacement_rolls_back_when_later_batch_insert_fails(): void
+    {
+        $user = User::factory()->create();
+        $path = $this->writeIncomeReport([$this->incomeLine('INC-ATOMIC', 'Teh Botol', 'Original')]);
+        try {
+            $this->importer->import($path, $user->id);
+        } finally {
+            unlink($path);
+        }
+
+        $original = DB::table('marketplace_income')->where('user_id', $user->id)->where('order_number', 'INC-ATOMIC')->first();
+        $this->assertNotNull($original);
+
+        $rows = [];
+        for ($index = 0; $index < 500; $index++) {
+            $row = (array) $original;
+            unset($row['id']);
+            $row['order_number'] = 'INC-BATCH-'.$index;
+            $row['line_identity'] = hash('sha256', 'atomic-income-'.$index);
+            $rows[] = $row;
+        }
+        $conflict = (array) $original;
+        unset($conflict['id']);
+        $conflict['order_number'] = 'INC-CONFLICT';
+        $rows[] = $conflict;
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        try {
+            $this->importer->persist($rows, $user->id);
+        } finally {
+            $this->assertSame(1, DB::table('marketplace_income')->where('user_id', $user->id)->where('order_number', 'INC-ATOMIC')->count());
+            $this->assertSame(0, DB::table('marketplace_income')->where('user_id', $user->id)->where('order_number', 'INC-BATCH-0')->count());
+        }
+    }
+
 }
