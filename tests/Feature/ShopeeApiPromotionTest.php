@@ -441,8 +441,8 @@ class ShopeeApiPromotionTest extends TestCase
             'staging_orders' => [$this->orderStaging($orderSn)],
             'staging_escrow' => [$this->escrowEntry($orderSn, [$this->matchedItem($orderSn)])],
             'staging_income' => [
-                $this->incomeStaging($orderSn, ['total_income' => 100]),
-                $this->incomeStaging($orderSn, ['total_income' => 100, 'description' => 'Second row']),
+                $this->incomeStaging($orderSn, ['total_income' => 100, 'application_number' => 'APP-ROLLBACK']),
+                $this->incomeStaging($orderSn, ['total_income' => 100, 'description' => 'Second row', 'application_number' => 'APP-ROLLBACK']),
             ],
         ]);
 
