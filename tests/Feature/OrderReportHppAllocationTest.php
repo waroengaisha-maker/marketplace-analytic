@@ -90,6 +90,8 @@ class OrderReportHppAllocationTest extends TestCase
             'SKU Induk',
             'Nomor Referensi SKU',
             'Returned quantity',
+            'Fulfilled quantity',
+            'Cancelled quantity',
             'Waktu Pesanan Dibuat',
         ], ...$lines], null, 'A1');
         (new Xlsx($spreadsheet))->save($path);
@@ -97,7 +99,7 @@ class OrderReportHppAllocationTest extends TestCase
         return $path;
     }
 
-    protected function orderLine(string $orderNumber, string $product, string $variant, int $quantity = 2, float $price = 100.0, string $orderDate = '2026-08-10 10:00:00', int $returned = 0, ?string $sku = null, ?string $skuRef = null): array
+    protected function orderLine(string $orderNumber, string $product, string $variant, int $quantity = 2, float $price = 100.0, string $orderDate = '2026-08-10 10:00:00', int $returned = 0, ?string $sku = null, ?string $skuRef = null, ?int $fulfilled = null, ?int $cancelled = null): array
     {
         $defaultSku = 'SP-'.preg_replace('/[^A-Za-z0-9]/', '', $product);
 
@@ -113,6 +115,8 @@ class OrderReportHppAllocationTest extends TestCase
             $sku ?? $defaultSku,
             $skuRef ?? 'SV-'.$variant,
             $returned,
+            $fulfilled,
+            $cancelled,
             $orderDate,
         ];
     }
@@ -187,7 +191,7 @@ class OrderReportHppAllocationTest extends TestCase
         ]);
 
         $this->import($this->writeOrderReport([
-            $this->orderLine('ORD-MANUAL', 'Teh Botol Manual', 'Original', 1, 100.0, '2026-08-10 10:00:00', 0, 'SP-MANUAL-1', 'SV-MANUAL-1'),
+            $this->orderLine('ORD-MANUAL', 'Teh Botol Manual', 'Original', 1, 100.0, '2026-08-10 10:00:00', 0, 'SP-MANUAL-1', 'SV-MANUAL-1', 1),
         ]), $user->id);
 
         $allocation = OrderCostAllocation::query()->forUser($user->id)->first();
@@ -295,8 +299,8 @@ class OrderReportHppAllocationTest extends TestCase
         }
 
         $this->import($this->writeOrderReport([
-            $this->orderLine('ORD-MULTI', 'Teh Botol Multi', 'Original', 2, 100.0),
-            $this->orderLine('ORD-MULTI', 'Teh Botol Multi', 'Melati', 1, 100.0),
+            $this->orderLine('ORD-MULTI', 'Teh Botol Multi', 'Original', 2, 100.0, '2026-08-10 10:00:00', 0, null, null, 2),
+            $this->orderLine('ORD-MULTI', 'Teh Botol Multi', 'Melati', 1, 100.0, '2026-08-10 10:00:00', 0, null, null, 1),
         ]), $user->id);
 
         $allocations = OrderCostAllocation::query()->forUser($user->id)->get();
@@ -323,7 +327,7 @@ class OrderReportHppAllocationTest extends TestCase
             'manual_override_by' => $user->id,
         ]);
 
-        $path = $this->writeOrderReport([$this->orderLine('ORD-IDEM', 'Teh Botol Idem', 'Original', 2, 100.0)]);
+        $path = $this->writeOrderReport([$this->orderLine('ORD-IDEM', 'Teh Botol Idem', 'Original', 2, 100.0, '2026-08-10 10:00:00', 0, null, null, 2)]);
 
         try {
             $this->importer->import($path, $user->id);
@@ -352,14 +356,14 @@ class OrderReportHppAllocationTest extends TestCase
         ]);
 
         $this->import($this->writeOrderReport([
-            $this->orderLine('ORD-CHG', 'Teh Botol Chg', 'Original', 2, 100.0),
+            $this->orderLine('ORD-CHG', 'Teh Botol Chg', 'Original', 2, 100.0, '2026-08-10 10:00:00', 0, null, null, 2),
         ]), $user->id);
 
         $staleIdentity = DB::table('marketplace_orders')->where('order_number', 'ORD-CHG')->value('line_identity');
         $this->assertDatabaseHas('order_cost_allocations', ['user_id' => $user->id, 'order_line_identity' => $staleIdentity]);
 
         $this->import($this->writeOrderReport([
-            $this->orderLine('ORD-CHG', 'Teh Botol Chg', 'Original', 3, 100.0),
+            $this->orderLine('ORD-CHG', 'Teh Botol Chg', 'Original', 3, 100.0, '2026-08-10 10:00:00', 0, null, null, 3),
         ]), $user->id);
 
         $freshIdentity = DB::table('marketplace_orders')->where('order_number', 'ORD-CHG')->value('line_identity');
@@ -559,7 +563,7 @@ class OrderReportHppAllocationTest extends TestCase
         $this->assertSame('ambiguous', $nameOnly['status']);
 
         $this->import($this->writeOrderReport([
-            $this->orderLine('ORD-MV', 'Aqua Botol', 'Original', 2, 100.0, '2026-08-10 10:00:00', 0, 'SP-MV-1', 'SV-MV-1'),
+            $this->orderLine('ORD-MV', 'Aqua Botol', 'Original', 2, 100.0, '2026-08-10 10:00:00', 0, 'SP-MV-1', 'SV-MV-1', 2),
         ]), $user->id);
 
         $allocation = OrderCostAllocation::query()->forUser($user->id)->first();
