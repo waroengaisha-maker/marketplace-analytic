@@ -1463,7 +1463,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
             $this->income($user->id, ['order_number' => 'ORDER-REFUND-EVENTS', 'product_key' => $productKey, 'item_index' => 778, 'product_price' => 38000, 'quantity' => 1, 'total_income' => 0, 'refund_to_buyer' => -8000, 'application_number' => 'REFUND-002', 'refund_event_identity' => RefundEventIdentity::make('ORDER-REFUND-EVENTS', 'REFUND-002'), 'line_identity' => $lineIdentity]),
         ]);
         $row = app(MarketplaceReconciliationService::class)->joinedQuery($user->id, true)->where('orders.order_number', 'ORDER-REFUND-EVENTS')->first();
-        $this->assertSame(-20000.0, (float) $row->refund_amount); $this->assertSame('Refunded', $row->business_status);
+        $this->assertSame(-20000.0, (float) $row->refund_amount); $this->assertSame('Partially Refunded', $row->business_status);
     }
 
     public function test_duplicate_refund_summary_and_detail_rows_are_not_double_counted(): void
@@ -1479,6 +1479,7 @@ class MarketplaceReconciliationServiceTest extends TestCase
             'unit_price' => 38000,
             'quantity' => 1,
             'returned_quantity' => 0,
+            'line_identity' => str_repeat('a', 64),
         ]));
 
         DB::table('marketplace_income')->insert([
