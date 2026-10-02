@@ -26,18 +26,26 @@ return new class extends Migration
                 ]);
             });
 
-        DB::table('marketplace_income as duplicate')
-            ->whereNotNull('duplicate.application_number')
-            ->where('duplicate.application_number', '<>', '')
-            ->whereExists(function ($query): void {
-                $query->selectRaw('1')
-                    ->from('marketplace_income as keeper')
-                    ->whereColumn('keeper.user_id', 'duplicate.user_id')
-                    ->whereColumn('keeper.line_identity', 'duplicate.line_identity')
-                    ->whereColumn('keeper.refund_event_identity', 'duplicate.refund_event_identity')
-                    ->whereColumn('keeper.id', '<', 'duplicate.id');
-            })
-            ->delete();
+        // MySQL rejects DELETE statements that read from the same target table
+        // through a subquery (ERROR 1093). The extra derived-table layer makes
+        // the duplicate-id set materialized before the DELETE executes.
+        DB::statement(<<<'SQL'
+            DELETE FROM marketplace_income
+            WHERE id IN (
+                SELECT id
+                FROM (
+                    SELECT duplicate.id
+                    FROM marketplace_income AS duplicate
+                    INNER JOIN marketplace_income AS keeper
+                        ON keeper.user_id = duplicate.user_id
+                        AND keeper.line_identity = duplicate.line_identity
+                        AND keeper.refund_event_identity = duplicate.refund_event_identity
+                        AND keeper.id < duplicate.id
+                    WHERE duplicate.application_number IS NOT NULL
+                      AND duplicate.application_number <> ''
+                ) AS duplicate_ids
+            )
+        SQL);
 
         Schema::table('marketplace_income', function (Blueprint $table): void {
             $indexes = collect(Schema::getIndexes('marketplace_income'));
