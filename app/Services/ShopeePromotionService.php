@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
+use App\Services\RefundEventIdentity;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -388,6 +389,7 @@ class ShopeePromotionService
                 'unit_price' => null,
                 'quantity' => null,
                 'application_number' => $row['application_number'] ?? null,
+                'refund_event_identity' => RefundEventIdentity::make($orderSn, $row['application_number'] ?? null),
                 'product_id' => $row['product_id'] ?? null,
                 'product_name' => $row['product_name'] ?? null,
                 'order_created_at' => $row['order_created_at'] ?? null,
