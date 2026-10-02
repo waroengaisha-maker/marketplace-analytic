@@ -242,6 +242,7 @@ class IncomeReportImporterTest extends TestCase
         $conflict = (array) $original;
         unset($conflict['id']);
         $conflict['order_number'] = 'INC-CONFLICT';
+        $conflict['line_identity'] = str_repeat('x', 65);
         $rows[] = $conflict;
 
         $this->expectException(\Illuminate\Database\QueryException::class);
