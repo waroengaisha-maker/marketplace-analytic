@@ -91,45 +91,6 @@ class OrderReportImporter
             ];
         }
 
-        $payload = $this->uniqueRows($payload);
-        $orderNumbers = array_values(array_unique(array_column($payload, 'order_number')));
-
-        $replacedIdentities = DB::table('marketplace_orders')
-            ->where('user_id', $userId)
-            ->whereIn('order_number', $orderNumbers)
-            ->pluck('line_identity');
-
-        OrderCostAllocation::query()
-            ->where('user_id', $userId)
-            ->whereIn('order_line_identity', $replacedIdentities)
-            ->delete();
-
-        DB::table('marketplace_orders')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
-
-        foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_orders')->insert($chunk);
-        }
-
-        foreach ($payload as $line) {
-            $transactionAt = $this->allocationDate($line);
-            if ($transactionAt === null) {
-                continue;
-            }
-
-            $this->allocation->allocateForOrderLine(
-                $userId,
-                $line['line_identity'],
-                $transactionAt,
-                [
-                    'shopee_product_id' => $line['parent_sku'],
-                    'shopee_variant_id' => $line['sku_reference'],
-                    'shopee_product_name' => $line['product_name'],
-                    'shopee_variant_name' => $line['variation_name'],
-                ],
-                $line['fulfilled_quantity'] ?? null,
-            );
-        }
-
         return $this->persist($payload, $userId);
     }
 
@@ -143,45 +104,51 @@ class OrderReportImporter
     public function persist(array $rows, int $userId): int
     {
         $rows = $this->uniqueRows($rows);
-        $orderNumbers = array_values(array_unique(array_column($rows, 'order_number')));
 
-        $replacedIdentities = DB::table('marketplace_orders')
-            ->where('user_id', $userId)
-            ->whereIn('order_number', $orderNumbers)
-            ->pluck('line_identity');
+        return DB::transaction(function () use ($rows, $userId): int {
+            $orderNumbers = array_values(array_unique(array_column($rows, 'order_number')));
 
-        OrderCostAllocation::query()
-            ->where('user_id', $userId)
-            ->whereIn('order_line_identity', $replacedIdentities)
-            ->delete();
+            $replacedIdentities = DB::table('marketplace_orders')
+                ->where('user_id', $userId)
+                ->whereIn('order_number', $orderNumbers)
+                ->pluck('line_identity');
 
-        DB::table('marketplace_orders')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
+            OrderCostAllocation::query()
+                ->where('user_id', $userId)
+                ->whereIn('order_line_identity', $replacedIdentities)
+                ->delete();
 
-        foreach (array_chunk($rows, 500) as $chunk) {
-            DB::table('marketplace_orders')->insert($chunk);
-        }
+            DB::table('marketplace_orders')
+                ->where('user_id', $userId)
+                ->whereIn('order_number', $orderNumbers)
+                ->delete();
 
-        foreach ($rows as $line) {
-            $transactionAt = $this->allocationDate($line);
-            if ($transactionAt === null) {
-                continue;
+            foreach (array_chunk($rows, 500) as $chunk) {
+                DB::table('marketplace_orders')->insert($chunk);
             }
 
-            $this->allocation->allocateForOrderLine(
-                $userId,
-                $line['line_identity'],
-                $transactionAt,
-                [
-                    'shopee_product_id' => $line['parent_sku'],
-                    'shopee_variant_id' => $line['sku_reference'],
-                    'shopee_product_name' => $line['product_name'],
-                    'shopee_variant_name' => $line['variation_name'],
-                ],
-                $line['fulfilled_quantity'] ?? null,
-            );
-        }
+            foreach ($rows as $line) {
+                $transactionAt = $this->allocationDate($line);
+                if ($transactionAt === null) {
+                    continue;
+                }
 
-        return count($rows);
+                $this->allocation->allocateForOrderLine(
+                    $userId,
+                    $line['line_identity'],
+                    $transactionAt,
+                    [
+                        'shopee_product_id' => $line['parent_sku'],
+                        'shopee_variant_id' => $line['sku_reference'],
+                        'shopee_product_name' => $line['product_name'],
+                        'shopee_variant_name' => $line['variation_name'],
+                    ],
+                    $line['fulfilled_quantity'] ?? null,
+                );
+            }
+
+            return count($rows);
+        });
     }
 
     /**
