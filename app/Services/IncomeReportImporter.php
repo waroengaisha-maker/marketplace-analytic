@@ -79,12 +79,6 @@ class IncomeReportImporter
         }
 
         $payload = $this->uniqueRows($payload);
-        $orderNumbers = array_values(array_unique(array_column($payload, 'order_number')));
-        DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
-
-        foreach (array_chunk($payload, 500) as $chunk) {
-            DB::table('marketplace_income')->insert($chunk);
-        }
 
         return $this->persist($payload, $userId);
     }
@@ -120,15 +114,20 @@ class IncomeReportImporter
      */
     private function persistRows(array $rows, int $userId): int
     {
-        $orderNumbers = array_values(array_unique(array_column($rows, 'order_number')));
+        return DB::transaction(function () use ($rows, $userId): int {
+            $orderNumbers = array_values(array_unique(array_column($rows, 'order_number')));
 
-        DB::table('marketplace_income')->where('user_id', $userId)->whereIn('order_number', $orderNumbers)->delete();
+            DB::table('marketplace_income')
+                ->where('user_id', $userId)
+                ->whereIn('order_number', $orderNumbers)
+                ->delete();
 
-        foreach (array_chunk($rows, 500) as $chunk) {
-            DB::table('marketplace_income')->insert($chunk);
-        }
+            foreach (array_chunk($rows, 500) as $chunk) {
+                DB::table('marketplace_income')->insert($chunk);
+            }
 
-        return count($rows);
+            return count($rows);
+        });
     }
 
     /**
