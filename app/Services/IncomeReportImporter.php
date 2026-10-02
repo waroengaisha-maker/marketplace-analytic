@@ -243,7 +243,14 @@ class IncomeReportImporter
         } elseif (str_contains($value, '.')) {
             $lastDot = strrpos($value, '.');
             $fractionDigits = $lastDot === false ? 0 : strlen(substr($value, $lastDot + 1));
-            if ($fractionDigits > 2) {
+
+            // PhpSpreadsheet may expose an Excel decimal as a long binary
+            // floating-point artifact (for example 678.89999999999998).
+            // Treat long fractional tails as decimal values instead of
+            // misclassifying the dot as a thousands separator.
+            if ($fractionDigits > 6) {
+                $value = (string) round((float) $value, 2);
+            } elseif ($fractionDigits > 2) {
                 $value = str_replace('.', '', $value);
             }
         }
