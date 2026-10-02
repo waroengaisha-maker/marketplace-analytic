@@ -49,8 +49,10 @@ return new class extends Migration
 
         Schema::table('marketplace_income', function (Blueprint $table): void {
             $indexes = collect(Schema::getIndexes('marketplace_income'));
-            if ($indexes->contains('name', 'income_user_line_identity_unique')) {
-                $table->dropUnique('income_user_line_identity_unique');
+            foreach (['income_user_line_identity_unique', 'income_line_identity_unique'] as $legacyIndex) {
+                if ($indexes->contains('name', $legacyIndex)) {
+                    $table->dropUnique($legacyIndex);
+                }
             }
             if (! $indexes->contains('name', 'income_user_line_event_identity_unique')) {
                 $table->unique(['user_id', 'line_identity', 'refund_event_identity'], 'income_user_line_event_identity_unique');
