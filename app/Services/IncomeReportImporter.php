@@ -52,7 +52,9 @@ class IncomeReportImporter
                 'fund_released_at' => $this->date($data['Tanggal Dana Dilepaskan'] ?? null),
                 'release_method' => $this->text($data['Metode Pelepasan Dana'] ?? null),
                 'order_type' => $this->text($data['Tipe Pesanan'] ?? null),
-                'total_income' => $this->number($data['Total Penghasilan'] ?? $data['Total Pendapatan'] ?? null),
+                // Keep settlement income and revenue as independent source fields.
+                'total_income' => $this->number($data['Total Penghasilan'] ?? null),
+                'total_revenue' => $this->number($data['Total Pendapatan'] ?? null),
                 'product_price' => $productPrice,
                 'buyer_shipping_paid' => $this->number($data['Ongkir Dibayar Pembeli'] ?? null),
                 'platform_fee' => $this->number($data['Biaya Administrasi'] ?? null),
