@@ -177,7 +177,16 @@ class IncomeReportImporter
                 return true;
             }
 
-            $key = $row['user_id'].'|'.$row['line_identity'].'|'.$eventIdentity;
+            if ($eventIdentity !== null) {
+                $key = $row['user_id'].'|'.$row['line_identity'].'|'.$eventIdentity;
+            } else {
+                // Rows without a source event/application number must remain
+                // distinct. Only collapse an actual duplicate source row.
+                $sourceRow = $row['source_row'] ?? null;
+                $key = $row['user_id'].'|'.$row['line_identity'].'|source:'
+                    .($sourceRow === null ? 'raw:'.hash('sha256', (string) ($row['raw_data'] ?? '')) : 'row:'.$sourceRow);
+            }
+
             if (isset($seen[$key])) {
                 return false;
             }
