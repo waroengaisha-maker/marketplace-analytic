@@ -571,4 +571,39 @@ class OrderReportHppAllocationTest extends TestCase
         $this->assertSame('ok', $allocation->cost_status);
         $this->assertSame('20000.00', (string) $allocation->total_hpp);
     }
+    public function test_order_replacement_rolls_back_when_later_batch_insert_fails(): void
+    {
+        $user = User::factory()->create();
+        $path = $this->writeOrderReport([$this->orderLine('ORDER-ATOMIC', 'Atomic Product', 'Original', 1, 100.0, '2026-08-10 10:00:00')]);
+        try {
+            $this->importer->import($path, $user->id);
+        } finally {
+            unlink($path);
+        }
+
+        $original = DB::table('marketplace_orders')->where('user_id', $user->id)->where('order_number', 'ORDER-ATOMIC')->first();
+        $this->assertNotNull($original);
+
+        $rows = [];
+        for ($index = 0; $index < 500; $index++) {
+            $row = (array) $original;
+            unset($row['id']);
+            $row['order_number'] = 'ORDER-BATCH-'.$index;
+            $row['line_identity'] = hash('sha256', 'atomic-order-'.$index);
+            $rows[] = $row;
+        }
+        $conflict = (array) $original;
+        unset($conflict['id']);
+        $conflict['order_number'] = 'ORDER-CONFLICT';
+        $rows[] = $conflict;
+
+        $this->expectException(\Illuminate\Database\QueryException::class);
+        try {
+            $this->importer->persist($rows, $user->id);
+        } finally {
+            $this->assertSame(1, DB::table('marketplace_orders')->where('user_id', $user->id)->where('order_number', 'ORDER-ATOMIC')->count());
+            $this->assertSame(0, DB::table('marketplace_orders')->where('user_id', $user->id)->where('order_number', 'ORDER-BATCH-0')->count());
+        }
+    }
+
 }
