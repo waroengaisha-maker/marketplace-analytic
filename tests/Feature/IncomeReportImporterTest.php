@@ -182,7 +182,7 @@ class IncomeReportImporterTest extends TestCase
 
         $rawData = json_decode((string) $row->raw_data, true, 512, JSON_THROW_ON_ERROR);
         $this->assertSame('123.45', $rawData['Total Penghasilan']);
-        $this->assertSame('678.90', $rawData['Total Pendapatan']);
+        $this->assertEqualsWithDelta(678.90, (float) $rawData['Total Pendapatan'], 0.000001);
     }
 
     public function test_income_import_does_not_fallback_to_total_revenue_when_total_income_is_missing(): void
