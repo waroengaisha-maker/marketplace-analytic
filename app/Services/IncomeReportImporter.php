@@ -39,6 +39,7 @@ class IncomeReportImporter
                 'order_number' => $orderNumber,
                 'item_index' => $this->itemIndex($itemKey),
                 'line_identity' => ReportLineIdentity::make($orderNumber, $productKey, $variationKey, $unitPrice, $quantity),
+                'refund_event_identity' => RefundEventIdentity::make($orderNumber, $this->text($data['No. Pengajuan'] ?? null)),
                 'row_type' => $this->text($data['Lihat berdasarkan'] ?? null),
                 'source_row' => $this->integer($data['No.'] ?? null),
                 'application_number' => $this->text($data['No. Pengajuan'] ?? null),
@@ -143,7 +144,12 @@ class IncomeReportImporter
                 continue;
             }
 
-            $key = $userId.'|'.$identity;
+            $eventIdentity = $row['refund_event_identity'] ?? null;
+            if ($eventIdentity === null) {
+                continue;
+            }
+
+            $key = $userId.'|'.$identity.'|'.$eventIdentity;
             if (isset($seen[$key])) {
                 throw new \RuntimeException('Duplicate Shopee income identity detected during promotion.');
             }
@@ -165,7 +171,12 @@ class IncomeReportImporter
         $seen = [];
 
         return array_values(array_filter($rows, static function (array $row) use (&$seen): bool {
-            $key = $row['user_id'].'|'.$row['line_identity'];
+            $eventIdentity = $row['refund_event_identity'] ?? null;
+            if ($eventIdentity === null) {
+                return true;
+            }
+
+            $key = $row['user_id'].'|'.$row['line_identity'].'|'.$eventIdentity;
             if (isset($seen[$key])) {
                 return false;
             }

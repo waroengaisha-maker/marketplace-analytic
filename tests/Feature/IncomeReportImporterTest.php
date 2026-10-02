@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\IncomeReportImporter;
+use App\Services\RefundEventIdentity;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -250,6 +251,23 @@ class IncomeReportImporterTest extends TestCase
             $this->assertSame(1, DB::table('marketplace_income')->where('user_id', $user->id)->where('order_number', 'INC-ATOMIC')->count());
             $this->assertSame(0, DB::table('marketplace_income')->where('user_id', $user->id)->where('order_number', 'INC-BATCH-0')->count());
         }
+    }
+
+    public function test_income_event_identity_uses_application_number_and_stays_null_without_one(): void
+    {
+        $user = User::factory()->create();
+        $service = app(IncomeReportImporter::class);
+        $rows = [
+            ['user_id' => $user->id, 'order_number' => 'ORDER-EVENT-IDENTITY', 'line_identity' => str_repeat('l', 64), 'refund_event_identity' => RefundEventIdentity::make('ORDER-EVENT-IDENTITY', 'APP-1')],
+            ['user_id' => $user->id, 'order_number' => 'ORDER-EVENT-IDENTITY', 'line_identity' => str_repeat('l', 64), 'refund_event_identity' => RefundEventIdentity::make('ORDER-EVENT-IDENTITY', 'APP-2')],
+            ['user_id' => $user->id, 'order_number' => 'ORDER-EVENT-IDENTITY', 'line_identity' => str_repeat('l', 64), 'refund_event_identity' => null],
+        ];
+        $method = (new \ReflectionClass($service))->getMethod('uniqueRows');
+        $method->setAccessible(true);
+        $unique = $method->invoke($service, $rows);
+        $this->assertCount(3, $unique);
+        $this->assertNotSame($unique[0]['refund_event_identity'], $unique[1]['refund_event_identity']);
+        $this->assertNull($unique[2]['refund_event_identity']);
     }
 
 }

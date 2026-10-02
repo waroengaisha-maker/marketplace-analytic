@@ -1043,7 +1043,7 @@ class MarketplaceReconciliationService
                 'item_index'
             );
 
-        $incomeRefund = DB::table('marketplace_income')
+        $incomeRefundEvents = DB::table('marketplace_income')
             ->where('refund_to_buyer', '<', 0)
             ->selectRaw('
                 user_id,
@@ -1051,11 +1051,28 @@ class MarketplaceReconciliationService
                 product_key,
                 item_index,
                 variation_key,
+                line_identity,
+                refund_event_identity,
                 MAX(product_price) AS product_price,
                 MAX(total_income) AS total_income,
-                MAX(refund_to_buyer) AS refund_to_buyer
+                SUM(refund_to_buyer) AS refund_to_buyer
             ')
-            ->groupBy('user_id', 'order_number', 'product_key', 'item_index', 'variation_key');
+            ->groupBy('user_id', 'order_number', 'product_key', 'item_index', 'variation_key', 'line_identity', 'refund_event_identity');
+
+        $incomeRefund = DB::query()
+            ->fromSub($incomeRefundEvents, 'refund_events')
+            ->selectRaw('
+                user_id,
+                order_number,
+                product_key,
+                item_index,
+                variation_key,
+                line_identity,
+                SUM(product_price) AS product_price,
+                SUM(total_income) AS total_income,
+                SUM(refund_to_buyer) AS refund_to_buyer
+            ')
+            ->groupBy('user_id', 'order_number', 'product_key', 'item_index', 'variation_key', 'line_identity');
 
         $netQuantitySql = 'CASE WHEN quantity - COALESCE(returned_quantity, 0) > 0 THEN quantity - COALESCE(returned_quantity, 0) ELSE 0 END';
         $defaultOrderProcessingFee = -(float) config('marketplace.order_processing_fee', 1250);
@@ -1172,6 +1189,13 @@ class MarketplaceReconciliationService
                     ->on('income_refund.order_number', '=', 'orders.order_number')
                     ->on('income_refund.product_key', '=', 'orders.product_key')
                     ->on('income_refund.item_index', '=', 'orders.item_index')
+                    ->where(function ($join): void {
+                        $join->whereColumn('income_refund.line_identity', 'orders.line_identity')
+                            ->orWhere(function ($join): void {
+                                $join->whereNull('income_refund.line_identity')
+                                    ->whereNull('orders.line_identity');
+                            });
+                    })
                     ->where(function ($join): void {
                         $join->whereNull('orders.tracking_number')
                             ->orWhereRaw("TRIM(orders.tracking_number) = ''")
