@@ -1116,8 +1116,8 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $incomeWorksheet->fromArray([
             ['Laporan Penghasilan'],
             [],
-            ['No. Pesanan', 'Nama Produk', 'Nama Variasi', 'Jumlah', 'Harga Satuan', 'Total Pendapatan', 'Lihat berdasarkan', 'No. Pengajuan', 'Waktu Pesanan Dibuat'],
-            ['ORDER-DECIMAL', 'Baju', 'Merah', 2, 100.5, 201.0, 'Sku', 'APP-1', '2026-09-07 10:00:00'],
+            ['No. Pesanan', 'Nama Produk', 'Nama Variasi', 'Jumlah', 'Harga Satuan', 'Total Penghasilan', 'Total Pendapatan', 'Lihat berdasarkan', 'No. Pengajuan', 'Waktu Pesanan Dibuat'],
+            ['ORDER-DECIMAL', 'Baju', 'Merah', 2, 100.5, 201.0, 201.0, 'Sku', 'APP-1', '2026-09-07 10:00:00'],
         ], null, 'A1');
         (new Xlsx($incomeSheet))->save($incomePath);
 
@@ -1170,8 +1170,8 @@ class MarketplaceReconciliationServiceTest extends TestCase
         $incomeWorksheet->fromArray([
             ['Laporan Penghasilan'],
             [],
-            ['No. Pesanan', 'Nama Produk', 'Nama Variasi', 'Jumlah', 'Harga Satuan', 'Total Pendapatan', 'Lihat berdasarkan', 'No. Pengajuan', 'Waktu Pesanan Dibuat'],
-            ['ORDER-END-TO-END', 'Produk', 'Variation', 1, 250.0, 250.0, 'Sku', 'APP-1', '2026-09-07 10:00:00'],
+            ['No. Pesanan', 'Nama Produk', 'Nama Variasi', 'Jumlah', 'Harga Satuan', 'Total Penghasilan', 'Total Pendapatan', 'Lihat berdasarkan', 'No. Pengajuan', 'Waktu Pesanan Dibuat'],
+            ['ORDER-END-TO-END', 'Produk', 'Variation', 1, 250.0, 250.0, 250.0, 'Sku', 'APP-1', '2026-09-07 10:00:00'],
         ], null, 'A1');
         (new Xlsx($incomeSheet))->save($incomePath);
 
