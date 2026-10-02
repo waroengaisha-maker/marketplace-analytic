@@ -504,7 +504,7 @@ class ShopeeApiPromotionTest extends TestCase
     // HPP / returns / refunds / secrets
     // ---------------------------------------------------------------
 
-    public function test_missing_hpp_is_distinct_from_zero_hpp(): void
+    public function test_missing_hpp_is_distinct_from_unavailable_fulfillment(): void
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);
 
@@ -514,8 +514,7 @@ class ShopeeApiPromotionTest extends TestCase
 
         $missingProduct = $this->registerProduct($user, 'PRD-NOHPP', 'Tanpa HPP', null);
         $this->createMapping($user, $missingProduct, 'exact', 'SKU-NOHPP', 'SKU-NOHPP-V', 'Tanpa HPP', 'M');
-        $zeroProduct = $this->registerProduct($user, 'PRD-KEMEJA-ZERO', 'Kemeja Zero', 0);
-        $this->createMapping($user, $zeroProduct, 'manual', 'SKU-A', 'SKU-A-M', 'Kemeja', 'M');
+        $this->seedMappedProduct($user, 0);
 
         $this->connectedConnection($user, [
             'staging_orders' => [$this->orderStaging($missingSn), $this->orderStaging($zeroSn)],
@@ -546,9 +545,9 @@ class ShopeeApiPromotionTest extends TestCase
             ->where('order_line_identity', $zeroIdentity)
             ->first();
         $this->assertNotNull($zeroAllocation);
-        $this->assertSame('ok', $zeroAllocation->cost_status);
-        $this->assertSame(0.0, (float) $zeroAllocation->total_hpp);
-        $this->assertNotNull($zeroAllocation->effective_hpp_record_id);
+        $this->assertSame('quantity_unavailable', $zeroAllocation->cost_status);
+        $this->assertNull($zeroAllocation->total_hpp);
+        $this->assertNull($zeroAllocation->effective_hpp_record_id);
     }
 
     public function test_returned_quantity_and_refund_income_are_preserved(): void
