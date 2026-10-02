@@ -514,7 +514,8 @@ class ShopeeApiPromotionTest extends TestCase
 
         $missingProduct = $this->registerProduct($user, 'PRD-NOHPP', 'Tanpa HPP', null);
         $this->createMapping($user, $missingProduct, 'exact', 'SKU-NOHPP', 'SKU-NOHPP-V', 'Tanpa HPP', 'M');
-        $this->seedMappedProduct($user, 0);
+        $zeroProduct = $this->registerProduct($user, 'PRD-KEMEJA-ZERO', 'Kemeja Zero', 0);
+        $this->createMapping($user, $zeroProduct, 'manual', 'SKU-A', 'SKU-A-M', 'Kemeja', 'M');
 
         $this->connectedConnection($user, [
             'staging_orders' => [$this->orderStaging($missingSn), $this->orderStaging($zeroSn)],
