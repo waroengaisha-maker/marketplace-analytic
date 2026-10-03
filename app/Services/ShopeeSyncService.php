@@ -24,7 +24,7 @@ class ShopeeSyncService
     private const GENERIC_API_ERROR = 'Shopee API request failed. Please try again later.';
 
     public function __construct(
-        private readonly ShopeeApiClient $client,
+        private readonly ShopeeApiClientFactory $clientFactory,
         private readonly ShopeeOAuthService $oauth,
         private readonly ShopeeResponseNormalizer $normalizer,
         ?callable $sleeper = null,
@@ -41,6 +41,7 @@ class ShopeeSyncService
      */
     public function syncSampleOrders(ShopeeApiConnection $connection, array $options = []): array
     {
+        $client = $this->clientFactory->fromConnection($connection);
         $this->ensureFreshAccessToken($connection);
 
         $production = ($options['mode'] ?? 'sample') === 'production';
@@ -77,7 +78,7 @@ class ShopeeSyncService
             }
 
             try {
-                $envelope = $this->withBackoff(fn (): array => $this->client->getOrderList($params));
+                $envelope = $this->withBackoff(fn (): array => $client->getOrderList($params));
             } catch (ShopeeApiException $exception) {
                 $failure = [
                     'error' => $this->safeError($exception),
@@ -132,6 +133,7 @@ class ShopeeSyncService
      */
     public function syncSampleIncome(ShopeeApiConnection $connection, array $options = []): array
     {
+        $client = $this->clientFactory->fromConnection($connection);
         $this->ensureFreshAccessToken($connection);
 
         $production = ($options['mode'] ?? 'sample') === 'production';
@@ -167,7 +169,7 @@ class ShopeeSyncService
             }
 
             try {
-                $envelope = $this->withBackoff(fn (): array => $this->client->getIncomeDetail($params));
+                $envelope = $this->withBackoff(fn (): array => $client->getIncomeDetail($params));
             } catch (ShopeeApiException $exception) {
                 $failure = [
                     'error' => $this->safeError($exception),
@@ -236,6 +238,7 @@ class ShopeeSyncService
      */
     public function syncSampleEscrow(ShopeeApiConnection $connection, array $options = []): array
     {
+        $client = $this->clientFactory->fromConnection($connection);
         $this->ensureFreshAccessToken($connection);
 
         $escrowCap = (int) config('shopee-api.sync.escrow_limit_max', 20);
@@ -254,7 +257,7 @@ class ShopeeSyncService
 
         foreach ($serials as $serial) {
             try {
-                $envelope = $this->withBackoff(fn (): array => $this->client->getEscrowDetail($serial));
+                $envelope = $this->withBackoff(fn (): array => $client->getEscrowDetail($serial));
                 $staged[] = [
                     'order_sn' => $serial,
                     'response' => (array) data_get($envelope, 'response', []),
