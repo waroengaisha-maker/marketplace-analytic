@@ -34,7 +34,7 @@ const emit = defineEmits<{
                 class="h-11 w-full"
                 :min-date="minDate"
                 :max-date="maxDate"
-                @update:model-value="emit('update:from', $event)"
+                @update:model-value="(value) => emit('update:from', value instanceof Date ? value : null)"
             />
         </div>
         <div class="flex min-w-0 flex-col gap-1">
@@ -51,7 +51,7 @@ const emit = defineEmits<{
                 class="h-11 w-full"
                 :min-date="minDate"
                 :max-date="maxDate"
-                @update:model-value="emit('update:to', $event)"
+                @update:model-value="(value) => emit('update:to', value instanceof Date ? value : null)"
             />
         </div>
     </div>
