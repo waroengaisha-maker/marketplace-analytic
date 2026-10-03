@@ -73,6 +73,7 @@ return [
         'production_income_max_pages' => (int) env('SHOPEE_SYNC_PRODUCTION_INCOME_MAX_PAGES', 1000),
         'production_max_pages' => (int) env('SHOPEE_SYNC_PRODUCTION_MAX_PAGES', 1000),
         'escrow_limit_max' => (int) env('SHOPEE_SYNC_ESCROW_LIMIT_MAX', 20),
+        'lock_seconds' => (int) env('SHOPEE_SYNC_LOCK_SECONDS', 1800),
     ],
 
 ];
