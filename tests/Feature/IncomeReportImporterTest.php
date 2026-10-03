@@ -254,6 +254,47 @@ class IncomeReportImporterTest extends TestCase
         }
     }
 
+    public function test_income_persist_deduplicates_duplicate_representations_of_one_refund_event(): void
+    {
+        $user = User::factory()->create();
+        $lineIdentity = str_repeat('l', 64);
+        $eventIdentity = RefundEventIdentity::make('ORDER-REFUND-DUP', 'APP-001');
+
+        $base = [
+            'user_id' => $user->id,
+            'order_number' => 'ORDER-REFUND-DUP',
+            'line_identity' => $lineIdentity,
+            'refund_event_identity' => $eventIdentity,
+            'application_number' => 'APP-001',
+            'product_name' => 'Product',
+            'product_key' => str_repeat('p', 64),
+            'product_price' => 38000,
+            'quantity' => 1,
+            'total_income' => 0,
+            'refund_to_buyer' => -12000,
+            'raw_data' => '{}',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        $rows = $this->importer->persist([
+            $base + ['row_type' => 'Sku', 'source_row' => 10],
+            $base + ['row_type' => 'Detail', 'source_row' => 11],
+        ], $user->id);
+
+        $this->assertSame(1, $rows);
+
+        $stored = DB::table('marketplace_income')
+            ->where('user_id', $user->id)
+            ->where('order_number', 'ORDER-REFUND-DUP')
+            ->get();
+
+        $this->assertCount(1, $stored);
+        $this->assertSame('APP-001', $stored[0]->application_number);
+        $this->assertSame($eventIdentity, $stored[0]->refund_event_identity);
+        $this->assertSame(-12000.0, (float) $stored[0]->refund_to_buyer);
+    }
+
     public function test_income_event_identity_uses_application_number_and_stays_null_without_one(): void
     {
         $user = User::factory()->create();
