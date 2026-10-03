@@ -139,3 +139,13 @@ Audit berikutnya harus selalu mengikuti urutan:
 Status Completed berarti evidence remediation dan verification tersedia.
 
 ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulkan status, model harus membaca repository context dan audit ledger yang berlaku.
+
+### AUDIT-019 — MVC / Dependency Injection boundary hardening
+
+- **Date:** 2026-10-04
+- **Priority:** P2
+- **Finding:** Core controllers already used Laravel injection in many endpoints, but ShopeeApiController still used service-locator/manual construction and the dashboard contained non-trivial request orchestration in a route closure.
+- **Assessment before remediation:** Partially compliant with MVC/DI best practice.
+- **Remediation:** Added ShopeeApiClientFactory; injected controller dependencies; injected the factory into ShopeeSyncService; removed controller app()/manual service construction; moved dashboard handling into DashboardController; added container-resolution regression tests.
+- **Verification:** Verification is pending local/CI test execution. Existing CI already gates PHPUnit, Pint, frontend typecheck/build, dependency audits, and Docker build.
+- **Status:** In Progress — verification pending.
