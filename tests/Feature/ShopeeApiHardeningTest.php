@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\MasterProductCatalogService;
 use App\Services\ReportLineIdentity;
 use App\Services\ShopeeApiClient;
+use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeSyncService;
@@ -124,7 +125,7 @@ class ShopeeApiHardeningTest extends TestCase
     private function syncService(ShopeeApiConnection $connection, ?callable $sleeper = null): ShopeeSyncService
     {
         return new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             app(ShopeeOAuthService::class),
             app(ShopeeResponseNormalizer::class),
             $sleeper,
