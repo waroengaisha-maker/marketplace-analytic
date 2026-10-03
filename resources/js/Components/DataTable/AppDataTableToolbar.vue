@@ -50,7 +50,7 @@ const clearButtonClass = 'absolute right-2 top-1/2 z-10 flex h-7 w-7 -translate-
                 <div v-if="allColumns && allColumns.length" class="w-full sm:w-[18rem] lg:w-[20rem]">
                     <MultiSelect
                         v-model="selectedColumns"
-                        :options="allColumns"
+                        :options="[...allColumns]"
                         option-label="1"
                         :placeholder="columnsLabel ?? 'Pilih kolom'"
                         display="comma"
