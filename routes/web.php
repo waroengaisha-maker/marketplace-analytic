@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HppController;
 use App\Http\Controllers\HppMappingController;
 use App\Http\Controllers\IncomeReconciliationController;
@@ -9,38 +10,9 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ReconciliationController;
 use App\Http\Controllers\ShopeeApiController;
 use App\Http\Controllers\UploadReportsController;
-use App\Services\MarketplaceReconciliationService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
-Route::get('/', function (Request $request, MarketplaceReconciliationService $service) {
-    if ($request->user()?->isAdmin()) {
-        return redirect()->route('admin.users.index');
-    }
-
-    $validated = $request->validate([
-        'from' => ['nullable', 'date'],
-        'to' => ['nullable', 'date', 'after_or_equal:from'],
-    ]);
-    $range = $service->orderDateRange($request->user()->id);
-    $hasAppliedFilter = $request->hasAny(['from', 'to']);
-
-    return Inertia::render('Dashboard', [
-        'stats' => $hasAppliedFilter
-            ? $service->dashboardStats($request->user()->id, $validated['from'] ?? null, $validated['to'] ?? null)
-            : [],
-        'rows' => $hasAppliedFilter
-            ? $service->reconciliationRows($request->user()->id, $validated['from'] ?? null, $validated['to'] ?? null)
-            : [],
-        'dateRange' => $range,
-        'hasAppliedFilter' => $hasAppliedFilter,
-        'filters' => [
-            'from' => $validated['from'] ?? $range['min'],
-            'to' => $validated['to'] ?? $range['max'],
-        ],
-    ]);
-})->middleware(['auth', 'account.active']);
+Route::get('/', [DashboardController::class, 'index'])->middleware(['auth', 'account.active']);
 
 Route::get('/login', function () {
     return Inertia::render('Auth/Login');
