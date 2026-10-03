@@ -133,8 +133,8 @@ class ShopeeSyncService
      */
     public function syncSampleIncome(ShopeeApiConnection $connection, array $options = []): array
     {
-        $client = $this->clientFactory->fromConnection($connection);
         $this->ensureFreshAccessToken($connection);
+        $client = $this->clientFactory->fromConnection($connection);
 
         $production = ($options['mode'] ?? 'sample') === 'production';
         $incomeCap = (int) config(
