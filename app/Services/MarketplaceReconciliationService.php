@@ -1043,7 +1043,12 @@ class MarketplaceReconciliationService
                 'item_index'
             );
 
-        $incomeRefundEvents = DB::table('marketplace_income')
+        // A refund application can be represented by both a summary (Sku)
+        // row and a detail row. Those rows are one source event, not two
+        // financial events. Keep one deterministic representative per
+        // application, while allowing different applications on the same
+        // order line to aggregate independently.
+        $refundCandidates = DB::table('marketplace_income')
             ->where('refund_to_buyer', '<', 0)
             ->selectRaw("
                 user_id,
@@ -1053,14 +1058,33 @@ class MarketplaceReconciliationService
                 variation_key,
                 line_identity,
                 refund_event_identity,
-                MAX(product_price) AS product_price,
-                MAX(total_income) AS total_income,
-                CASE
-                    WHEN refund_event_identity IS NULL THEN MAX(refund_to_buyer)
-                    ELSE SUM(refund_to_buyer)
-                END AS refund_to_buyer
-            ")
-            ->groupBy(
+                product_price,
+                total_income,
+                refund_to_buyer,
+                ROW_NUMBER() OVER (
+                    PARTITION BY
+                        user_id,
+                        order_number,
+                        product_key,
+                        item_index,
+                        variation_key,
+                        line_identity,
+                        refund_event_identity,
+                        CASE
+                            WHEN refund_event_identity IS NULL THEN refund_to_buyer
+                            ELSE NULL
+                        END
+                    ORDER BY
+                        CASE WHEN row_type = 'Sku' THEN 0 ELSE 1 END,
+                        source_row,
+                        id
+                ) AS event_row_number
+            ");
+
+        $incomeRefundEvents = DB::query()
+            ->fromSub($refundCandidates, 'refund_candidates')
+            ->where('event_row_number', 1)
+            ->select([
                 'user_id',
                 'order_number',
                 'product_key',
@@ -1068,8 +1092,10 @@ class MarketplaceReconciliationService
                 'variation_key',
                 'line_identity',
                 'refund_event_identity',
-                DB::raw('CASE WHEN refund_event_identity IS NULL THEN refund_to_buyer END')
-            );
+                'product_price',
+                'total_income',
+                'refund_to_buyer',
+            ]);
         $incomeRefund = DB::query()
             ->fromSub($incomeRefundEvents, 'refund_events')
             ->selectRaw('
