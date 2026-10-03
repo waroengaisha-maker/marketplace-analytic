@@ -17,7 +17,10 @@ class OrderReportImporter
 
     public function import(string $path, int $userId): int
     {
-        $rows = IOFactory::load($path)->getSheetByName('orders')->toArray(null, true, true, false);
+        $reader = IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly(true);
+        $reader->setLoadSheetsOnly(['orders']);
+        $rows = $reader->load($path)->getSheetByName('orders')->toArray(null, true, true, false);
         $headers = array_map(fn (mixed $value): string => trim((string) $value), array_shift($rows));
         $payload = [];
 
