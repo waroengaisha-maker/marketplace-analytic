@@ -22,25 +22,6 @@ class ShopeeApiClient
         private readonly array $config = [],
     ) {}
 
-    public static function fromConfig(): self
-    {
-        return new self(app(HttpFactory::class), (array) config('shopee-api'));
-    }
-
-    public static function fromConnection(ShopeeApiConnection $connection): self
-    {
-        return new self(app(HttpFactory::class), [
-            'environment' => $connection->environment,
-            'region' => $connection->region,
-            'host' => '',
-            'timeout' => (int) config('shopee-api.timeout', 30),
-            'partner_id' => $connection->partner_id,
-            'partner_key' => $connection->partner_key,
-            'shop_id' => $connection->shop_id,
-            'access_token' => $connection->access_token,
-        ]);
-    }
-
     public function isConfigured(): bool
     {
         return filled($this->config['partner_id'] ?? null)
