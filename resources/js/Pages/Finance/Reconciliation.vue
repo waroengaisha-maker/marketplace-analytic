@@ -21,6 +21,7 @@ import { FilterMatchMode } from '@primevue/core/api'
 
 type Row = Record<string, unknown>
 type DataTableInstance = { exportCSV: () => void; filteredValue?: Row[] }
+type SummaryCard = { field: string; label: string; value: number; percentage: number; type: string; orderCount: number; breakdown?: [string, number][] }
 type Pagination = { current_page: number; per_page: number; total: number; last_page: number } | null
 const props = defineProps<{ rows: Row[]; summaryRows: Row[]; pagination: Pagination; hasAppliedFilter: boolean; appliedFrom?: string | null; appliedTo?: string | null }>()
 const hasAppliedFilter = ref(props.hasAppliedFilter)
@@ -211,7 +212,7 @@ const summaryMetrics = [
     ['hpp', 'Total HPP'],
     ['laba', 'Total Laba'],
 ] as const
-function buildSummaryCards(rows: Row[], subtotalOnly = false) {
+function buildSummaryCards(rows: Row[], subtotalOnly = false): SummaryCard[] {
     const subtotal = sumRows(rows, 'order_subtotal')
 
     if (subtotalOnly) {
@@ -596,7 +597,7 @@ function onFilter() {
                             <MultiSelect
                                 input-id="reconciliation-columns"
                                 v-model="selectedColumns"
-                                :options="allColumns"
+                                :options="[...allColumns]"
                                 option-label="1"
                                 placeholder="Pilih kolom"
                                 display="comma"
@@ -668,7 +669,7 @@ function onFilter() {
                                         panel: { class: 'text-sm' },
                                         item: { class: 'py-2' },
                                     }"
-                                    @update:model-value="(value) => { filters[field].value = value; onFilter() }"
+                                    @update:model-value="(value) => { filters[field].value = value ?? null; onFilter() }"
                                 />
                                 <div v-else-if="field === 'hpp_status'" class="flex h-9 items-center text-xs text-color-secondary">
                                     <span class="truncate">Gunakan filter Status HPP di atas</span>
