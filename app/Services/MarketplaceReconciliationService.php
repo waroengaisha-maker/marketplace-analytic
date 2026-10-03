@@ -1187,7 +1187,7 @@ class MarketplaceReconciliationService
             'orders.order_created_at',
             'orders.buyer_username',
         ];
-        $refundAmount = 'COALESCE(NULLIF(income_exact.refund_to_buyer, 0), income_refund.refund_to_buyer)';
+        $refundAmount = "CASE WHEN income_exact.candidate_count = 1 AND NULLIF(income_exact.refund_to_buyer, 0) IS NOT NULL THEN income_exact.refund_to_buyer ELSE income_refund.refund_to_buyer END";
         $refundEvidence = "({$refundAmount} < 0)";
         $exactMatch = 'income_exact.candidate_count = 1';
         $groupedFeeCondition = 'income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND ((income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount) OR (income_fallback.candidate_count = 1 AND income_fallback.income_amount = order_group.min_net_price AND order_group.min_net_price = order_group.max_net_price AND order_group.order_line_count > 1))';
