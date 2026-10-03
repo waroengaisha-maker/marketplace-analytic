@@ -1,5 +1,5 @@
 import '../css/app.css'
-import { createApp, h } from 'vue'
+import { createApp, h, type DefineComponent } from 'vue'
 import { createInertiaApp } from '@inertiajs/vue3'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
 import AppLayout from './Layouts/AppLayout.vue'
@@ -12,7 +12,7 @@ createInertiaApp({
     title: (title) => `${title} - Marketplace Analytics`,
 
     resolve: async (name) => {
-        const page = await resolvePageComponent(
+        const page = await resolvePageComponent<DefineComponent>(
             `./Pages/${name}.vue`,
             import.meta.glob('./Pages/**/*.vue'),
         )
