@@ -429,6 +429,45 @@ class ShopeeApiPromotionTest extends TestCase
         $this->assertSame('blocked', $audit->metadata['gate']);
     }
 
+    public function test_promotion_failure_does_not_expose_exception_details(): void
+    {
+        $this->withoutMiddleware(VerifyCsrfToken::class);
+
+        $user = $this->activeUser();
+        $orderSn = '220404NF3CFFNY';
+        $this->seedMappedProduct($user);
+
+        $this->connectedConnection($user, [
+            'staging_orders' => [$this->orderStaging($orderSn)],
+            'staging_escrow' => [$this->escrowEntry($orderSn, [$this->matchedItem($orderSn)])],
+            'staging_income' => [$this->incomeStaging($orderSn)],
+        ]);
+
+        $this->mock(IncomeReportImporter::class, function ($mock): void {
+            $mock->shouldReceive('persistForPromotion')
+                ->once()
+                ->andThrow(new \RuntimeException(self::ACCESS_TOKEN));
+        });
+
+        $response = $this->actingAs($user)->postJson(route('integrations.shopee-api.promote'))
+            ->assertStatus(422)
+            ->json();
+
+        $serializedResponse = json_encode($response);
+        $this->assertStringNotContainsString(self::ACCESS_TOKEN, (string) $serializedResponse);
+        $this->assertSame('Promotion failed. Please try again later.', $response['error']);
+
+        $audit = AccountAuditLog::query()
+            ->where('user_id', $user->id)
+            ->where('action', 'shopee_api.promotion.failed')
+            ->first();
+
+        $this->assertNotNull($audit);
+        $serializedAudit = json_encode($audit->metadata);
+        $this->assertStringNotContainsString(self::ACCESS_TOKEN, (string) $serializedAudit);
+        $this->assertSame(\RuntimeException::class, $audit->metadata['exception']);
+    }
+
     public function test_transaction_rolls_back_all_writes_on_partial_failure(): void
     {
         $this->withoutMiddleware(VerifyCsrfToken::class);

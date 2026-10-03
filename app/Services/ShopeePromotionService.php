@@ -169,7 +169,7 @@ class ShopeePromotionService
             $this->audit($connection, 'shopee_api.promotion.failed', [
                 'dry_run' => false,
                 'gate' => 'passed',
-                'error' => $exception->getMessage(),
+                'exception' => $exception::class,
             ]);
 
             return [
@@ -178,7 +178,7 @@ class ShopeePromotionService
                 'gate' => $plan['gate'],
                 'validation' => $plan['summary'],
                 'promoted' => null,
-                'error' => 'Promotion failed: '.$exception->getMessage(),
+                'error' => 'Promotion failed. Please try again later.',
             ];
         }
     }
