@@ -17,8 +17,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->singleton(ShopeeApiClient::class, fn (): ShopeeApiClient => new ShopeeApiClient(
-            app(HttpFactory::class),
+        $this->app->singleton(ShopeeApiClient::class, fn (HttpFactory $http): ShopeeApiClient => new ShopeeApiClient(
+            $http,
             (array) config('shopee-api'),
         ));
     }
