@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
 use App\Services\ShopeeApiClient;
+use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeApiException;
 use App\Services\ShopeeApiResearchService;
 use App\Services\ShopeeOAuthService;
@@ -22,6 +23,13 @@ use Inertia\Inertia;
 
 class ShopeeApiController extends Controller
 {
+    public function __construct(
+        private readonly ShopeeApiClientFactory $clientFactory,
+        private readonly ShopeeOAuthService $oauthService,
+        private readonly ShopeeResponseNormalizer $responseNormalizer,
+        private readonly ShopeeSyncService $syncService,
+    ) {}
+
     // Production error handling is intentionally sanitized at the controller boundary.
     public function index(ShopeeApiResearchService $service, Request $request)
     {
@@ -38,7 +46,7 @@ class ShopeeApiController extends Controller
         return response()->json([
             'ok' => true,
             'config' => $connection !== null
-                ? ShopeeApiClient::fromConnection($connection)->connectionStatus()
+                ? $this->clientFactory->fromConnection($connection)->connectionStatus()
                 : [
                     'configured' => false,
                     'missing' => ['connection'],
@@ -99,7 +107,7 @@ class ShopeeApiController extends Controller
         $request->session()->put('shopee_oauth_state', $state);
 
         try {
-            return response()->json(['ok' => true, 'url' => $oauth->authorizationUrl($connection, null, $state)]);
+            return response()->json(['ok' => true, 'url' => $this->oauthService->authorizationUrl($connection, null, $state)]);
         } catch (ShopeeApiException $exception) {
             return $this->errorResponse($exception);
         }
@@ -176,7 +184,7 @@ class ShopeeApiController extends Controller
         ]);
 
         try {
-            $payload = $oauth->exchangeCode($connection, $code, null, filled($shopId) ? (string) $shopId : null);
+            $payload = $this->oauthService->exchangeCode($connection, $code, null, filled($shopId) ? (string) $shopId : null);
 
             // Sandbox V2 returns OAuth tokens at the top level, while some
             // Shopee responses use a nested "response" envelope.
@@ -263,7 +271,7 @@ class ShopeeApiController extends Controller
 
         return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
             try {
-                $sync = $this->syncFor($request->user()->id);
+                $sync = $this->syncService;
                 $connection = $this->connectionFor($request->user()->id);
 
                 $result = $sync->syncSampleOrders($connection, $validated);
@@ -542,7 +550,7 @@ class ShopeeApiController extends Controller
             $metadata['cursor'] = $result['cursor'];
         }
 
-        app(AccountAuditLog::class)->insert([
+        AccountAuditLog::query()->create([
             'user_id' => $userId,
             'actor_id' => $userId,
             'action' => 'shopee_api.sync.'.$operation,
@@ -565,27 +573,7 @@ class ShopeeApiController extends Controller
             throw ShopeeApiException::notConfigured();
         }
 
-        return ShopeeApiClient::fromConnection($connection);
-    }
-
-    private function oauth(): ShopeeOAuthService
-    {
-        return app(ShopeeOAuthService::class);
-    }
-
-    private function syncFor(int $userId): ShopeeSyncService
-    {
-        $connection = $this->connectionFor($userId);
-
-        if ($connection === null || ! $connection->isConfigured()) {
-            throw ShopeeApiException::notConfigured();
-        }
-
-        return new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
-            $this->oauth(),
-            app(ShopeeResponseNormalizer::class),
-        );
+        return $this->clientFactory->fromConnection($connection);
     }
 
     private function respondWith(callable $call, callable $normalize): JsonResponse
