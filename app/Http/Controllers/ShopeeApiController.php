@@ -15,6 +15,7 @@ use App\Services\ShopeeSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Closure;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
@@ -259,18 +260,20 @@ class ShopeeApiController extends Controller
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
 
-        try {
-            $sync = $this->syncFor($request->user()->id);
-            $connection = $this->connectionFor($request->user()->id);
+        return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
+            try {
+                $sync = $this->syncFor($request->user()->id);
+                $connection = $this->connectionFor($request->user()->id);
 
-            $result = $sync->syncSampleOrders($connection, $validated);
+                $result = $sync->syncSampleOrders($connection, $validated);
 
-            $this->auditSync($request->user()->id, 'orders', $result);
+                $this->auditSync($request->user()->id, 'orders', $result);
 
-            return response()->json($result);
-        } catch (ShopeeApiException $exception) {
-            return $this->errorResponse($exception);
-        }
+                return response()->json($result);
+            } catch (ShopeeApiException $exception) {
+                return $this->errorResponse($exception);
+            }
+        });
     }
 
     public function syncIncome(Request $request): JsonResponse
@@ -283,18 +286,20 @@ class ShopeeApiController extends Controller
             'page_size' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        try {
-            $sync = $this->syncFor($request->user()->id);
-            $connection = $this->connectionFor($request->user()->id);
+        return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
+            try {
+                $sync = $this->syncFor($request->user()->id);
+                $connection = $this->connectionFor($request->user()->id);
 
-            $result = $sync->syncSampleIncome($connection, $validated);
+                $result = $sync->syncSampleIncome($connection, $validated);
 
-            $this->auditSync($request->user()->id, 'income', $result);
+                $this->auditSync($request->user()->id, 'income', $result);
 
-            return response()->json($result);
-        } catch (ShopeeApiException $exception) {
-            return $this->errorResponse($exception);
-        }
+                return response()->json($result);
+            } catch (ShopeeApiException $exception) {
+                return $this->errorResponse($exception);
+            }
+        });
     }
 
     public function syncEscrow(Request $request): JsonResponse
@@ -303,17 +308,41 @@ class ShopeeApiController extends Controller
             'limit' => ['nullable', 'integer', 'min:1', 'max:'.(int) config('shopee-api.sync.escrow_limit_max', 20)],
         ]);
 
+        return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
+            try {
+                $sync = $this->syncFor($request->user()->id);
+                $connection = $this->connectionFor($request->user()->id);
+
+                $result = $sync->syncSampleEscrow($connection, $validated);
+
+                $this->auditSync($request->user()->id, 'escrow', $result);
+
+                return response()->json($result);
+            } catch (ShopeeApiException $exception) {
+                return $this->errorResponse($exception);
+            }
+        });
+    }
+
+    private function withSyncLock(Request $request, Closure $callback): JsonResponse
+    {
+        $userId = $request->user()->id;
+        $lock = Cache::lock(
+            'shopee-api:sync:user:'.$userId,
+            (int) config('shopee-api.sync.lock_seconds', 1800)
+        );
+
+        if (! $lock->get()) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'A Shopee sync is already running for this account.',
+            ], 409);
+        }
+
         try {
-            $sync = $this->syncFor($request->user()->id);
-            $connection = $this->connectionFor($request->user()->id);
-
-            $result = $sync->syncSampleEscrow($connection, $validated);
-
-            $this->auditSync($request->user()->id, 'escrow', $result);
-
-            return response()->json($result);
-        } catch (ShopeeApiException $exception) {
-            return $this->errorResponse($exception);
+            return $callback();
+        } finally {
+            $lock->release();
         }
     }
 
