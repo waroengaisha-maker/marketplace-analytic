@@ -149,3 +149,14 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - **Remediation:** Added ShopeeApiClientFactory; injected controller dependencies; injected the factory into ShopeeSyncService; removed controller app()/manual service construction; moved dashboard handling into DashboardController; added container-resolution regression tests.
 - **Verification:** Verification is pending local/CI test execution. Existing CI already gates PHPUnit, Pint, frontend typecheck/build, dependency audits, and Docker build.
 - **Status:** In Progress — verification pending.
+
+### AUDIT-020 — Shopee token refresh ordering
+
+- **Date:** 2026-10-04
+- **Priority:** P1
+- **Area:** Shopee API correctness
+- **Finding:** Sync workflows could construct a connection-scoped ShopeeApiClient before refreshing an expired access token. Because the client snapshots the connection credentials, a successful refresh could still leave the current sync request using the expired token.
+- **Remediation:** All three sync paths — orders, income, and escrow — now refresh the access token before constructing the API client.
+- **Additional cleanup:** Removed obsolete static service-locator factories from ShopeeApiClient after introducing the explicit factory; removed unused controller imports/injected parameters.
+- **Verification:** Code-level remediation completed; runtime PHPUnit/Pint/typecheck/full-suite verification remains pending local execution.
+- **Status:** In Progress — verification pending.
