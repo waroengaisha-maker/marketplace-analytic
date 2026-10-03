@@ -238,7 +238,7 @@ const submitLogout = () => {
                                 <SidebarMenu>
                                     <SidebarMenuItem v-for="item in section.items" :key="item.href">
                                         <SidebarMenuButton as-child :is-active="isActive(item.href)">
-                                            <template #default="{ class: buttonClass = '', a11yAttrs = {} }">
+                                            <template #default="slotProps">
                                                 <Link
                                                     v-bind="slotProps?.a11yAttrs ?? {}"
                                                     :href="item.href"
