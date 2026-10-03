@@ -41,8 +41,8 @@ class ShopeeSyncService
      */
     public function syncSampleOrders(ShopeeApiConnection $connection, array $options = []): array
     {
-        $client = $this->clientFactory->fromConnection($connection);
         $this->ensureFreshAccessToken($connection);
+        $client = $this->clientFactory->fromConnection($connection);
 
         $production = ($options['mode'] ?? 'sample') === 'production';
         $pageSizeCap = (int) config(
