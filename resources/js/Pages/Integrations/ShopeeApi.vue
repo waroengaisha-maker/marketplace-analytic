@@ -96,6 +96,9 @@ type NormalizedRow = Record<string, string | number | null>
 
 type LabResult = {
     ok: boolean
+    normalized?: NormalizedRow[]
+    promoted?: { lines: number; income: number }
+
     error?: string | null
     rate_limited?: boolean
     message?: string
