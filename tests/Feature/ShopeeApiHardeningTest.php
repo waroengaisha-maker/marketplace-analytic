@@ -669,4 +669,66 @@ class ShopeeApiHardeningTest extends TestCase
         $this->assertCount(1, $otherConnection->staging_orders);
         $this->assertSame('220404AB12CDEF', $otherConnection->staging_orders[0]['order_sn']);
     }
+
+    public function test_sync_routes_reject_overlapping_sync_for_same_account(): void
+    {
+        $user = $this->activeUser();
+        $this->connectedConnection($user);
+
+        $lock = \Illuminate\Support\Facades\Cache::lock(
+            'shopee-api:sync:user:'.$user->id,
+            (int) config('shopee-api.sync.lock_seconds', 1800)
+        );
+
+        $this->assertTrue($lock->get());
+
+        try {
+            foreach ([
+                'integrations.shopee-api.sync-orders',
+                'integrations.shopee-api.sync-income',
+                'integrations.shopee-api.sync-escrow',
+            ] as $route) {
+                $this->actingAs($user)
+                    ->postJson(route($route))
+                    ->assertStatus(409)
+                    ->assertJson([
+                        'ok' => false,
+                        'error' => 'A Shopee sync is already running for this account.',
+                    ]);
+            }
+        } finally {
+            $lock->release();
+        }
+    }
+
+    public function test_sync_lock_is_scoped_to_account(): void
+    {
+        $userA = $this->activeUser();
+        $userB = $this->activeUser();
+        $this->connectedConnection($userA);
+        $this->connectedConnection($userB);
+
+        $lock = \Illuminate\Support\Facades\Cache::lock(
+            'shopee-api:sync:user:'.$userA->id,
+            (int) config('shopee-api.sync.lock_seconds', 1800)
+        );
+
+        $this->assertTrue($lock->get());
+
+        Http::fake([
+            '*/api/v2/order/get_order_list*' => Http::response(
+                $this->orderEnvelope([$this->orderRow('220404AB12CDEF')])
+            ),
+        ]);
+
+        try {
+            $this->actingAs($userB)
+                ->postJson(route('integrations.shopee-api.sync-orders'))
+                ->assertOk()
+                ->assertJson(['ok' => true]);
+        } finally {
+            $lock->release();
+        }
+    }
+
 }
