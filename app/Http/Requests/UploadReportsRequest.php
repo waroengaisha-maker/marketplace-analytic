@@ -54,7 +54,10 @@ class UploadReportsRequest extends FormRequest
             }
 
             try {
-                $spreadsheet = IOFactory::load($this->file($field)->getRealPath());
+                $reader = IOFactory::createReaderForFile($this->file($field)->getRealPath());
+                $reader->setReadDataOnly(true);
+                $reader->setLoadSheetsOnly([$definition['sheet']]);
+                $spreadsheet = $reader->load($this->file($field)->getRealPath());
                 $sheet = $spreadsheet->getSheetByName($definition['sheet']);
 
                 if ($sheet === null) {
