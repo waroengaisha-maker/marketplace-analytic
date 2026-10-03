@@ -238,8 +238,8 @@ class ShopeeSyncService
      */
     public function syncSampleEscrow(ShopeeApiConnection $connection, array $options = []): array
     {
-        $client = $this->clientFactory->fromConnection($connection);
         $this->ensureFreshAccessToken($connection);
+        $client = $this->clientFactory->fromConnection($connection);
 
         $escrowCap = (int) config('shopee-api.sync.escrow_limit_max', 20);
         $serialSList = collect($connection->staging_orders ?? [])
