@@ -4,20 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
-use App\Services\ShopeeApiClient;
 use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeApiException;
 use App\Services\ShopeeApiResearchService;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeePromotionService;
-use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeShadowValidationService;
 use App\Services\ShopeeSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Closure;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
@@ -94,7 +91,7 @@ class ShopeeApiController extends Controller
         return response()->json(['ok' => true, 'connection' => $connection->safeState()]);
     }
 
-    public function authorize(Request $request, ShopeeOAuthService $oauth): JsonResponse
+    public function authorize(Request $request): JsonResponse
     {
         $connection = $this->connectionFor($request->user()->id);
 
@@ -112,7 +109,7 @@ class ShopeeApiController extends Controller
         }
     }
 
-    public function shopeeCallback(Request $request, ShopeeOAuthService $oauth): RedirectResponse
+    public function shopeeCallback(Request $request): RedirectResponse
     {
         $user = $request->user();
         $connection = $user ? $this->connectionFor($user->id) : null;
