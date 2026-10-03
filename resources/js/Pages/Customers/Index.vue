@@ -97,7 +97,7 @@ const allColumns = [
     ['laba', 'Laba Bersih'],
 ] as const satisfies readonly TableColumnMeta[]
 
-const sortableFields = new Set(allColumns.map(([field]) => field))
+const sortableFields = new Set<string>(allColumns.map(([field]) => field))
 const moneyFields = new Set(['subtotal', 'total_fee', 'tax', 'penghasilan', 'revenue_subtotal', 'non_revenue_subtotal', 'hpp', 'laba'])
 
 const historyColumns = [
@@ -361,7 +361,7 @@ const exportExcel = async () => {
                             <MultiSelect
                                 input-id="customers-columns"
                                 v-model="selectedColumns"
-                                :options="allColumns"
+                                :options="[...allColumns]"
                                 option-label="1"
                                 :placeholder="`Pilih kolom (${selectedColumns.length})`"
                                 display="comma"
