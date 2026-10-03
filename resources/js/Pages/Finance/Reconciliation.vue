@@ -235,7 +235,7 @@ function buildSummaryCards(rows: Row[], subtotalOnly = false): SummaryCard[] {
                 ['Gratis Ongkir', sumRows(rows, 'free_shipping_xtra_fee')],
                 ['Promo XTRA', sumRows(rows, 'promo_xtra_service_fee')],
                 ['Biaya Proses', sumRows(rows, 'order_processing_fee')],
-            ] : undefined,
+            ] as [string, number][] : undefined,
         })),
     ]
 }
@@ -681,7 +681,7 @@ function onFilter() {
                                         :aria-label="`Filter ${header}`"
                                         placeholder="Cari..."
                                         class="h-9 w-full pl-8 pr-8 text-sm"
-                                        @update:model-value="(value) => { filters[field].value = value; onFilter() }"
+                                        @update:model-value="(value) => { filters[field].value = value ?? null; onFilter() }"
                                         @keyup.enter="onFilter"
                                     />
                                 </IconField>
