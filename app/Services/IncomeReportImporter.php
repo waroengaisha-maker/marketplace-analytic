@@ -12,7 +12,10 @@ class IncomeReportImporter
 {
     public function import(string $path, int $userId): int
     {
-        $sheet = IOFactory::load($path)->getSheetByName('Penghasilan');
+        $reader = IOFactory::createReaderForFile($path);
+        $reader->setReadDataOnly(true);
+        $reader->setLoadSheetsOnly(['Penghasilan']);
+        $sheet = $reader->load($path)->getSheetByName('Penghasilan');
         $rows = $sheet->toArray(null, true, true, false);
         array_shift($rows);
         array_shift($rows);
