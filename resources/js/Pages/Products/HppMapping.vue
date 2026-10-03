@@ -264,7 +264,7 @@ const saveMappings = (rows: MappingRow[] = props.rows) => {
     if (saving.value) return
     saving.value = true
 
-    const payload: Record<string, unknown>[] = []
+    const payload: Record<string, string | number | null>[] = []
     const skipped: { label: string; reason: string }[] = []
 
     for (const row of rows) {
@@ -375,7 +375,7 @@ const exportExcel = async () => {
             } else if (field === 'note') {
                 value = note.value[row.id] ?? ''
             } else {
-                value = row[field]
+                value = row[field as keyof MappingRow]
             }
 
             return [header, value]
