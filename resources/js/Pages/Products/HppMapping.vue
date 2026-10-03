@@ -105,7 +105,7 @@ const syncSelections = () => {
 
 watch(() => props.rows, syncSelections, { immediate: true })
 
-function loadData(params: Record<string, unknown> = {}) {
+function loadData(params: Record<string, string | number | undefined> = {}) {
     router.get('/products/hpp-mapping', {
         page: params.page ?? undefined,
         per_page: params.per_page ?? undefined,
