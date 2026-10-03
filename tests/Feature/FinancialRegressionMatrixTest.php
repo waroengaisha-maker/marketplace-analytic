@@ -7,6 +7,7 @@ use App\Services\CanonicalFinancialProjectionService;
 use App\Services\MarketplaceReconciliationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class FinancialRegressionMatrixTest extends TestCase
@@ -54,9 +55,7 @@ class FinancialRegressionMatrixTest extends TestCase
         ];
     }
 
-    /**
-     * @dataProvider canonicalFinancialCases
-     */
+    #[DataProvider('canonicalFinancialCases')]
     public function test_canonical_financial_matrix_preserves_semantic_status(
         array $sourceOverrides,
         array $allocation,
@@ -121,7 +120,7 @@ class FinancialRegressionMatrixTest extends TestCase
 
         DB::table('marketplace_orders')->insert([
             $this->order($user->id, ['order_number' => 'MATRIX-RETURN', 'item_index' => 1, 'returned_quantity' => 1]),
-            $this->order($user->id, ['order_number' => 'MATRIX-CANCEL', 'item_index' => 2, 'order_status' => 'Dibatalkan', 'cancellation_reason' => 'Buyer cancelled']),
+            $this->order($user->id, ['order_number' => 'MATRIX-CANCEL', 'item_index' => 2, 'order_status' => 'Dibatalkan', 'cancellation_reason' => 'Buyer cancelled', 'cancelled_quantity' => 1, 'quantity' => 2]),
             $this->order($user->id, ['order_number' => 'MATRIX-REFUND', 'item_index' => 3]),
             $this->order($user->id, ['order_number' => 'MATRIX-REFUND-RETURN', 'item_index' => 4, 'returned_quantity' => 1]),
         ]);
