@@ -26,7 +26,6 @@ class ShopeeApiController extends Controller
     public function __construct(
         private readonly ShopeeApiClientFactory $clientFactory,
         private readonly ShopeeOAuthService $oauthService,
-        private readonly ShopeeResponseNormalizer $responseNormalizer,
         private readonly ShopeeSyncService $syncService,
     ) {}
 
@@ -297,7 +296,7 @@ class ShopeeApiController extends Controller
 
         return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
             try {
-                $sync = $this->syncFor($request->user()->id);
+                $sync = $this->syncService;
                 $connection = $this->connectionFor($request->user()->id);
 
                 $result = $sync->syncSampleIncome($connection, $validated);
