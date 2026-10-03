@@ -205,7 +205,7 @@ function localDateKey(date: Date) {
     return `${year}-${month}-${day}`
 }
 
-function loadData(params: Record<string, unknown> = {}) {
+function loadData(params: Record<string, string | number | undefined> = {}) {
     activeBuyer.value = null
     detailVisible.value = false
     router.get('/customers', {
