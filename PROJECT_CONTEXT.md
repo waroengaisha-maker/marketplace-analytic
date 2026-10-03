@@ -35,7 +35,8 @@ Workflow:
 
 ### Backend
 - Laravel 13
-- PHP >= 8.3
+- PHP 8.5 runtime
+- Composer PHP requirement: `^8.4`
 - Laravel Eloquent
 - Laravel migrations
 - Laravel queues bila diperlukan
@@ -272,9 +273,9 @@ Regression cases penting:
 
 ## Current Test Baseline
 
-Setelah P1 line-identity work, full test suite telah dikonfirmasi:
+Full test suite terakhir dikonfirmasi:
 
-**280 tests passed, 1,980 assertions, 0 failures.**
+**297 tests passed, 2,088 assertions, 0 failures.**
 
 Baseline ini tidak boleh diasumsikan tetap valid setelah perubahan; rerun relevant tests.
 
@@ -302,19 +303,17 @@ Order
 
 ## Current Git Checkpoint
 
-Latest known development HEAD:
-`5b8be1a`
+Latest confirmed development HEAD:
 
-Commit:
-`clean promotion service namespace import`
+`ad00777` — `pin TypeScript and update project notes`
 
-P1 work sudah committed dan pushed ke `origin/development`.
+This checkpoint is on `origin/development`.
 
-Latest local status juga menunjukkan dua perubahan lokal yang terpisah dari P1:
+Latest local status also has two unrelated Docker/Vite changes:
 - `Caddyfile`
 - `compose.yaml`
 
-Jangan memasukkan kedua file tersebut ke commit P1 tanpa memastikan perubahan tersebut memang bagian dari task Docker/Vite yang sedang dikerjakan.
+Jangan memasukkan kedua file tersebut ke commit domain/documentation tanpa memastikan perubahan tersebut memang bagian dari task Docker/Vite yang sedang dikerjakan.
 
 ## Git Commit Principles
 
