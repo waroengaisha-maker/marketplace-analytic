@@ -41,7 +41,7 @@ const allColumns = [
 const { globalFilter, multiSortMeta, isLoading } = useDataTableContract()
 const selectedColumns = ref<TableColumnMeta[]>([...allColumns])
 
-function loadData(params: Record<string, unknown> = {}) {
+function loadData(params: Record<string, string | number | undefined> = {}) {
     router.get('/admin/admins', {
         page: params.page ?? undefined,
         per_page: params.per_page ?? undefined,
