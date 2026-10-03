@@ -431,6 +431,23 @@ Saat melaporkan pekerjaan selesai, rangkum:
 4. Commit yang dibuat.
 5. Local changes atau risk yang masih tersisa.
 
+## Repository Context Loading Contract
+
+Untuk setiap sesi engineering baru, model harus membaca konteks project dari repository sebelum membuat kesimpulan teknis.
+
+Urutan minimum:
+1. `PROJECT_CONTEXT.md`
+2. `docs/ARCHITECTURE.md`
+3. `docs/DOMAIN_CONTRACTS.md`
+4. `docs/DATA_MODEL.md`
+5. `docs/DECISION_LOG.md`
+6. `docs/AUDIT_LOG.md`
+7. source code, tests, dan Git history yang relevan
+
+Context yang tersimpan di ChatGPT Projects boleh digunakan sebagai orientasi awal, tetapi bukan source of truth. Jika ada perbedaan antara ChatGPT Project context dan repository, repository harus dianggap lebih baru sampai diverifikasi sebaliknya.
+
+Model tidak boleh menyatakan audit, test baseline, architecture, domain behavior, atau current status berdasarkan cached ChatGPT context saja.
+
 ## Context Maintenance
 
 Dokumen ini adalah high-level project context, bukan pengganti source code atau Git history.
