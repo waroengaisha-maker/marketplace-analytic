@@ -85,8 +85,20 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci
 
+      - name: Type-check frontend
+        run: npm run typecheck
+
       - name: Build frontend
         run: npm run build
+
+      - name: Check PHP code style
+        run: vendor/bin/pint --test
+
+      - name: Audit PHP dependencies
+        run: composer audit --no-interaction
+
+      - name: Audit JavaScript dependencies
+        run: npm audit --audit-level=high
 
       - name: Run test suite
         run: php artisan test

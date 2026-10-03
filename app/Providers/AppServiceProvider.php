@@ -3,7 +3,10 @@
 namespace App\Providers;
 
 use App\Services\ShopeeApiClient;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use RuntimeException;
 
@@ -25,6 +28,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        RateLimiter::for('shopee-api', fn (Request $request) => Limit::perMinute(30)
+            ->by('user:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        RateLimiter::for('shopee-sync', fn (Request $request) => Limit::perMinute(6)
+            ->by('user:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
+        RateLimiter::for('report-upload', fn (Request $request) => Limit::perMinute(5)
+            ->by('user:'.($request->user()?->getAuthIdentifier() ?? $request->ip())));
+
         if (app()->environment('production')) {
             if (app()->hasDebugModeEnabled()) {
                 throw new RuntimeException('APP_DEBUG must be false in production.');

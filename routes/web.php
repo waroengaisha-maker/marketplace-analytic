@@ -60,7 +60,9 @@ Route::get('/account/subscription', function (Request $request) {
 
 Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::get('/imports/upload', fn () => Inertia::render('Imports/Upload'))->name('imports.upload');
-    Route::post('/imports/upload', [UploadReportsController::class, 'store'])->name('imports.upload.store');
+    Route::post('/imports/upload', [UploadReportsController::class, 'store'])
+        ->middleware('throttle:report-upload')
+        ->name('imports.upload.store');
     Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
     Route::get('/orders/export-lines', [OrdersController::class, 'exportLines'])->name('orders.export-lines');
     Route::get('/orders/export-data', [OrdersController::class, 'exportData'])->name('orders.export-data');
@@ -77,19 +79,33 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::post('/products/hpp-mapping/reallocate', [HppMappingController::class, 'reallocate'])->name('products.hpp-mapping.reallocate');
     Route::get('/integrations/shopee-api', [ShopeeApiController::class, 'index'])->name('integrations.shopee-api');
     Route::get('/integrations/shopee-api/status', [ShopeeApiController::class, 'status'])->name('integrations.shopee-api.status');
-    Route::post('/integrations/shopee-api/test', [ShopeeApiController::class, 'testConnection'])->name('integrations.shopee-api.test');
+    Route::post('/integrations/shopee-api/test', [ShopeeApiController::class, 'testConnection'])
+        ->middleware('throttle:shopee-api')
+        ->name('integrations.shopee-api.test');
     Route::get('/integrations/shopee-api/orders', [ShopeeApiController::class, 'orders'])->name('integrations.shopee-api.orders');
     Route::get('/integrations/shopee-api/orders/{order_sn}', [ShopeeApiController::class, 'orderDetail'])->name('integrations.shopee-api.order-detail')->where('order_sn', '[A-Za-z0-9_.-]+');
     Route::get('/integrations/shopee-api/income', [ShopeeApiController::class, 'income'])->name('integrations.shopee-api.income');
-    Route::post('/integrations/shopee-api/clear', [ShopeeApiController::class, 'clear'])->name('integrations.shopee-api.clear');
-    Route::post('/integrations/shopee-api/configure', [ShopeeApiController::class, 'configure'])->name('integrations.shopee-api.configure');
+    Route::post('/integrations/shopee-api/clear', [ShopeeApiController::class, 'clear'])
+        ->middleware('throttle:shopee-api')
+        ->name('integrations.shopee-api.clear');
+    Route::post('/integrations/shopee-api/configure', [ShopeeApiController::class, 'configure'])
+        ->middleware('throttle:shopee-api')
+        ->name('integrations.shopee-api.configure');
     Route::post('/integrations/shopee-api/authorize', [ShopeeApiController::class, 'authorize'])->name('integrations.shopee-api.authorize');
     Route::get('/integrations/shopee-api/shopee-auth', [ShopeeApiController::class, 'shopeeCallback'])->name('integrations.shopee-api.shopee-auth');
-    Route::post('/integrations/shopee-api/sync-orders', [ShopeeApiController::class, 'syncOrders'])->name('integrations.shopee-api.sync-orders');
-    Route::post('/integrations/shopee-api/sync-income', [ShopeeApiController::class, 'syncIncome'])->name('integrations.shopee-api.sync-income');
-    Route::post('/integrations/shopee-api/sync-escrow', [ShopeeApiController::class, 'syncEscrow'])->name('integrations.shopee-api.sync-escrow');
+    Route::post('/integrations/shopee-api/sync-orders', [ShopeeApiController::class, 'syncOrders'])
+        ->middleware('throttle:shopee-sync')
+        ->name('integrations.shopee-api.sync-orders');
+    Route::post('/integrations/shopee-api/sync-income', [ShopeeApiController::class, 'syncIncome'])
+        ->middleware('throttle:shopee-sync')
+        ->name('integrations.shopee-api.sync-income');
+    Route::post('/integrations/shopee-api/sync-escrow', [ShopeeApiController::class, 'syncEscrow'])
+        ->middleware('throttle:shopee-sync')
+        ->name('integrations.shopee-api.sync-escrow');
     Route::get('/integrations/shopee-api/validate', [ShopeeApiController::class, 'validate'])->name('integrations.shopee-api.validate');
-    Route::post('/integrations/shopee-api/promote', [ShopeeApiController::class, 'promote'])->name('integrations.shopee-api.promote');
+    Route::post('/integrations/shopee-api/promote', [ShopeeApiController::class, 'promote'])
+        ->middleware('throttle:shopee-sync')
+        ->name('integrations.shopee-api.promote');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
