@@ -12,7 +12,7 @@ createInertiaApp({
     title: (title) => `${title} - Marketplace Analytics`,
 
     resolve: async (name) => {
-        const page = await resolvePageComponent<DefineComponent>(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue'))
+        const page = await resolvePageComponent<DefineComponent>(`./Pages/${name}.vue`, import.meta.glob<DefineComponent>('./Pages/**/*.vue'))
 
         if (!name.startsWith('Auth/') && name !== 'Account/Status') {
             page.default.layout = page.default.layout || AppLayout
