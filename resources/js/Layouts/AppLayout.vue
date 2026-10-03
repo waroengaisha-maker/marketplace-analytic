@@ -218,8 +218,8 @@ const submitLogout = () => {
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton as-child class="px-1">
-                                    <template #default="{ class: buttonClass = '', a11yAttrs = {} }">
-                                        <Link v-bind="a11yAttrs" href="/" :class="[buttonClass, 'no-underline']" @click="closeSidebar">
+                                    <template #default="slotProps">
+                                        <Link v-bind="slotProps?.a11yAttrs ?? {}" href="/" :class="[slotProps?.class ?? '', 'no-underline']" @click="closeSidebar">
                                             <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold leading-none text-white shadow-sm">M</span>
                                             <span class="sidebar-brand-text min-w-0">
                                                 <span class="block text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">Marketplace</span>
@@ -240,9 +240,9 @@ const submitLogout = () => {
                                         <SidebarMenuButton as-child :is-active="isActive(item.href)">
                                             <template #default="{ class: buttonClass = '', a11yAttrs = {} }">
                                                 <Link
-                                                    v-bind="a11yAttrs"
+                                                    v-bind="slotProps?.a11yAttrs ?? {}"
                                                     :href="item.href"
-                                                    :class="[buttonClass, 'h-8 rounded-md px-3 text-xs font-normal text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white']"
+                                                    :class="[slotProps?.class ?? '', 'h-8 rounded-md px-3 text-xs font-normal text-slate-600 no-underline hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white']"
                                                     @click="closeSidebar"
                                                 >
                                                     <i :class="[item.icon, item.color, 'text-[11px]']" aria-hidden="true" />
@@ -279,8 +279,8 @@ const submitLogout = () => {
             <header class="sticky top-0 z-30 flex h-12 min-w-0 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur dark:border-slate-800 dark:bg-black/95 sm:px-4">
 
                 <SidebarTrigger target="main-sidebar" as-child>
-                    <template #default="{ class: triggerClass = '', a11yAttrs = {}, onClick = () => {} }">
-                        <button v-bind="a11yAttrs" type="button" :class="[triggerClass, 'mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800']" aria-label="Toggle navigation" @click="onClick">
+                    <template #default="slotProps">
+                        <button v-bind="slotProps?.a11yAttrs ?? {}" type="button" :class="[slotProps?.class ?? '', 'mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800']" aria-label="Toggle navigation" @click="slotProps?.onClick">
                             <span class="flex h-5 w-5 items-center justify-center">
                             <i class="pi pi-bars" aria-hidden="true" />
                             </span>
