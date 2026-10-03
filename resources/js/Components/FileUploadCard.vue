@@ -9,7 +9,7 @@ import { ref } from 'vue'
 defineProps<{
     title: string
     description?: string
-    form: InertiaForm<Record<string, File | null>>
+    form: InertiaForm<Record<string, any>>
     field: string
     submitLabel: string
 }>()
