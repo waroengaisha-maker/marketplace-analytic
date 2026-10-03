@@ -10,7 +10,9 @@ use App\Http\Controllers\OrdersController;
 use App\Http\Controllers\ReconciliationController;
 use App\Http\Controllers\ShopeeApiController;
 use App\Http\Controllers\UploadReportsController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', [DashboardController::class, 'index'])->middleware(['auth', 'account.active']);
 
