@@ -19,3 +19,38 @@
 - di menu Orders, di datatable : hapus kolom harga setelah diskon
 - sebagai insight : dalam satu transaksi, 1. lebih dari satu produk yg sama adalah tidak mungkin, 2. lebih dari satu yg sama dan juga variasi yg sama adalah tidak mungkin, 3. lebih dari satu produk yg sama dan variasi yg beda adalah mungkin, 4. harga produk yg sama dan beda variasi adalah mungkin sama
 - untuk export excel menu Orders, tambahkan sheet baru yg memuat gabungan sheet detail per item rekap dan provisional revenue, sekaligus coba rename nama sheet yg ada menurut kamu yg relevan sesuai isi nya
+
+
+./vendor/bin/sail artisan test --filter=RateLimitingTest
+./vendor/bin/sail artisan test --filter=ShopeeApiPromotionTest
+./vendor/bin/sail artisan test
+./vendor/bin/sail exec laravel.test vendor/bin/pint --test
+npm run typecheck
+composer audit
+npm audit --audit-level=high
+git diff --check
+
+
+
+cd ~/projects/marketplace-analytics
+
+echo "=== 1. Frontend typecheck ==="
+./vendor/bin/sail npm run typecheck
+
+echo "=== 2. Production build ==="
+./vendor/bin/sail npm run build
+
+echo "=== 3. Full PHPUnit ==="
+./vendor/bin/sail test
+
+echo "=== 4. Diff check ==="
+git diff --check
+
+echo "=== 5. Status ==="
+git status --short
+
+echo "=== 6. Diff stat ==="
+git diff --stat
+
+echo "=== 7. Changed files ==="
+git diff --name-only
