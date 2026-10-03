@@ -11,6 +11,10 @@
         "esModuleInterop": true,
         "lib": ["ES2022", "DOM", "DOM.Iterable"],
         "types": ["vite/client"],
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["resources/js/*"]
+        },
         "skipLibCheck": true,
         "noEmit": true
     },
