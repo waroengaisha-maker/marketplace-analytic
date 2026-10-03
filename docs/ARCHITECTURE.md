@@ -14,7 +14,7 @@ Prioritas:
 
 ## Technology baseline
 
-Backend: Laravel 13, PHP >= 8.3, Eloquent, migrations, queues bila diperlukan, Redis bila dikonfigurasi.
+Backend: Laravel 13, PHP 8.5 runtime (Composer requirement `^8.4`), Eloquent, migrations, queues bila diperlukan, Redis bila dikonfigurasi.
 
 Frontend: Vue 3, Inertia.js, TypeScript, PrimeVue, Tailwind CSS v4, Vite.
 
