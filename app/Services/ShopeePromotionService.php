@@ -307,7 +307,7 @@ class ShopeePromotionService
         return [
             'user_id' => $userId,
             'order_number' => $orderSn,
-            'item_index' => $this->itemIndex($orderSn, $line['product_name'] ?? '', $discountedPrice === null || $quantity === null ? null : $discountedPrice * max(0, $quantity - $returnedQuantity)),
+            'item_index' => $this->itemIndex($orderSn, $line['product_name'] ?? '', $discountedPrice === null || $quantity === null ? null : $discountedPrice * $quantity),
             'line_identity' => ReportLineIdentity::make($orderSn, $productKey, $variationKey, $discountedPrice, $quantity),
             'order_status' => $header['order_status'] ?? null,
             'cancellation_reason' => $header['cancellation_reason'] ?? null,
