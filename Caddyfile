@@ -17,6 +17,13 @@
 
 	reverse_proxy @websocket host.docker.internal:5173
 
+	# Cloudflare Tunnel connects to Caddy over HTTP, while the public app is HTTPS.
+	# Preserve the original scheme for Laravel redirects and URL generation.
+	@appHost host marketplace-analytics.my.id
+	reverse_proxy @appHost laravel.test:80 {
+		header_up X-Forwarded-Proto https
+	}
+
 	reverse_proxy laravel.test:80
 }
 
