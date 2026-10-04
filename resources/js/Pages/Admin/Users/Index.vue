@@ -107,10 +107,10 @@ const roleSeverity = (role: string) => role === 'super_admin' ? 'danger' : role 
 </script>
 
 <template>
-    <div class="p-6">
-        <Head title="Kelola Admin" />
-        <h1 class="mb-6 text-2xl font-semibold">Kelola Admin</h1>
-        <p class="mb-6 text-sm text-slate-500">Kelola akun admin aplikasi dan ubah aksesnya menjadi user aplikasi.</p>
+    <Head title="Kelola Admin" />
+    <div class="flex flex-col gap-6">
+        <h1 class="text-3xl font-bold">Kelola Admin</h1>
+        <p class="text-sm text-slate-500">Kelola akun admin aplikasi dan ubah aksesnya menjadi user aplikasi.</p>
         <Message v-if="validationError()" class="mb-4" severity="error">{{ validationError() }}</Message>
         <Card class="[&_.p-card-body]:p-4">
             <template #content>
