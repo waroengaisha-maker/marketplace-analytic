@@ -30,8 +30,9 @@
 }
 
 (services-auth) {
-	basic_auth {
-		{$SERVICES_AUTH_USER} {$SERVICES_AUTH_PASSWORD_HASH}
+	forward_auth laravel.test:80 {
+		uri /_internal/service-auth
+		header_up Host marketplace-analytics.my.id
 	}
 }
 
