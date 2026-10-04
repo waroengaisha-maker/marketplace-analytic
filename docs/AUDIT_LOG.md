@@ -181,3 +181,14 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - **Impact:** API-promoted order rows could receive a different legacy `item_index` from the equivalent Excel row. This can alter legacy item-index fallback matching and violates the documented requirement that promotion preserve importer identity semantics.
 - **Remediation:** Changed promotion `item_index` calculation to use the ordered quantity, matching `OrderReportImporter`. Added a regression assertion in `ShopeeApiPromotionTest::test_promote_writes_validated_lines_income_and_allocations` using a returned quantity of 1 against an ordered quantity of 2.
 - **Status:** Fixed — targeted and full-suite verification pending local execution.
+
+
+### AUDIT-023 — Shopee income promotion duplicate identity without refund event
+
+- **Date:** 2026-10-04
+- **Priority:** P1
+- **Area:** Income importer / Shopee API promotion / idempotency
+- **Finding:** `IncomeReportImporter::persistForPromotion()` skipped duplicate detection whenever `refund_event_identity` was NULL. This allowed identical non-refund income rows with the same `line_identity` to pass validation. The database unique index cannot safely prevent this because `refund_event_identity` is nullable under MySQL uniqueness semantics.
+- **Impact:** A duplicate Shopee income snapshot without an application number could be promoted twice, creating duplicate financial evidence and violating the promotion contract's duplicate rejection rule.
+- **Remediation:** Duplicate promotion identity detection now uses `user_id + line_identity + refund_event_identity`, with an explicit sentinel for missing refund event identity. Added regression coverage in `IncomeReportImporterTest::test_income_promotion_rejects_duplicate_identity_without_refund_event`.
+- **Status:** Fixed — targeted and full-suite verification pending local execution.
