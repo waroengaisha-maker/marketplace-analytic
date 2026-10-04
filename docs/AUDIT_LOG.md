@@ -170,3 +170,14 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - Regression coverage: Existing `RateLimitingTest::test_shopee_sync_limit_is_scoped_to_authenticated_user` exercises the missing-connection path while verifying the sixth request reaches HTTP 429.
 - Status: Fixed — targeted verification pending.
 
+
+
+### AUDIT-022 — Shopee promotion item-index parity
+
+- **Date:** 2026-10-04
+- **Priority:** P1
+- **Area:** Shopee API promotion / identity compatibility
+- **Finding:** `ShopeePromotionService::orderRow()` calculated `item_index` from net quantity after returns, while `OrderReportImporter` calculates it from the ordered quantity. The promotion contract therefore did not actually preserve the Excel import identity algorithm when a line had returned quantity.
+- **Impact:** API-promoted order rows could receive a different legacy `item_index` from the equivalent Excel row. This can alter legacy item-index fallback matching and violates the documented requirement that promotion preserve importer identity semantics.
+- **Remediation:** Changed promotion `item_index` calculation to use the ordered quantity, matching `OrderReportImporter`. Added a regression assertion in `ShopeeApiPromotionTest::test_promote_writes_validated_lines_income_and_allocations` using a returned quantity of 1 against an ordered quantity of 2.
+- **Status:** Fixed — targeted and full-suite verification pending local execution.
