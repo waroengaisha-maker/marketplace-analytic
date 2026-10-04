@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ServerStatusController;
+use App\Http\Controllers\Admin\ServiceHubController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
@@ -91,6 +92,7 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/server', ServerStatusController::class)->name('server.index');
+    Route::get('/services', ServiceHubController::class)->name('services.index');
     Route::get('/roles', [UserController::class, 'index'])->name('roles.index');
     Route::get('/admins', [UserController::class, 'index'])->name('admins.index');
     Route::get('/users', [UserController::class, 'access'])->name('users.index');
