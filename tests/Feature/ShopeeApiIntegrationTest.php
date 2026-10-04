@@ -322,7 +322,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
         );
@@ -539,7 +539,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
         );
@@ -586,7 +586,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
         );
@@ -625,7 +625,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
         );
@@ -661,7 +661,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
         );
@@ -692,7 +692,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
             function (int $seconds) use (&$sleeps): int {
@@ -727,7 +727,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
             fn (int $seconds): int => $seconds,
@@ -758,7 +758,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
         );
