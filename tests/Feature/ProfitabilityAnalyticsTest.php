@@ -98,7 +98,6 @@ class ProfitabilityAnalyticsTest extends TestCase
             'item_index' => 1,
             'product_name' => $productKey,
             'product_key' => hash('sha256', $productKey),
-            'sku_reference' => $sku,
             'variation_key' => $variationKey,
             'line_identity' => $lineIdentity,
             'product_price' => $income,

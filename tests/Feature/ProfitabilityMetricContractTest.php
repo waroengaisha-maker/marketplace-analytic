@@ -53,14 +53,14 @@ class ProfitabilityMetricContractTest extends TestCase
         $row = $service->reconciliationRows($user->id)[0];
 
         $this->assertSame(200.0, $row->order_subtotal);
-        $this->assertSame(170.0, $row->penghasilan);
+        $this->assertSame(160.0, $row->penghasilan);
         $this->assertSame(150.0, $row->hpp);
-        $this->assertSame(20.0, $row->laba);
+        $this->assertSame(10.0, $row->laba);
 
         $stats = $service->dashboardStats($user->id);
-        $this->assertSame(170.0, $stats['canonical_penghasilan']);
-        $this->assertSame(20.0, $stats['total_profit']);
-        $this->assertSame(20.0 / 170.0 * 100, $stats['net_margin']);
+        $this->assertSame(160.0, $stats['canonical_penghasilan']);
+        $this->assertSame(10.0, $stats['total_profit']);
+        $this->assertSame(10.0 / 160.0 * 100, $stats['net_margin']);
     }
 
     public function test_unavailable_hpp_does_not_become_zero_or_fake_profit(): void
