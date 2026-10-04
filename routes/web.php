@@ -78,6 +78,8 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::post('/integrations/shopee-api/sync-escrow', [ShopeeApiController::class, 'syncEscrow'])
         ->middleware('throttle:shopee-sync')
         ->name('integrations.shopee-api.sync-escrow');
+    Route::get('/integrations/shopee-api/sync-status/{operation}', [ShopeeApiController::class, 'syncStatus'])
+        ->name('integrations.shopee-api.sync-status');
     Route::get('/integrations/shopee-api/validate', [ShopeeApiController::class, 'validate'])->name('integrations.shopee-api.validate');
     Route::post('/integrations/shopee-api/promote', [ShopeeApiController::class, 'promote'])
         ->middleware('throttle:shopee-sync')
