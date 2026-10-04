@@ -66,7 +66,9 @@ fi
 printf '\n'
 
 printf '%s\n' '[Application]'
-if curl --silent --show-error --fail --max-time 5 --output /dev/null "$APP_URL"; then
+if curl --silent --show-error --fail --max-time 5 \
+    --header 'Host: marketplace-analytics.my.id' \
+    --output /dev/null "$APP_URL"; then
     ok "HTTP $APP_URL responded successfully."
 else
     fail "HTTP $APP_URL is not responding successfully."
