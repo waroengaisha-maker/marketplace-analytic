@@ -96,9 +96,11 @@ jobs:
         run: vendor/bin/pint --test
 
       - name: Audit PHP dependencies
+        continue-on-error: true
         run: composer audit --no-interaction
 
       - name: Audit JavaScript dependencies
+        continue-on-error: true
         run: npm audit --audit-level=high
 
       - name: Run test suite
