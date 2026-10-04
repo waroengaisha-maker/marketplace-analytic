@@ -129,9 +129,16 @@ Mengubah financial projection + HPP menjadi profitability analytics.
 ### Completed in this step
 - Regression test untuk canonical profitability values, margin, dan unavailable HPP sudah ditambahkan.
 
+### Completed in this step
+- Canonical profitability aggregation ditambahkan untuk product, SKU, variation, day, dan month.
+- Aggregation mempertahankan HPP availability count dan tidak mengubah unavailable HPP menjadi zero.
+- Profit dan margin menjadi NULL ketika profitability tidak dapat dipastikan.
+- Regression tests ditambahkan untuk supported dimensions dan partial HPP availability.
+
 ### Remaining
 - Verifikasi test suite pada repository runtime/CI.
-- Bentuk analytics profitability yang eksplisit dan reusable lintas dimensi.
+- Expose analytics melalui application/UI boundary.
+- Perluasan profitability analytics bila dimension tambahan benar-benar dibutuhkan.
 - Profit/margin by SKU/product/variation/period.
 
 Semua metric harus dapat ditelusuri kembali ke Order, Income, dan Master HPP.
@@ -221,7 +228,7 @@ Insight harus berbasis evidence yang tersedia. Sistem tidak boleh mengubah data 
 
 ## Current Roadmap Position
 
-**Current focus: Phase 5 — Profitability Analytics**
+**Current focus: Phase 5 — Profitability Analytics (aggregation complete; exposure next)**
 
 Urutan prioritas berikutnya:
 
