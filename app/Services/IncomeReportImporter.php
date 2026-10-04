@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Services\RefundEventIdentity;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -97,6 +96,7 @@ class IncomeReportImporter
     public function persist(array $rows, int $userId): int
     {
         $rows = $this->uniqueRows($rows);
+
         return $this->persistRows($rows, $userId);
     }
 

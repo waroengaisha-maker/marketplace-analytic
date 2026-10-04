@@ -592,21 +592,21 @@ class MarketplaceReconciliationService
                 ]);
 
                 return [
-                'order_number' => $row->order_number,
-                'order_created_at' => $row->order_created_at,
-                'business_status' => $row->status,
-                'order_status' => $row->order_status,
-                'product_name' => $row->product_name,
-                'variation_name' => $row->variation_name,
-                'net_quantity' => $row->net_quantity === null ? null : (float) $row->net_quantity,
-                'subtotal' => $row->subtotal === null ? null : (float) $row->subtotal,
-                'total_fee' => $projection->totalFee,
-                'tax' => $projection->tax,
-                'penghasilan' => $projection->penghasilan,
-                'hpp' => $projection->hpp,
-                'laba' => $projection->laba,
-                'canonical_status' => $projection->status,
-                'canonical_provenance' => $projection->provenance,
+                    'order_number' => $row->order_number,
+                    'order_created_at' => $row->order_created_at,
+                    'business_status' => $row->status,
+                    'order_status' => $row->order_status,
+                    'product_name' => $row->product_name,
+                    'variation_name' => $row->variation_name,
+                    'net_quantity' => $row->net_quantity === null ? null : (float) $row->net_quantity,
+                    'subtotal' => $row->subtotal === null ? null : (float) $row->subtotal,
+                    'total_fee' => $projection->totalFee,
+                    'tax' => $projection->tax,
+                    'penghasilan' => $projection->penghasilan,
+                    'hpp' => $projection->hpp,
+                    'laba' => $projection->laba,
+                    'canonical_status' => $projection->status,
+                    'canonical_provenance' => $projection->provenance,
                 ];
             })
             ->values()
@@ -841,8 +841,11 @@ class MarketplaceReconciliationService
                 'total_hpp' => $row->total_hpp ?? null,
             ]);
 
-            if ($projection->status === 'unavailable') $canonicalStatus = 'unavailable';
-            elseif ($canonicalStatus !== 'unavailable' && $projection->status === 'provisional') $canonicalStatus = 'provisional';
+            if ($projection->status === 'unavailable') {
+                $canonicalStatus = 'unavailable';
+            } elseif ($canonicalStatus !== 'unavailable' && $projection->status === 'provisional') {
+                $canonicalStatus = 'provisional';
+            }
 
             $isCancelled = $row->business_status === 'Cancelled';
             $hasTracking = $row->tracking_number !== null && trim((string) $row->tracking_number) !== '';
@@ -857,15 +860,23 @@ class MarketplaceReconciliationService
                 ? null
                 : ($projection->orderSubtotal * ($row->quantity == 0 ? 0 : $remainingQuantity / (float) $row->quantity)) + ($projection->refundAmount ?? 0);
 
-            if ($gross !== null) $metrics['gross_sales'] += $gross; else $availability['gross_sales'] = false;
+            if ($gross !== null) {
+                $metrics['gross_sales'] += $gross;
+            } else {
+                $availability['gross_sales'] = false;
+            }
             if ($projection->hpp === null) {
                 $availability['total_hpp'] = false;
             } else {
                 $metrics['total_hpp'] += $projection->hpp;
             }
 
-            if (!$isCancelled && $hasTracking) {
-                if ($legacyNetSales !== null) $metrics['net_sales'] += $legacyNetSales; else $availability['net_sales'] = false;
+            if (! $isCancelled && $hasTracking) {
+                if ($legacyNetSales !== null) {
+                    $metrics['net_sales'] += $legacyNetSales;
+                } else {
+                    $availability['net_sales'] = false;
+                }
                 foreach (['total_fee', 'total_tax', 'canonical_penghasilan', 'total_profit'] as $key) {
                     $value = match ($key) {
                         'total_fee' => $projection->totalFee,
@@ -874,31 +885,63 @@ class MarketplaceReconciliationService
                         'canonical_penghasilan' => $projection->penghasilan,
                         'total_profit' => $projection->laba,
                     };
-                    if ($value === null) $availability[$key] = false; else $metrics[$key] += $value;
+                    if ($value === null) {
+                        $availability[$key] = false;
+                    } else {
+                        $metrics[$key] += $value;
+                    }
                 }
             }
 
             $sales = $gross;
-            if ($isSettled && $hasTracking && $sales !== null) $metrics['settled_sales'] += $sales;
-            if ($isUnmatched && $hasTracking && $sales !== null) $metrics['pending_sales'] += $sales;
-            if ($isSettled && $hasTracking && $projection->laba !== null) $metrics['settled_profit'] += $projection->laba;
-            if ($isUnmatched && $hasTracking && $projection->laba !== null) $metrics['pending_profit'] += $projection->laba;
-            if ($isInvalid && $sales !== null) $metrics['valid_without_tracking_sales'] += $sales;
-            if ($isCancelled && $sales !== null) $metrics['cancelled_sales'] += $sales;
+            if ($isSettled && $hasTracking && $sales !== null) {
+                $metrics['settled_sales'] += $sales;
+            }
+            if ($isUnmatched && $hasTracking && $sales !== null) {
+                $metrics['pending_sales'] += $sales;
+            }
+            if ($isSettled && $hasTracking && $projection->laba !== null) {
+                $metrics['settled_profit'] += $projection->laba;
+            }
+            if ($isUnmatched && $hasTracking && $projection->laba !== null) {
+                $metrics['pending_profit'] += $projection->laba;
+            }
+            if ($isInvalid && $sales !== null) {
+                $metrics['valid_without_tracking_sales'] += $sales;
+            }
+            if ($isCancelled && $sales !== null) {
+                $metrics['cancelled_sales'] += $sales;
+            }
 
             $status = $row->cost_status;
             if (! $isCancelled) {
-                if ($status === 'ok') $counts['hpp_ok_count']++;
-                elseif ($status === 'mapping_missing') $counts['hpp_mapping_missing_count']++;
-                elseif ($status === 'mapping_ambiguous') $counts['hpp_mapping_ambiguous_count']++;
-                elseif ($status === 'hpp_missing') $counts['hpp_hpp_missing_count']++;
-                elseif ($status === null || trim((string) $status) === '') $counts['hpp_no_allocation_count']++;
+                if ($status === 'ok') {
+                    $counts['hpp_ok_count']++;
+                } elseif ($status === 'mapping_missing') {
+                    $counts['hpp_mapping_missing_count']++;
+                } elseif ($status === 'mapping_ambiguous') {
+                    $counts['hpp_mapping_ambiguous_count']++;
+                } elseif ($status === 'hpp_missing') {
+                    $counts['hpp_hpp_missing_count']++;
+                } elseif ($status === null || trim((string) $status) === '') {
+                    $counts['hpp_no_allocation_count']++;
+                }
             }
-            if ($isInvalid) $counts['valid_without_tracking']++;
-            if ($isCancelled) $counts['cancelled_order_count']++;
-            if (!$isCancelled && $hasTracking) $netOrders[$row->order_number] = true;
-            if ($isSettled && $hasTracking) $settledOrders[$row->order_number] = true;
-            if ($isUnmatched && $hasTracking) $pendingOrders[$row->order_number] = true;
+            if ($isInvalid) {
+                $counts['valid_without_tracking']++;
+            }
+            if ($isCancelled) {
+                $counts['cancelled_order_count']++;
+            }
+            if (! $isCancelled && $hasTracking) {
+                $netOrders[$row->order_number] = true;
+            }
+            if ($isSettled && $hasTracking) {
+                $settledOrders[$row->order_number] = true;
+            }
+            if ($isUnmatched && $hasTracking) {
+                $pendingOrders[$row->order_number] = true;
+            }
         }
 
         $counts['gross_order_count'] = count($grossOrders);
@@ -1187,7 +1230,7 @@ class MarketplaceReconciliationService
             'orders.order_created_at',
             'orders.buyer_username',
         ];
-        $refundAmount = "CASE WHEN income_exact.candidate_count = 1 AND NULLIF(income_exact.refund_to_buyer, 0) IS NOT NULL THEN income_exact.refund_to_buyer ELSE income_refund.refund_to_buyer END";
+        $refundAmount = 'CASE WHEN income_exact.candidate_count = 1 AND NULLIF(income_exact.refund_to_buyer, 0) IS NOT NULL THEN income_exact.refund_to_buyer ELSE income_refund.refund_to_buyer END';
         $refundEvidence = "({$refundAmount} < 0)";
         $exactMatch = 'income_exact.candidate_count = 1';
         $groupedFeeCondition = 'income_exact.candidate_count IS NULL AND income_fallback.candidate_count IS NOT NULL AND ((income_fallback.candidate_count = order_group.order_line_count AND income_fallback.income_amount = order_group.order_amount) OR (income_fallback.candidate_count = 1 AND income_fallback.income_amount = order_group.min_net_price AND order_group.min_net_price = order_group.max_net_price AND order_group.order_line_count > 1))';

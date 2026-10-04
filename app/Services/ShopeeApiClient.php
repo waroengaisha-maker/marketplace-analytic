@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\ShopeeApiConnection;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Client\RequestException;
 use Throwable;

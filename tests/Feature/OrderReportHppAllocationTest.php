@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Services\MasterProductCatalogService;
 use App\Services\OrderReportImporter;
 use App\Services\ShopeeProductMappingService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -571,6 +572,7 @@ class OrderReportHppAllocationTest extends TestCase
         $this->assertSame('ok', $allocation->cost_status);
         $this->assertSame('20000.00', (string) $allocation->total_hpp);
     }
+
     public function test_order_replacement_rolls_back_when_later_batch_insert_fails(): void
     {
         $user = User::factory()->create();
@@ -597,7 +599,7 @@ class OrderReportHppAllocationTest extends TestCase
         $conflict['order_number'] = 'ORDER-CONFLICT';
         $rows[] = $conflict;
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
         try {
             $this->importer->persist($rows, $user->id);
         } finally {
@@ -605,5 +607,4 @@ class OrderReportHppAllocationTest extends TestCase
             $this->assertSame(0, DB::table('marketplace_orders')->where('user_id', $user->id)->where('order_number', 'ORDER-BATCH-0')->count());
         }
     }
-
 }

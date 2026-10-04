@@ -10,7 +10,6 @@ use App\Models\ShopeeProductMapping;
 use App\Models\User;
 use App\Services\MasterProductCatalogService;
 use App\Services\ReportLineIdentity;
-use App\Services\ShopeeApiClient;
 use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeeResponseNormalizer;
@@ -18,6 +17,7 @@ use App\Services\ShopeeSyncService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -676,7 +676,7 @@ class ShopeeApiHardeningTest extends TestCase
         $user = $this->activeUser();
         $this->connectedConnection($user);
 
-        $lock = \Illuminate\Support\Facades\Cache::lock(
+        $lock = Cache::lock(
             'shopee-api:sync:user:'.$user->id,
             (int) config('shopee-api.sync.lock_seconds', 1800)
         );
@@ -709,7 +709,7 @@ class ShopeeApiHardeningTest extends TestCase
         $this->connectedConnection($userA);
         $this->connectedConnection($userB);
 
-        $lock = \Illuminate\Support\Facades\Cache::lock(
+        $lock = Cache::lock(
             'shopee-api:sync:user:'.$userA->id,
             (int) config('shopee-api.sync.lock_seconds', 1800)
         );
@@ -731,5 +731,4 @@ class ShopeeApiHardeningTest extends TestCase
             $lock->release();
         }
     }
-
 }

@@ -33,6 +33,7 @@ final class CanonicalFinancialProjectionService
         $laba = $penghasilan === null || $hpp === null ? null : $penghasilan - $hpp;
         $legacyNet = $quantity === null ? null : max($quantity - ($returned ?? 0), 0);
         $status = $this->status($subtotal, $totalFee, $tax, $hpp, $hppStatus, $feeProvenance, $this->taxProvenance($source, $tax));
+
         return new CanonicalFinancialProjection(
             $source, $allocationData, $subtotal, $platformFee, $shippingFee, $promoFee,
             $feeSubtotal, $processingFee, $totalFee, $tax, $refund, $penghasilan, $hpp,
@@ -52,25 +53,42 @@ final class CanonicalFinancialProjectionService
     public function aggregateProjection(iterable $lines, ?string $grouping = null): array
     {
         $lines = is_array($lines) ? $lines : iterator_to_array($lines, false);
-        if ($lines === []) return ['status' => 'unavailable'];
+        if ($lines === []) {
+            return ['status' => 'unavailable'];
+        }
         $sum = function (string $field) use ($lines): ?float {
             $total = 0.0;
             foreach ($lines as $line) {
-                if ($line->{$field} === null) return null;
+                if ($line->{$field} === null) {
+                    return null;
+                }
                 $total += $line->{$field};
             }
+
             return $total;
         };
         $values = ['subtotal' => $sum('orderSubtotal'), 'total_fee' => $sum('totalFee'), 'tax' => $sum('tax'), 'refund_amount' => $sum('refundAmount'), 'penghasilan' => $sum('penghasilan'), 'hpp' => $sum('hpp'), 'laba' => $sum('laba')];
         $status = 'confirmed';
-        foreach ($lines as $line) if ($line->status === 'unavailable') $status = 'unavailable';
-        if ($status !== 'unavailable') foreach ($lines as $line) if ($line->status === 'provisional') $status = 'provisional';
+        foreach ($lines as $line) {
+            if ($line->status === 'unavailable') {
+                $status = 'unavailable';
+            }
+        }
+        if ($status !== 'unavailable') {
+            foreach ($lines as $line) {
+                if ($line->status === 'provisional') {
+                    $status = 'provisional';
+                }
+            }
+        }
+
         return ['grouping' => $grouping, 'status' => $status, ...$values];
     }
 
     public function compareSettlement(CanonicalFinancialProjection|array $projection, ?float $totalIncome): array
     {
         $value = $projection instanceof CanonicalFinancialProjection ? $projection->penghasilan : ($projection['penghasilan'] ?? null);
+
         return ['status' => $value === null || $totalIncome === null ? 'unavailable' : 'comparable', 'projection_income' => $value, 'settlement_income' => $totalIncome, 'difference' => $value === null || $totalIncome === null ? null : $value - $totalIncome];
     }
 
@@ -104,13 +122,23 @@ final class CanonicalFinancialProjectionService
             : 'source_income';
     }
 
-    private function number(mixed $value): ?float { return $value === null ? null : (float) $value; }
+    private function number(mixed $value): ?float
+    {
+        return $value === null ? null : (float) $value;
+    }
 
     private function status(?float $subtotal, ?float $fee, ?float $tax, ?float $hpp, string $hppStatus, string $feeProvenance, string $taxProvenance): string
     {
-        if ($subtotal === null || $fee === null || $tax === null) return 'unavailable';
-        if ($feeProvenance === 'estimated' || $taxProvenance === 'estimated') return 'provisional';
-        if ($hpp !== null && $hppStatus === 'ok') return 'confirmed';
+        if ($subtotal === null || $fee === null || $tax === null) {
+            return 'unavailable';
+        }
+        if ($feeProvenance === 'estimated' || $taxProvenance === 'estimated') {
+            return 'provisional';
+        }
+        if ($hpp !== null && $hppStatus === 'ok') {
+            return 'confirmed';
+        }
+
         return 'provisional';
     }
 }

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Services\IncomeReportImporter;
 use App\Services\RefundEventIdentity;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -218,6 +219,7 @@ class IncomeReportImporterTest extends TestCase
         $this->assertNull($row->total_income);
         $this->assertSame(678.90, (float) $row->total_revenue);
     }
+
     public function test_income_replacement_rolls_back_when_later_batch_insert_fails(): void
     {
         $user = User::factory()->create();
@@ -245,7 +247,7 @@ class IncomeReportImporterTest extends TestCase
         $conflict['line_identity'] = str_repeat('x', 65);
         $rows[] = $conflict;
 
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
         try {
             $this->importer->persist($rows, $user->id);
         } finally {
@@ -311,5 +313,4 @@ class IncomeReportImporterTest extends TestCase
         $this->assertNotSame($unique[0]['refund_event_identity'], $unique[1]['refund_event_identity']);
         $this->assertNull($unique[2]['refund_event_identity']);
     }
-
 }

@@ -6,14 +6,14 @@ use App\Enums\AccountStatus;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Requests\UploadReportsRequest;
 use App\Models\User;
+use App\Services\CanonicalFinancialProjectionService;
 use App\Services\IncomeReconciliationService;
 use App\Services\IncomeReportImporter;
 use App\Services\MarketplaceReconciliationService;
-use App\Services\CanonicalFinancialProjectionService;
 use App\Services\OrderReportImporter;
+use App\Services\RefundEventIdentity;
 use App\Services\ReportImportService;
 use App\Services\ReportLineIdentity;
-use App\Services\RefundEventIdentity;
 use App\Services\UploadReportsService;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1456,14 +1456,17 @@ class MarketplaceReconciliationServiceTest extends TestCase
 
     public function test_distinct_refund_applications_do_not_collapse_into_one_event(): void
     {
-        $user = User::factory()->create(); $productKey = str_repeat('e', 64); $lineIdentity = str_repeat('l', 64);
+        $user = User::factory()->create();
+        $productKey = str_repeat('e', 64);
+        $lineIdentity = str_repeat('l', 64);
         DB::table('marketplace_orders')->insert($this->order($user->id, ['order_number' => 'ORDER-REFUND-EVENTS', 'product_key' => $productKey, 'item_index' => 778, 'discounted_price' => 38000, 'unit_price' => 38000, 'quantity' => 1, 'returned_quantity' => 0, 'line_identity' => $lineIdentity]));
         DB::table('marketplace_income')->insert([
             $this->income($user->id, ['order_number' => 'ORDER-REFUND-EVENTS', 'product_key' => $productKey, 'item_index' => 778, 'product_price' => 38000, 'quantity' => 1, 'total_income' => 0, 'refund_to_buyer' => -12000, 'application_number' => 'REFUND-001', 'refund_event_identity' => RefundEventIdentity::make('ORDER-REFUND-EVENTS', 'REFUND-001'), 'line_identity' => $lineIdentity]),
             $this->income($user->id, ['order_number' => 'ORDER-REFUND-EVENTS', 'product_key' => $productKey, 'item_index' => 778, 'product_price' => 38000, 'quantity' => 1, 'total_income' => 0, 'refund_to_buyer' => -8000, 'application_number' => 'REFUND-002', 'refund_event_identity' => RefundEventIdentity::make('ORDER-REFUND-EVENTS', 'REFUND-002'), 'line_identity' => $lineIdentity]),
         ]);
         $row = app(MarketplaceReconciliationService::class)->joinedQuery($user->id, true)->where('orders.order_number', 'ORDER-REFUND-EVENTS')->first();
-        $this->assertSame(-20000.0, (float) $row->refund_amount); $this->assertSame('Partially Refunded', $row->business_status);
+        $this->assertSame(-20000.0, (float) $row->refund_amount);
+        $this->assertSame('Partially Refunded', $row->business_status);
     }
 
     public function test_duplicate_refund_summary_and_detail_rows_are_not_double_counted(): void

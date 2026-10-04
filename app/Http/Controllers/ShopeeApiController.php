@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use \Closure;
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
 use App\Services\ShopeeApiClient;
 use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeApiException;
 use App\Services\ShopeeApiResearchService;
-use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeePromotionService;
+use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeShadowValidationService;
 use App\Services\ShopeeSyncService;
+use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -140,7 +140,7 @@ class ShopeeApiController extends Controller
             'state_matches' => $stateMatches,
         ]);
 
-        if (!$stateMatches) {
+        if (! $stateMatches) {
             Log::warning('[Shopee OAuth] state verification failed', [
                 'connection_id' => $connection?->id,
                 'has_expected_state' => $expectedState !== null,

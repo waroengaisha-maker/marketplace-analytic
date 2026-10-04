@@ -5,10 +5,10 @@ namespace Tests\Feature;
 use App\Enums\AccountStatus;
 use App\Models\ShopeeApiConnection;
 use App\Models\User;
+use App\Services\ReportLineIdentity;
 use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeePromotionService;
-use App\Services\ReportLineIdentity;
 use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeSyncService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -146,7 +146,6 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertArrayNotHasKey('timestamp', $query);
         $this->assertStringContainsString('state=sandbox-state', $query['redirect_uri']);
     }
-
 
     public function test_authorize_route_returns_oauth_url_upon_authorization(): void
     {
@@ -914,7 +913,6 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertSame('J&T', $rows[0]['shipping_provider']);
     }
 
-
     public function test_promotion_replaces_matching_production_rows_with_complete_order_and_income_payload(): void
     {
         $user = $this->activeUser();
@@ -1048,7 +1046,6 @@ class ShopeeApiIntegrationTest extends TestCase
         $this->assertSame(100000.0, (float) $income->total_income);
         $this->assertSame($releasedAt, (string) $income->fund_released_at);
     }
-
 
     // ---------------------------------------------------------------
     // Zero production-table writes
