@@ -106,6 +106,27 @@ Jika dokumentasi dan implementation berbeda:
 
 Jangan menyelesaikan contradiction dengan asumsi diam-diam.
 
+## Decision 011 — Maintain a Verified Clean Engineering Baseline
+
+Status: Accepted
+
+Pada 2026-10-04, commit `7ef275b` ditetapkan sebagai current clean engineering baseline untuk branch `development`.
+
+Verified state:
+- branch `development` synchronized dengan `origin/development`;
+- working tree clean;
+- test suite: 301 tests passed, 2,100 assertions;
+- Laravel Pint: 143 files passed;
+- `git diff --check`: clean;
+- MVC/DI hardening, Shopee token-refresh ordering, Shopee sync connection precondition, dan local Docker/Caddy hardening sudah termasuk dalam baseline.
+
+Reason: project membutuhkan checkpoint yang eksplisit dan reproducible sebelum melanjutkan pekerjaan domain/backlog berikutnya.
+
+Consequence:
+- perubahan berikutnya dimulai dari commit `7ef275b` sebagai baseline;
+- jika terjadi regression, baseline ini dapat digunakan sebagai titik pembanding;
+- baseline dapat digantikan hanya setelah checkpoint baru diverifikasi dan dicatat di decision log.
+
 ## Decision Change Procedure
 
 Jika keputusan berubah:
