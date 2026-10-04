@@ -248,6 +248,7 @@ class MarketplaceReconciliationService
                 CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (l.promo_xtra_service_fee) END AS promo,
                 CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (l.order_processing_fee) END AS processing,
                 CASE WHEN l.pph22 IS NULL THEN NULL ELSE (l.pph22) END AS tax,
+                l.cost_status,
                 CASE WHEN l.cost_status = 'ok' AND l.total_hpp IS NOT NULL THEN l.total_hpp ELSE NULL END AS hpp
             ");
     }
