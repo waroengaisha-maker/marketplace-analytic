@@ -8,12 +8,17 @@ use Tests\TestCase;
 
 class LoginResponseTest extends TestCase
 {
-    public function test_login_response_uses_a_relative_root_redirect(): void
+    public function test_login_response_redirects_to_canonical_application_url(): void
     {
+        config(['app.url' => 'https://marketplace-analytics.my.id']);
+
         $response = (new LoginResponse)->toResponse(
             Request::create('/login', 'POST'),
         );
 
-        $this->assertSame('/', $response->headers->get('Location'));
+        $this->assertSame(
+            'https://marketplace-analytics.my.id',
+            $response->headers->get('Location'),
+        );
     }
 }
