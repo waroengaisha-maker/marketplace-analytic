@@ -271,7 +271,7 @@ docker compose -f compose.yaml -f compose.server.yaml
 
 Jika deployment ditolak, periksa `git status` dan jangan melakukan `git reset --hard` tanpa memahami dampaknya.
 
-## 9. Server Status Script
+## 8. Server Status Script
 
 Gunakan script ini sebagai **single-command operational health check** untuk server Marketplace Analytics:
 
