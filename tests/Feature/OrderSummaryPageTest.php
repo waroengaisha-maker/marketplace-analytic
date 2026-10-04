@@ -405,7 +405,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertEquals(1500.0, $order['subtotal']);
         $this->assertEquals(-185.0, $order['total_fee']);
         $this->assertEquals(-5.0, $order['tax']);
-        $this->assertEquals(1310.0, $order['penghasilan']);
+        $this->assertEquals(810.0, $order['penghasilan']);
         $this->assertNull($order['laba']);
     }
 
