@@ -136,8 +136,15 @@ class ShopeeSyncJob implements ShouldQueue, ShouldBeUnique
             return;
         }
 
+        $safeError = 'Shopee API request failed. Please try again later.';
+
         $operation->update([
             'status' => 'failed',
+            'result' => [
+                'ok' => false,
+                'error' => $safeError,
+                'rate_limited' => false,
+            ],
             'error_message' => 'Shopee sync gagal. Silakan coba lagi atau hubungi administrator.',
             'finished_at' => now(),
         ]);
