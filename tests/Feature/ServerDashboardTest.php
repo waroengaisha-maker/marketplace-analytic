@@ -110,6 +110,32 @@ class ServerDashboardTest extends TestCase
             );
     }
 
+    public function test_super_admin_is_authorized_for_service_auth(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::SuperAdmin]);
+
+        $this->actingAs($admin)
+            ->get(route('internal.service-auth'))
+            ->assertNoContent()
+            ->assertHeader('Cache-Control', 'no-store');
+    }
+
+    public function test_regular_admin_is_denied_service_auth(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->get(route('internal.service-auth'))
+            ->assertForbidden();
+    }
+
+    public function test_guest_is_denied_service_auth_without_redirect(): void
+    {
+        $this->get(route('internal.service-auth'))
+            ->assertForbidden()
+            ->assertHeaderMissing('Location');
+    }
+
     public function test_regular_admin_cannot_view_services_hub(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
