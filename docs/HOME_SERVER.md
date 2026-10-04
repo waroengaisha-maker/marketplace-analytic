@@ -271,7 +271,7 @@ docker compose -f compose.yaml -f compose.server.yaml
 
 Jika deployment ditolak, periksa `git status` dan jangan melakukan `git reset --hard` tanpa memahami dampaknya.
 
-## 8. Server Status Script
+## 9. Server Status Script
 
 Gunakan script ini sebagai **single-command operational health check** untuk server Marketplace Analytics:
 
@@ -346,7 +346,7 @@ Konfigurasi opsional: `SERVER_STATUS_SNAPSHOT_PATH` dan `SERVER_STATUS_STALE_AFT
 
 Dashboard hanya tersedia untuk `super_admin`; `admin` biasa tidak memiliki akses server management.
 
-## 8. Docker Operations
+## 9. Docker Operations
 
 Masuk ke project:
 
@@ -387,7 +387,7 @@ docker volume prune
 
 Database MySQL berada pada Docker named volume dan berisi data aplikasi.
 
-## 9. MySQL Backup
+## 10. MySQL Backup
 
 Backup database disimpan di:
 
@@ -426,7 +426,7 @@ Validasi gzip:
 gzip -t ~/Backups/marketplace-analytic/mysql-*.sql.gz
 ```
 
-## 10. Automatic Backup
+## 11. Automatic Backup
 
 Backup otomatis menggunakan:
 
@@ -450,7 +450,7 @@ Jadwal target sekitar pukul 03:00 dengan random delay maksimal 5 menit.
 
 Backup lama dibersihkan dan sekitar 14 backup terbaru dipertahankan.
 
-## 11. MySQL Restore
+## 12. MySQL Restore
 
 Restore akan mengubah database saat ini dan memerlukan konfirmasi eksplisit.
 
@@ -477,7 +477,7 @@ Sebelum restore, validasi file:
 gzip -t ~/Backups/marketplace-analytic/mysql-20261004-190738.sql.gz
 ```
 
-## 12. Firewall
+## 13. Firewall
 
 Firewall Fedora menggunakan `firewalld`.
 
@@ -524,7 +524,7 @@ Expected:
 6379/tcp    filtered
 ```
 
-## 13. Reboot / Recovery
+## 14. Reboot / Recovery
 
 Docker harus enabled:
 
@@ -549,7 +549,7 @@ docker compose -f compose.yaml -f compose.server.yaml ps
 
 SSH seharusnya kembali tersedia setelah Fedora boot. Laptop dikonfigurasi agar menutup lid tidak menyebabkan server suspend.
 
-## 14. Server-Specific Files
+## 15. Server-Specific Files
 
 Konfigurasi server lokal:
 
@@ -580,7 +580,7 @@ SSH hardening:
 /etc/ssh/sshd_config.d/90-home-server-hardening.conf
 ```
 
-## 15. Quick Reference
+## 16. Quick Reference
 
 ### SSH
 
@@ -655,7 +655,7 @@ docker compose -f compose.yaml -f compose.server.yaml ps
 sudo firewall-cmd --zone=FedoraWorkstation --list-all
 ```
 
-## 16. Operational Principles
+## 17. Operational Principles
 
 1. Akses server menggunakan user `warungaisha`, bukan `root`.
 2. Gunakan `sudo` hanya ketika membutuhkan privilege administrator.
@@ -671,7 +671,7 @@ sudo firewall-cmd --zone=FedoraWorkstation --list-all
 12. Jangan mengekspos MySQL, Redis, atau Adminer langsung ke LAN.
 13. Jika server dipindahkan ke hardware baru, gunakan dokumen ini sebagai checklist migrasi.
 
-## 17. Deployment Baseline — 2026-10-04
+## 18. Deployment Baseline — 2026-10-04
 
 Production deployment dan Cloudflare HTTPS/proxy configuration diverifikasi berhasil pada commit:
 
