@@ -102,7 +102,7 @@ printf '\n'
 
 printf '%s\n' '[Storage / SMART]'
 if command -v smartctl >/dev/null 2>&1; then
-    smart_health="$(sudo -n smartctl -H /dev/sda 2>/dev/null | awk -F: '/SMART overall-health|SMART Health Status/ {gsub(/^ +| +$/, "", $2); print $2; exit}' || true)"
+    smart_health="$(sudo -n /usr/bin/smartctl -H /dev/sda 2>/dev/null | awk -F: '/SMART overall-health|SMART Health Status/ {gsub(/^ +| +$/, "", $2); print $2; exit}' || true)"
     if [[ "$smart_health" == "PASSED" || "$smart_health" == "OK" ]]; then
         ok "SMART /dev/sda: $smart_health."
     elif [[ -n "$smart_health" ]]; then
