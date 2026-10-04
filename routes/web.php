@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ServerStatusController;
+use App\Http\Controllers\Admin\ServiceAuthController;
 use App\Http\Controllers\Admin\ServiceHubController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\CustomerController;
@@ -18,6 +19,10 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', [DashboardController::class, 'index'])->middleware(['auth', 'account.active']);
+
+// Internal authorization endpoint consumed by Caddy forward_auth for service subdomains.
+// It intentionally uses the Laravel web middleware/session and never redirects guests.
+Route::get('/_internal/service-auth', ServiceAuthController::class)->name('internal.service-auth');
 
 Route::get('/login', function () {
     return Inertia::render('Auth/Login');
