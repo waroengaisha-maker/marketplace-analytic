@@ -103,7 +103,7 @@ class SecurityHardeningTest extends TestCase
     {
         $user = User::factory()->create(['account_status' => AccountStatus::Active]);
         $service = Mockery::mock(UploadReportsService::class);
-        $service->shouldReceive('storeAndImport')
+        $service->shouldReceive('storeAndQueue')
             ->once()
             ->andThrow(new \RuntimeException('private SQL path /var/secrets/import.sql'));
         $this->app->instance(UploadReportsService::class, $service);
@@ -119,7 +119,7 @@ class SecurityHardeningTest extends TestCase
 
         $this->assertNotEmpty($response->getTargetUrl());
         $this->assertSame(
-            'Laporan gagal diproses. Silakan coba lagi atau hubungi administrator.',
+            'Laporan gagal masuk ke antrean. Silakan coba lagi atau hubungi administrator.',
             $response->getSession()->get('error'),
         );
         $this->assertStringNotContainsString('private SQL path', (string) $response->getSession()->get('error'));
