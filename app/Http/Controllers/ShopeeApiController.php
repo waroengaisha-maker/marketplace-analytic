@@ -4,10 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
+use App\Services\ShopeeApiClient;
 use App\Services\ShopeeApiClientFactory;
-use Closure;
 use App\Services\ShopeeApiException;
 use App\Services\ShopeeApiResearchService;
+use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeePromotionService;
 use App\Services\ShopeeShadowValidationService;
@@ -551,7 +552,7 @@ class ShopeeApiController extends Controller
             'user_id' => $userId,
             'actor_id' => $userId,
             'action' => 'shopee_api.sync.'.$operation,
-            'metadata' => json_encode($metadata, JSON_UNESCAPED_UNICODE),
+            'metadata' => $metadata,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
