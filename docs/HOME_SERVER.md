@@ -271,6 +271,46 @@ docker compose -f compose.yaml -f compose.server.yaml
 
 Jika deployment ditolak, periksa `git status` dan jangan melakukan `git reset --hard` tanpa memahami dampaknya.
 
+## 8. Server Status Script
+
+Gunakan script ini sebagai **single-command operational health check** untuk server Marketplace Analytics:
+
+```bash
+cd ~/Dev/Projects/marketplace-analytic
+./deploy/server-status.sh
+```
+
+Script memeriksa:
+
+- informasi sistem: uptime, load, memory, dan penggunaan disk root;
+- Docker Compose configuration;
+- status container `caddy`, `laravel.test`, `mysql`, `redis`, dan `adminer`;
+- health status MySQL dan Redis;
+- HTTP application health check;
+- backup timer systemd;
+- backup MySQL terbaru dan integritas gzip;
+- SMART health `/dev/sda`.
+
+### Exit status
+
+Script menggunakan exit code untuk automation:
+
+| Exit code | Status | Arti |
+|---|---|---|
+| `0` | OK/WARN | Tidak ada failure. Warning masih memungkinkan. |
+| `1` | FAIL | Ada minimal satu failure. |
+
+Contoh penggunaan:
+
+```bash
+./deploy/server-status.sh
+echo $?
+```
+
+Untuk diagnosis, jalankan langsung dari project directory agar konfigurasi server Compose dan backup path ditemukan dengan benar.
+
+> Catatan: health check aplikasi pada script menggunakan `http://127.0.0.1:8080`. Untuk pengecekan public HTTPS/Cloudflare, gunakan `curl -i https://marketplace-analytics.my.id/` secara terpisah.
+
 ## 8. Docker Operations
 
 Masuk ke project:
