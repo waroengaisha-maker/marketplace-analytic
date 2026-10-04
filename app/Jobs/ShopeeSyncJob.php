@@ -117,6 +117,10 @@ class ShopeeSyncJob implements ShouldQueue, ShouldBeUnique
             }
         }
 
+        if (isset($result['normalized']) && is_array($result['normalized'])) {
+            $summary['normalized'] = array_slice($result['normalized'], 0, 20);
+        }
+
         if (isset($result['errors']) && is_array($result['errors'])) {
             $summary['error_count'] = count($result['errors']);
         }
