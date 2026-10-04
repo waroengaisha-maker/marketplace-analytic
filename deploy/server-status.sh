@@ -7,6 +7,7 @@ cd "$PROJECT_DIR"
 COMPOSE=(docker compose -f compose.yaml -f compose.server.yaml)
 APP_URL="http://127.0.0.1:8080"
 BACKUP_DIR="${BACKUP_DIR:-$HOME/Backups/marketplace-analytic}"
+SNAPSHOT_PATH="${SERVER_STATUS_SNAPSHOT_PATH:-$PROJECT_DIR/storage/app/server-status.json}"
 
 warn_count=0
 fail_count=0
@@ -39,6 +40,7 @@ else
 fi
 printf '\n'
 
+docker_snapshot=''
 printf '%s\n' '[Docker]'
 if ! "${COMPOSE[@]}" config --quiet >/dev/null 2>&1; then
     fail "Docker Compose configuration is invalid."
@@ -52,29 +54,37 @@ else
                 health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$container_id" 2>/dev/null || true)"
                 if [[ "$health" == "healthy" ]]; then
                     ok "$service: running / healthy."
+                    service_health="$health"
                 elif [[ "$health" == "no-healthcheck" ]]; then
                     ok "$service: running (no healthcheck)."
+                    service_health="$health"
                 else
                     fail "$service: health=$health."
+                    service_health="$health"
                 fi
             else
                 ok "$service: running."
+                service_health="no-healthcheck"
             fi
+            docker_snapshot="${docker_snapshot}${docker_snapshot:+,}\"$service\":{\"status\":\"running\",\"health\":\"$service_health\"}"
         fi
     done
 fi
 printf '\n'
 
+application_status="fail"
 printf '%s\n' '[Application]'
 if curl --silent --show-error --fail --max-time 5 \
     --header 'Host: marketplace-analytics.my.id' \
     --output /dev/null "$APP_URL"; then
     ok "HTTP $APP_URL responded successfully."
+    application_status="ok"
 else
     fail "HTTP $APP_URL is not responding successfully."
 fi
 printf '\n'
 
+backup_integrity="fail"
 printf '%s\n' '[Backup]'
 if systemctl is-enabled --quiet marketplace-analytics-backup.timer 2>/dev/null; then
     ok "Backup timer is enabled."
@@ -94,11 +104,14 @@ if [[ -n "$latest_backup" ]]; then
     printf ' Size       : %s\n' "$(du -h "$latest_backup" | cut -f1)"
     if gzip -t "$latest_backup" 2>/dev/null; then
         ok "Latest backup passes gzip integrity check."
+        backup_integrity="ok"
     else
         fail "Latest backup failed gzip integrity check."
+        backup_integrity="fail"
     fi
 else
     fail "No MySQL backup found in $BACKUP_DIR."
+    backup_integrity="fail"
 fi
 printf '\n'
 
@@ -116,6 +129,32 @@ else
     warn "smartctl is not installed."
 fi
 printf '\n'
+
+mkdir -p "$(dirname "$SNAPSHOT_PATH")"
+disk_pct_snapshot="${disk_pct:-0}"
+backup_name=""
+backup_size=""
+if [[ -n "${latest_backup:-}" ]]; then
+    backup_name="$(basename "$latest_backup")"
+    backup_size="$(du -h "$latest_backup" | cut -f1)"
+fi
+smart_snapshot="${smart_health:-unknown}"
+overall="ok"
+if (( fail_count > 0 )); then overall="fail"; elif (( warn_count > 0 )); then overall="warn"; fi
+cat > "$SNAPSHOT_PATH" <<JSON
+{
+  "schema_version": 1,
+  "generated_at": "$(date --iso-8601=seconds)",
+  "host": "$(hostname)",
+  "overall": "$overall",
+  "system": {"uptime": "$(uptime -p)", "load_1m": $(awk "{print \\$1}" /proc/loadavg), "memory_used": "$(free -h | awk "/^Mem:/ {print \\$3}")", "memory_total": "$(free -h | awk "/^Mem:/ {print \\$2}")"},
+  "disk": {"percent": $disk_pct_snapshot},
+  "docker": {$docker_snapshot},
+  "application": {"status": "$application_status", "url": "$APP_URL"},
+  "backup": {"timer_enabled": $(systemctl is-enabled --quiet marketplace-analytics-backup.timer 2>/dev/null && echo true || echo false), "latest": ${backup_name:+\"$backup_name\"}${backup_name:-null}, "size": ${backup_size:+\"$backup_size\"}${backup_size:-null}, "integrity": "$backup_integrity"},
+  "storage": {"smart": "$smart_snapshot"}
+}
+JSON
 
 printf '%s\n' '========================================'
 if (( fail_count > 0 )); then
