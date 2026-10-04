@@ -85,7 +85,7 @@ class ShopeeSyncJob implements ShouldQueue, ShouldBeUnique
 
             $operation->update([
                 'status' => ($result['ok'] ?? false) ? 'completed' : 'failed',
-                'result' => $result,
+                'result' => $this->summary($result),
                 'error_message' => ($result['ok'] ?? false)
                     ? null
                     : 'Shopee sync gagal. Silakan coba lagi atau hubungi administrator.',
@@ -94,6 +94,34 @@ class ShopeeSyncJob implements ShouldQueue, ShouldBeUnique
         } finally {
             $lock->release();
         }
+    }
+
+    /**
+     * Persist only bounded operation metadata. Full normalized rows remain in
+     * the connection staging payload and are not duplicated in the queue table.
+     *
+     * @param  array<string, mixed>  $result
+     * @return array<string, mixed>
+     */
+    private function summary(array $result): array
+    {
+        $summary = [];
+
+        foreach ([
+            'ok', 'order_count', 'row_count', 'escrow_count', 'staged_total',
+            'pages', 'total_orders', 'limit', 'page_size', 'max_pages',
+            'cursor', 'more', 'capped', 'error', 'rate_limited',
+        ] as $key) {
+            if (array_key_exists($key, $result)) {
+                $summary[$key] = $result[$key];
+            }
+        }
+
+        if (isset($result['errors']) && is_array($result['errors'])) {
+            $summary['error_count'] = count($result['errors']);
+        }
+
+        return $summary;
     }
 
     public function failed(Throwable $exception): void
