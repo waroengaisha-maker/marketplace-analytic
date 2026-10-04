@@ -231,6 +231,7 @@ class MarketplaceReconciliationService
                 l.order_status,
                 l.business_status AS status,
                 l.product_key,
+                l.sku_reference,
                 l.variation_key,
                 l.order_product_name,
                 l.variation_name,
@@ -407,50 +408,155 @@ class MarketplaceReconciliationService
     public function profitabilityAnalytics(int $userId, string $dimension, ?string $from = null, ?string $to = null, array $parameters = []): array
     {
         $dimensions = [
-            'product' => ['key' => 'g.product_key', 'label' => 'g.order_product_name'],
-            'sku' => ['key' => 'g.sku_reference', 'label' => 'g.sku_reference'],
-            'variation' => ['key' => 'g.variation_key', 'label' => 'g.variation_name'],
-            'day' => ['key' => 'DATE(g.order_created_at)', 'label' => 'DATE(g.order_created_at)'],
-            'month' => ['key' => "DATE_FORMAT(g.order_created_at, '%Y-%m')", 'label' => "DATE_FORMAT(g.order_created_at, '%Y-%m')"],
+            'product' => ['key' => 'product_key', 'label' => 'order_product_name'],
+            'sku' => ['key' => 'sku_reference', 'label' => 'sku_reference'],
+            'variation' => ['key' => 'variation_key', 'label' => 'variation_name'],
+            'day' => ['key' => 'day', 'label' => 'day'],
+            'month' => ['key' => 'month', 'label' => 'month'],
         ];
 
         if (! isset($dimensions[$dimension])) {
             throw new \InvalidArgumentException('Unsupported profitability dimension.');
         }
 
-        $groupKey = $dimensions[$dimension]['key'];
-        $groupLabel = $dimensions[$dimension]['label'];
-        $lines = $this->orderSummaryLines($userId, $from, $to, $parameters);
+        $lines = $this->orderSummaryLines($userId, $from, $to, $parameters)->get();
+        $groups = [];
 
-        $query = DB::query()->fromSub($lines, 'g')
-            ->selectRaw("\n                {$groupKey} AS dimension_key,\n                {$groupLabel} AS dimension_label,\n                COUNT(*) AS line_count,\n                COUNT(g.hpp) AS hpp_available_line_count,\n                COUNT(*) - COUNT(g.hpp) AS hpp_unavailable_line_count,\n                SUM(g.net_quantity) AS net_quantity,\n                CASE WHEN COUNT(g.subtotal) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) END AS subtotal,\n                CASE WHEN COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) THEN NULL ELSE SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) END AS total_fee,\n                CASE WHEN COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.tax) END AS tax,\n                CASE WHEN COUNT(g.refund_amount) <> COUNT(*) THEN NULL ELSE SUM(g.refund_amount) END AS refund_amount,\n                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax) END AS penghasilan,\n                CASE WHEN COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE SUM(g.hpp) END AS hpp,\n                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) OR COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp) END AS laba\n            ")
-            ->groupBy(DB::raw($groupKey), DB::raw($groupLabel));
+        foreach ($lines as $line) {
+            $projection = $this->canonicalFinancialProjection->projectLine($line, [
+                'cost_status' => $line->cost_status ?? null,
+                'total_hpp' => $line->hpp ?? null,
+            ]);
+
+            $dimensionKey = match ($dimension) {
+                'product' => $line->product_key,
+                'sku' => $line->sku_reference,
+                'variation' => $line->variation_key,
+                'day' => $line->order_created_at === null ? null : CarbonImmutable::parse($line->order_created_at)->toDateString(),
+                'month' => $line->order_created_at === null ? null : CarbonImmutable::parse($line->order_created_at)->format('Y-m'),
+            };
+
+            $dimensionLabel = match ($dimension) {
+                'product' => $line->order_product_name,
+                'sku' => $line->sku_reference,
+                'variation' => $line->variation_name,
+                'day' => $dimensionKey,
+                'month' => $dimensionKey,
+            };
+
+            $groupId = is_null($dimensionKey) ? '__NULL__' : (string) $dimensionKey;
+
+            if (! isset($groups[$groupId])) {
+                $groups[$groupId] = [
+                    'dimension_key' => $dimensionKey,
+                    'dimension_label' => $dimensionLabel,
+                    'line_count' => 0,
+                    'hpp_available_line_count' => 0,
+                    'hpp_unavailable_line_count' => 0,
+                    'metrics' => [
+                        'net_quantity' => ['total' => 0.0, 'available' => true],
+                        'subtotal' => ['total' => 0.0, 'available' => true],
+                        'total_fee' => ['total' => 0.0, 'available' => true],
+                        'tax' => ['total' => 0.0, 'available' => true],
+                        'refund_amount' => ['total' => 0.0, 'available' => true],
+                        'penghasilan' => ['total' => 0.0, 'available' => true],
+                        'hpp' => ['total' => 0.0, 'available' => true],
+                        'laba' => ['total' => 0.0, 'available' => true],
+                    ],
+                    'has_provisional_line' => false,
+                ];
+            }
+
+            $group = &$groups[$groupId];
+            $group['line_count']++;
+
+            if ($projection->hpp === null) {
+                $group['hpp_unavailable_line_count']++;
+                $group['metrics']['hpp']['available'] = false;
+            } else {
+                $group['hpp_available_line_count']++;
+                $group['metrics']['hpp']['total'] += $projection->hpp;
+            }
+
+            foreach ([
+                'net_quantity' => $projection->legacyNetQuantity,
+                'subtotal' => $projection->orderSubtotal,
+                'total_fee' => $projection->totalFee,
+                'tax' => $projection->tax,
+                'refund_amount' => $projection->refundAmount,
+                'penghasilan' => $projection->penghasilan,
+                'laba' => $projection->laba,
+            ] as $metric => $value) {
+                if ($value === null) {
+                    $group['metrics'][$metric]['available'] = false;
+                } else {
+                    $group['metrics'][$metric]['total'] += $value;
+                }
+            }
+
+            if ($projection->status === 'provisional') {
+                $group['has_provisional_line'] = true;
+            }
+
+            unset($group);
+        }
 
         $sortOrder = strtolower((string) ($parameters['sort_order'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
-        $query->orderBy('penghasilan', $sortOrder)->orderBy('dimension_label');
 
-        return $query->get()->map(function (object $row): array {
-            $penghasilan = $row->penghasilan === null ? null : (float) $row->penghasilan;
-            $laba = $row->laba === null ? null : (float) $row->laba;
+        $rows = array_map(function (array $group): array {
+            $metric = static function (array $entry): ?float {
+                return $entry['available'] ? (float) $entry['total'] : null;
+            };
+
+            $penghasilan = $metric($group['metrics']['penghasilan']);
+            $laba = $metric($group['metrics']['laba']);
+            $hpp = $metric($group['metrics']['hpp']);
 
             return [
-                'dimension_key' => $row->dimension_key,
-                'dimension_label' => $row->dimension_label,
-                'line_count' => (int) $row->line_count,
-                'hpp_available_line_count' => (int) $row->hpp_available_line_count,
-                'hpp_unavailable_line_count' => (int) $row->hpp_unavailable_line_count,
-                'net_quantity' => $row->net_quantity === null ? null : (float) $row->net_quantity,
-                'subtotal' => $row->subtotal === null ? null : (float) $row->subtotal,
-                'total_fee' => $row->total_fee === null ? null : (float) $row->total_fee,
-                'tax' => $row->tax === null ? null : (float) $row->tax,
-                'refund_amount' => $row->refund_amount === null ? null : (float) $row->refund_amount,
+                'dimension_key' => $group['dimension_key'],
+                'dimension_label' => $group['dimension_label'],
+                'line_count' => $group['line_count'],
+                'hpp_available_line_count' => $group['hpp_available_line_count'],
+                'hpp_unavailable_line_count' => $group['hpp_unavailable_line_count'],
+                'net_quantity' => $metric($group['metrics']['net_quantity']),
+                'subtotal' => $metric($group['metrics']['subtotal']),
+                'total_fee' => $metric($group['metrics']['total_fee']),
+                'tax' => $metric($group['metrics']['tax']),
+                'refund_amount' => $metric($group['metrics']['refund_amount']),
                 'penghasilan' => $penghasilan,
-                'hpp' => $row->hpp === null ? null : (float) $row->hpp,
+                'hpp' => $hpp,
                 'laba' => $laba,
-                'profit_margin' => $penghasilan === null || $laba === null || $penghasilan == 0.0 ? null : ($laba / $penghasilan) * 100,
-                'financial_status' => $penghasilan === null ? 'unavailable' : ($row->hpp === null ? 'partial' : 'complete'),
+                'profit_margin' => $penghasilan === null || $laba === null || $penghasilan == 0.0
+                    ? null
+                    : ($laba / $penghasilan) * 100,
+                'financial_status' => $penghasilan === null
+                    ? 'unavailable'
+                    : ($hpp === null ? 'partial' : ($group['has_provisional_line'] ? 'provisional' : 'complete')),
             ];
-        })->values()->all();
+        }, $groups);
+
+        usort($rows, static function (array $left, array $right) use ($sortOrder): int {
+            $leftValue = $left['penghasilan'];
+            $rightValue = $right['penghasilan'];
+
+            if ($leftValue === $rightValue) {
+                return strnatcasecmp((string) ($left['dimension_label'] ?? ''), (string) ($right['dimension_label'] ?? ''));
+            }
+
+            if ($leftValue === null) {
+                return 1;
+            }
+
+            if ($rightValue === null) {
+                return -1;
+            }
+
+            return $sortOrder === 'asc'
+                ? $leftValue <=> $rightValue
+                : $rightValue <=> $leftValue;
+        });
+
+        return array_values($rows);
     }
 
     /**
