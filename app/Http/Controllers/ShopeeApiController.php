@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ShopeeSyncJob;
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
+use App\Models\ShopeeSyncOperation;
 use App\Services\ShopeeApiClient;
 use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeApiException;
@@ -17,7 +19,6 @@ use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
@@ -268,27 +269,7 @@ class ShopeeApiController extends Controller
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
 
-        return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
-            try {
-                $sync = $this->syncService;
-                $connection = $this->connectionFor($request->user()->id);
-
-                if ($connection === null) {
-                    return response()->json([
-                        'ok' => false,
-                        'error' => 'No Shopee API connection for this account.',
-                    ], 422);
-                }
-
-                $result = $sync->syncSampleOrders($connection, $validated);
-
-                $this->auditSync($request->user()->id, 'orders', $result);
-
-                return response()->json($result);
-            } catch (ShopeeApiException $exception) {
-                return $this->errorResponse($exception);
-            }
-        });
+        return $this->queueSync($request, 'orders', $validated);
     }
 
     public function syncIncome(Request $request): JsonResponse
@@ -301,27 +282,7 @@ class ShopeeApiController extends Controller
             'page_size' => ['nullable', 'integer', 'min:1', 'max:100'],
         ]);
 
-        return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
-            try {
-                $sync = $this->syncService;
-                $connection = $this->connectionFor($request->user()->id);
-
-                if ($connection === null) {
-                    return response()->json([
-                        'ok' => false,
-                        'error' => 'No Shopee API connection for this account.',
-                    ], 422);
-                }
-
-                $result = $sync->syncSampleIncome($connection, $validated);
-
-                $this->auditSync($request->user()->id, 'income', $result);
-
-                return response()->json($result);
-            } catch (ShopeeApiException $exception) {
-                return $this->errorResponse($exception);
-            }
-        });
+        return $this->queueSync($request, 'income', $validated);
     }
 
     public function syncEscrow(Request $request): JsonResponse
@@ -330,49 +291,91 @@ class ShopeeApiController extends Controller
             'limit' => ['nullable', 'integer', 'min:1', 'max:'.(int) config('shopee-api.sync.escrow_limit_max', 20)],
         ]);
 
-        return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
-            try {
-                $sync = $this->syncService;
-                $connection = $this->connectionFor($request->user()->id);
-
-                if ($connection === null) {
-                    return response()->json([
-                        'ok' => false,
-                        'error' => 'No Shopee API connection for this account.',
-                    ], 422);
-                }
-
-                $result = $sync->syncSampleEscrow($connection, $validated);
-
-                $this->auditSync($request->user()->id, 'escrow', $result);
-
-                return response()->json($result);
-            } catch (ShopeeApiException $exception) {
-                return $this->errorResponse($exception);
-            }
-        });
+        return $this->queueSync($request, 'escrow', $validated);
     }
 
-    private function withSyncLock(Request $request, Closure $callback): JsonResponse
+    public function syncStatus(int $operation, Request $request): JsonResponse
     {
-        $userId = $request->user()->id;
-        $lock = Cache::lock(
-            'shopee-api:sync:user:'.$userId,
-            (int) config('shopee-api.sync.lock_seconds', 1800)
-        );
+        $record = ShopeeSyncOperation::query()
+            ->whereKey($operation)
+            ->where('user_id', $request->user()->id)
+            ->firstOrFail();
 
-        if (! $lock->get()) {
+        return response()->json([
+            'id' => $record->id,
+            'operation' => $record->operation,
+            'status' => $record->status,
+            'result' => $record->status === 'completed' ? $record->result : null,
+            'error' => $record->status === 'failed' ? $record->error_message : null,
+            'started_at' => $record->started_at?->toDateTimeString(),
+            'finished_at' => $record->finished_at?->toDateTimeString(),
+        ]);
+    }
+
+    private function queueSync(Request $request, string $operation, array $options): JsonResponse
+    {
+        $connection = $this->connectionFor($request->user()->id);
+
+        if ($connection === null) {
+            return response()->json([
+                'ok' => false,
+                'error' => 'No Shopee API connection for this account.',
+            ], 422);
+        }
+
+        $fingerprint = hash('sha256', json_encode([
+            'operation' => $operation,
+            'options' => $options,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        $existing = ShopeeSyncOperation::query()
+            ->where('user_id', $request->user()->id)
+            ->where('connection_id', $connection->id)
+            ->where('status', 'processing')
+            ->first();
+
+        if ($existing !== null) {
             return response()->json([
                 'ok' => false,
                 'error' => 'A Shopee sync is already running for this account.',
+                'operation_id' => $existing->id,
             ], 409);
         }
 
-        try {
-            return $callback();
-        } finally {
-            $lock->release();
+        $queued = ShopeeSyncOperation::query()
+            ->where('user_id', $request->user()->id)
+            ->where('connection_id', $connection->id)
+            ->where('status', 'queued')
+            ->where('fingerprint', $fingerprint)
+            ->latest('id')
+            ->first();
+
+        if ($queued !== null) {
+            return response()->json([
+                'ok' => true,
+                'queued' => true,
+                'operation_id' => $queued->id,
+                'status_url' => route('integrations.shopee-api.sync-status', $queued->id),
+            ], 202);
         }
+
+        $record = ShopeeSyncOperation::query()->create([
+            'user_id' => $request->user()->id,
+            'connection_id' => $connection->id,
+            'operation' => $operation,
+            'status' => 'queued',
+            'fingerprint' => $fingerprint,
+            'options' => $options,
+        ]);
+
+        ShopeeSyncJob::dispatch($record->id);
+
+        return response()->json([
+            'ok' => true,
+            'queued' => true,
+            'operation_id' => $record->id,
+            'status_url' => route('integrations.shopee-api.sync-status', $record->id),
+        ], 202);
     }
 
     public function validate(Request $request, ShopeeShadowValidationService $validator): JsonResponse
