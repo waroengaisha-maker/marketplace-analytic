@@ -16,6 +16,7 @@ class ServerStatusController extends Controller
 
         return Inertia::render('Admin/Server/Index', [
             'status' => $serverStatus->snapshot(),
+            'adminer' => config('adminer'),
         ]);
     }
 }

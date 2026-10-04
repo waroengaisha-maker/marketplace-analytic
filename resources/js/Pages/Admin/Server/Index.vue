@@ -7,6 +7,11 @@ type ServiceStatus = {
     health?: string
 }
 
+type AdminerLinks = {
+    local_url?: string
+    server_url?: string
+}
+
 type ServerStatus = {
     available: boolean
     stale?: boolean
@@ -39,7 +44,10 @@ type ServerStatus = {
     reason?: string
 }
 
-const props = defineProps<{ status: ServerStatus }>()
+const props = defineProps<{
+    status: ServerStatus
+    adminer: AdminerLinks
+}>()
 const refreshing = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | undefined
 
@@ -87,10 +95,32 @@ const boolLabel = (value?: boolean) => value ? 'Enabled' : 'Not enabled'
                         <span v-if="status.generated_at_human"> · updated {{ status.generated_at_human }}</span>
                     </p>
                 </div>
-                <button type="button" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" :disabled="refreshing" @click="refresh">
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <a
+                        v-if="props.adminer.local_url"
+                        :href="props.adminer.local_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                        <i class="pi pi-database" aria-hidden="true" />
+                        Adminer Local
+                    </a>
+                    <a
+                        v-if="props.adminer.server_url"
+                        :href="props.adminer.server_url"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    >
+                        <i class="pi pi-server" aria-hidden="true" />
+                        Adminer Server
+                    </a>
+                    <button type="button" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" :disabled="refreshing" @click="refresh">
                     <i class="pi pi-refresh" :class="{ 'animate-spin': refreshing }" aria-hidden="true" />
-                    {{ refreshing ? 'Refreshing...' : 'Refresh' }}
-                </button>
+                        {{ refreshing ? 'Refreshing...' : 'Refresh' }}
+                    </button>
+                </div>
             </div>
 
             <div v-if="!status.available" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">

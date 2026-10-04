@@ -55,6 +55,11 @@ class ServerDashboardTest extends TestCase
 
         $admin = User::factory()->create(['role' => UserRole::SuperAdmin]);
 
+        config([
+            'adminer.local_url' => 'http://localhost:8081',
+            'adminer.server_url' => 'http://192.168.100.48:8081',
+        ]);
+
         $this->actingAs($admin)
             ->get(route('admin.server.index'))
             ->assertOk()
@@ -64,6 +69,8 @@ class ServerDashboardTest extends TestCase
                 ->where('status.overall', 'ok')
                 ->where('status.host', 'fedora')
                 ->where('status.disk.percent', 50)
+                ->where('adminer.local_url', 'http://localhost:8081')
+                ->where('adminer.server_url', 'http://192.168.100.48:8081')
             );
     }
 
