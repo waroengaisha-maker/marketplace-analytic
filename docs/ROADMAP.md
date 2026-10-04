@@ -31,10 +31,9 @@ Membangun fondasi ingestion dan model data untuk tiga sumber resmi: Shopee Order
 - Shopee Income importer sudah tersedia.
 - Source identity preservation dan deterministic import sudah menjadi contract.
 - Import workflow sudah memiliki queue-backed execution dan persisted operation status.
-- Master HPP/cost data sudah menjadi bagian dari domain cost allocation model, tetapi capability lengkap untuk pengelolaan/import Master HPP belum dinyatakan selesai sebagai milestone produk.
-
-### Current state
 - Master Product catalog dan unit model sudah tersedia.
+- HPP versioning/effective-date resolution sudah tersedia dan diuji.
+- Master HPP dapat menjadi sumber cost allocation untuk order line.
 - HPP versioning/effective-date resolution sudah tersedia dan diuji.
 - Master HPP dapat menjadi sumber cost allocation untuk order line.
 - Queue-backed ingestion untuk Shopee Order dan Income sudah tersedia.
@@ -97,12 +96,6 @@ Milestone ini dianggap selesai pada level core engine. Penyempurnaan UI, analyti
 
 ### Goal
 Menghasilkan financial view yang reproducible dari Order + Income dan, bila tersedia, HPP.
-
-### Current state
-- Canonical financial projection sudah menjadi source of truth di backend.
-- Derived financial values dibedakan dari raw source facts.
-- Reconciliation sudah menggunakan financial projection.
-- Cost allocation domain sudah ada.
 
 ### Current state
 - `CanonicalFinancialProjectionService` menjadi boundary financial projection.
