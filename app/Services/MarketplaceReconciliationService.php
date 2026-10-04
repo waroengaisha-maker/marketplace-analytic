@@ -424,7 +424,16 @@ class MarketplaceReconciliationService
         $groups = [];
 
         foreach ($lines as $line) {
-            $projection = $this->canonicalFinancialProjection->projectLine($line, [
+            $projection = $this->canonicalFinancialProjection->projectLine([
+                'quantity' => $line->quantity,
+                'order_subtotal' => $line->subtotal,
+                'platform_fee' => $line->admin,
+                'free_shipping_xtra_fee' => $line->shipping,
+                'promo_xtra_service_fee' => $line->promo,
+                'order_processing_fee' => $line->processing,
+                'pph22' => $line->tax,
+                'refund_amount' => $line->refund_amount,
+            ], [
                 'cost_status' => $line->cost_status ?? null,
                 'total_hpp' => $line->hpp ?? null,
             ]);
