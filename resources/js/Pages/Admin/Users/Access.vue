@@ -134,10 +134,10 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('id
 </script>
 
 <template>
-    <div class="p-6">
-        <Head title="Kelola Akses User" />
-        <h1 class="mb-6 text-2xl font-semibold">Kelola Akses User Aplikasi</h1>
-        <p class="mb-6 text-sm text-slate-500">Aktifkan, atur trial, atau suspend akun pengguna aplikasi.</p>
+    <Head title="Kelola Akses User" />
+    <div class="flex flex-col gap-6">
+        <h1 class="text-3xl font-bold">Kelola Akses User Aplikasi</h1>
+        <p class="text-sm text-slate-500">Aktifkan, atur trial, atau suspend akun pengguna aplikasi.</p>
         <Message v-if="validationError()" class="mb-4" severity="error">{{ validationError() }}</Message>
         <Card class="[&_.p-card-body]:p-4">
             <template #content>
