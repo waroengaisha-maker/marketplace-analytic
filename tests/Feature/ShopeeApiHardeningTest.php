@@ -710,6 +710,46 @@ class ShopeeApiHardeningTest extends TestCase
         $this->assertSame('220404AB12CDEF', $otherConnection->staging_orders[0]['order_sn']);
     }
 
+    public function test_sync_status_is_tenant_scoped(): void
+    {
+        $user = $this->activeUser();
+        $other = $this->activeUser();
+        $connection = $this->connectedConnection($other);
+
+        $operation = ShopeeSyncOperation::query()->create([
+            'user_id' => $other->id,
+            'connection_id' => $connection->id,
+            'operation' => 'orders',
+            'status' => 'queued',
+            'fingerprint' => hash('sha256', 'tenant-status'),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson(route('integrations.shopee-api.sync-status', $operation->id))
+            ->assertNotFound();
+    }
+
+    public function test_duplicate_queued_sync_request_reuses_existing_operation(): void
+    {
+        $user = $this->activeUser();
+        $this->connectedConnection($user);
+
+        Queue::fake();
+
+        $first = $this->actingAs($user)
+            ->postJson(route('integrations.shopee-api.sync-orders'), ['page_size' => 5])
+            ->assertStatus(202)
+            ->json();
+
+        $second = $this->actingAs($user)
+            ->postJson(route('integrations.shopee-api.sync-orders'), ['page_size' => 5])
+            ->assertStatus(202)
+            ->json();
+
+        $this->assertSame($first['operation_id'], $second['operation_id']);
+        Queue::assertPushed(ShopeeSyncJob::class, 1);
+    }
+
     public function test_sync_routes_reject_overlapping_sync_for_same_account(): void
     {
         $user = $this->activeUser();
