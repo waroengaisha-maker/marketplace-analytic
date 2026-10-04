@@ -153,11 +153,12 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('id
                     <Button label="Tambah User" icon="pi pi-plus" @click="startCreate" />
                 </template>
             </AppDataTableToolbar>
-            <div class="overflow-hidden rounded-xl border border-surface-200 shadow-sm dark:border-surface-700" style="height: min(70vh, 48rem)">
+            <div class="flex min-h-0 flex-col overflow-hidden rounded-lg bg-surface-0 dark:bg-surface-950" style="height: min(70vh, 48rem)">
             <AppDataTable
                 :loading="isLoading"
                 :value="props.users.data"
                 v-model:multi-sort-meta="multiSortMeta"
+                sort-mode="multiple"
                 lazy
                 :total-records="totalRecords"
                 :first="(currentPage - 1) * perPage"
