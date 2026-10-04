@@ -111,3 +111,4 @@ jobs:
 
       - name: Validate production Docker build
         run: docker build -f Dockerfile.production -t marketplace-analytics:ci .
+# rerun aggregate profit
