@@ -1,21 +1,52 @@
 :8080 {
-    @vite path /@vite/* /@id/* /@fs/* /resources/* /node_modules/* /__vite_ping
+	@vite path /@vite/* /@id/* /@fs/* /resources/* /node_modules/* /__vite_ping
 
-    header @vite {
-        Access-Control-Allow-Origin "http://localhost:8080"
-        Access-Control-Allow-Methods "GET, OPTIONS, POST, PUT, PATCH, DELETE"
-        Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
-        Access-Control-Allow-Credentials "true"
-    }
+	header @vite {
+		Access-Control-Allow-Origin "http://localhost:8080"
+		Access-Control-Allow-Methods "GET, OPTIONS, POST, PUT, PATCH, DELETE"
+		Access-Control-Allow-Headers "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+		Access-Control-Allow-Credentials "true"
+	}
 
-    reverse_proxy @vite host.docker.internal:5173
+	reverse_proxy @vite host.docker.internal:5173
 
-    @websocket {
-        header Connection *Upgrade*
-        header Upgrade websocket
-    }
+	@websocket {
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
 
-    reverse_proxy @websocket host.docker.internal:5173
+	reverse_proxy @websocket host.docker.internal:5173
 
-    reverse_proxy laravel.test:80
+	reverse_proxy laravel.test:80
+}
+
+(services-auth) {
+	basic_auth {
+		{$SERVICES_AUTH_USER} {$SERVICES_AUTH_PASSWORD_HASH}
+	}
+}
+
+http://netdata.marketplace-analytics.my.id:8080 {
+	import services-auth
+	reverse_proxy netdata:19999
+}
+
+http://portainer.marketplace-analytics.my.id:8080 {
+	import services-auth
+
+	reverse_proxy https://portainer:9443 {
+		transport http {
+			tls_insecure_skip_verify
+		}
+	}
+}
+
+http://adminer.marketplace-analytics.my.id:8080 {
+	import services-auth
+	reverse_proxy adminer:8080
+}
+
+http://redisinsight.marketplace-analytics.my.id:8080 {
+	import services-auth
+	reverse_proxy redisinsight:5540
 }
