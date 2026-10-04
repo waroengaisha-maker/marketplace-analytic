@@ -9,7 +9,8 @@ type ServiceStatus = {
 
 type AdminerLinks = {
     local_url?: string
-    server_url?: string
+    server_tunnel_command?: string
+    server_tunnel_url?: string
 }
 
 type ServerStatus = {
@@ -49,7 +50,16 @@ const props = defineProps<{
     adminer: AdminerLinks
 }>()
 const refreshing = ref(false)
+const tunnelCopied = ref(false)
 let refreshTimer: ReturnType<typeof setInterval> | undefined
+
+const copyServerTunnelCommand = async () => {
+    if (!props.adminer.server_tunnel_command) return
+
+    await navigator.clipboard.writeText(props.adminer.server_tunnel_command)
+    tunnelCopied.value = true
+    window.setTimeout(() => { tunnelCopied.value = false }, 2000)
+}
 
 const refresh = () => {
     refreshing.value = true
@@ -106,15 +116,24 @@ const boolLabel = (value?: boolean) => value ? 'Enabled' : 'Not enabled'
                         <i class="pi pi-database" aria-hidden="true" />
                         Adminer Local
                     </a>
+                    <button
+                        v-if="props.adminer.server_tunnel_command"
+                        type="button"
+                        class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                        @click="copyServerTunnelCommand"
+                    >
+                        <i class="pi" :class="tunnelCopied ? 'pi-check' : 'pi-server'" aria-hidden="true" />
+                        {{ tunnelCopied ? 'Tunnel Command Copied' : 'Adminer Server' }}
+                    </button>
                     <a
-                        v-if="props.adminer.server_url"
-                        :href="props.adminer.server_url"
+                        v-if="props.adminer.server_tunnel_url"
+                        :href="props.adminer.server_tunnel_url"
                         target="_blank"
                         rel="noopener noreferrer"
                         class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     >
-                        <i class="pi pi-server" aria-hidden="true" />
-                        Adminer Server
+                        <i class="pi pi-external-link" aria-hidden="true" />
+                        Open Server Adminer
                     </a>
                     <button type="button" class="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" :disabled="refreshing" @click="refresh">
                     <i class="pi pi-refresh" :class="{ 'animate-spin': refreshing }" aria-hidden="true" />
