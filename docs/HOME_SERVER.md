@@ -52,7 +52,99 @@ http://192.168.100.48:8080
 
 Port `8080/tcp` dibuka oleh firewall Fedora untuk akses LAN.
 
-## 4. Adminer Access
+## 4. Public HTTPS / Cloudflare Tunnel
+
+Production public access menggunakan Cloudflare Tunnel, sehingga server tidak memerlukan port forwarding inbound dari internet.
+
+| Item | Value |
+|---|---|
+| Public hostname | `marketplace-analytics.my.id` |
+| Tunnel | `marketplace-analytics-home` |
+| Service target | `http://caddy:8080` |
+| Cloudflare connector | `cloudflared` container |
+| Application URL | `https://marketplace-analytics.my.id` |
+
+Alur request production:
+
+```text
+Internet
+   │
+   ▼
+Cloudflare
+   │ HTTPS
+   ▼
+cloudflared
+   │
+   ▼
+Caddy :8080
+   │
+   ▼
+Laravel
+```
+
+Cloudflare Tunnel dipilih karena WAN router berada di belakang CGNAT/private WAN, sehingga inbound port forwarding tidak digunakan.
+
+### Production environment
+
+Server `.env` harus memiliki:
+
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://marketplace-analytics.my.id
+TRUSTED_HOSTS=marketplace-analytics.my.id
+```
+
+Jangan commit file `.env` atau token Cloudflare Tunnel ke repository.
+
+### Trusted proxy / host
+
+Laravel mempercayai Docker network internal yang menjadi jalur proxy:
+
+```php
+$middleware->trustProxies(at: ['172.30.0.0/16']);
+
+$middleware->trustHosts(at: [
+    'marketplace-analytics.my.id',
+]);
+```
+
+Konfigurasi ini berada di `bootstrap/app.php`.
+
+`TRUSTED_PROXIES` tidak lagi dibaca dari server `.env`; proxy trust ditentukan secara eksplisit berdasarkan network Docker. `TRUSTED_HOSTS` tetap diperlukan di server karena production configuration memvalidasi bahwa trusted host telah dikonfigurasi.
+
+### Health check deployment
+
+Health check lokal pada `deploy.sh` tetap menggunakan:
+
+```text
+http://127.0.0.1:8080
+```
+
+tetapi mengirim:
+
+```http
+Host: marketplace-analytics.my.id
+```
+
+Hal ini penting karena Laravel hanya mempercayai hostname production tersebut. Request dengan `Host: 127.0.0.1:8080` sengaja menghasilkan `400 Bad Request` dan bukan indikasi aplikasi rusak.
+
+Public verification:
+
+```bash
+curl -i https://marketplace-analytics.my.id/
+```
+
+Expected:
+
+```text
+HTTP/2 302
+location: https://marketplace-analytics.my.id/login
+```
+
+Cookie session/XSRF production harus memiliki atribut `Secure`.
+
+## 5. Adminer Access
 
 Adminer tidak diekspos langsung ke LAN. Adminer hanya dipublish pada:
 
@@ -84,7 +176,7 @@ Database : laravel
 
 Gunakan `mysql` sebagai Server, bukan `localhost`, karena Adminer berjalan sebagai container pada Docker network.
 
-## 5. Repository
+## 6. Repository
 
 Project berada di server pada:
 
@@ -135,7 +227,7 @@ Prinsipnya:
 - Perubahan source code sebaiknya dibuat dan diuji di WSL/PC, lalu di-commit dan push ke GitHub.
 - Perubahan server-only seperti `compose.server.yaml` dan konfigurasi lokal server tetap berada di server dan dikelola sebagai konfigurasi runtime lokal.
 
-## 6. Deployment
+## 7. Deployment
 
 ### Workflow normal
 
@@ -179,7 +271,7 @@ docker compose -f compose.yaml -f compose.server.yaml
 
 Jika deployment ditolak, periksa `git status` dan jangan melakukan `git reset --hard` tanpa memahami dampaknya.
 
-## 7. Docker Operations
+## 8. Docker Operations
 
 Masuk ke project:
 
@@ -220,7 +312,7 @@ docker volume prune
 
 Database MySQL berada pada Docker named volume dan berisi data aplikasi.
 
-## 8. MySQL Backup
+## 9. MySQL Backup
 
 Backup database disimpan di:
 
@@ -259,7 +351,7 @@ Validasi gzip:
 gzip -t ~/Backups/marketplace-analytic/mysql-*.sql.gz
 ```
 
-## 9. Automatic Backup
+## 10. Automatic Backup
 
 Backup otomatis menggunakan:
 
@@ -283,7 +375,7 @@ Jadwal target sekitar pukul 03:00 dengan random delay maksimal 5 menit.
 
 Backup lama dibersihkan dan sekitar 14 backup terbaru dipertahankan.
 
-## 10. MySQL Restore
+## 11. MySQL Restore
 
 Restore akan mengubah database saat ini dan memerlukan konfirmasi eksplisit.
 
@@ -310,7 +402,7 @@ Sebelum restore, validasi file:
 gzip -t ~/Backups/marketplace-analytic/mysql-20261004-190738.sql.gz
 ```
 
-## 11. Firewall
+## 12. Firewall
 
 Firewall Fedora menggunakan `firewalld`.
 
@@ -357,7 +449,7 @@ Expected:
 6379/tcp    filtered
 ```
 
-## 12. Reboot / Recovery
+## 13. Reboot / Recovery
 
 Docker harus enabled:
 
@@ -382,7 +474,7 @@ docker compose -f compose.yaml -f compose.server.yaml ps
 
 SSH seharusnya kembali tersedia setelah Fedora boot. Laptop dikonfigurasi agar menutup lid tidak menyebabkan server suspend.
 
-## 13. Server-Specific Files
+## 14. Server-Specific Files
 
 Konfigurasi server lokal:
 
@@ -413,7 +505,7 @@ SSH hardening:
 /etc/ssh/sshd_config.d/90-home-server-hardening.conf
 ```
 
-## 14. Quick Reference
+## 15. Quick Reference
 
 ### SSH
 
@@ -423,8 +515,16 @@ ssh warungaisha@192.168.100.48
 
 ### Application
 
+LAN:
+
 ```text
 http://192.168.100.48:8080
+```
+
+Public production:
+
+```text
+https://marketplace-analytics.my.id
 ```
 
 ### Adminer
@@ -480,7 +580,7 @@ docker compose -f compose.yaml -f compose.server.yaml ps
 sudo firewall-cmd --zone=FedoraWorkstation --list-all
 ```
 
-## 15. Operational Principles
+## 16. Operational Principles
 
 1. Akses server menggunakan user `warungaisha`, bukan `root`.
 2. Gunakan `sudo` hanya ketika membutuhkan privilege administrator.
@@ -495,3 +595,23 @@ sudo firewall-cmd --zone=FedoraWorkstation --list-all
 11. Pastikan backup database tersedia sebelum operasi database yang berisiko.
 12. Jangan mengekspos MySQL, Redis, atau Adminer langsung ke LAN.
 13. Jika server dipindahkan ke hardware baru, gunakan dokumen ini sebagai checklist migrasi.
+
+## 17. Deployment Baseline — 2026-10-04
+
+Production deployment dan Cloudflare HTTPS/proxy configuration diverifikasi berhasil pada commit:
+
+```text
+46e1234 fix: trust cloudflare proxy in production
+```
+
+Pada baseline ini:
+
+- WSL, GitHub `origin/development`, dan Fedora server berada pada commit yang sama.
+- `./deploy.sh` menyelesaikan deployment tanpa error.
+- Docker services berjalan, MySQL berstatus healthy, dan Redis berjalan.
+- Frontend production build berhasil.
+- Laravel migration dan optimization berhasil.
+- Local deployment health check berhasil setelah menggunakan trusted `Host` header.
+- Public HTTPS berhasil melalui Cloudflare Tunnel dan mengarahkan unauthenticated request dari `/` ke `/login` dengan HTTPS.
+
+Commit ini menjadi baseline operasional setelah penyelesaian konfigurasi production proxy/HTTPS.
