@@ -240,6 +240,7 @@ class MarketplaceReconciliationService
                 l.returned_quantity,
                 l.fulfilled_quantity,
                 l.cancelled_quantity,
+                l.total_income,
                 COALESCE(l.refund_amount, 0) AS refund_amount,
                 (CASE WHEN l.quantity IS NULL THEN NULL WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
                 CASE WHEN l.order_subtotal IS NOT NULL THEN l.order_subtotal WHEN l.discounted_price IS NOT NULL AND l.quantity IS NOT NULL THEN l.discounted_price * l.quantity ELSE NULL END AS subtotal,
@@ -433,6 +434,7 @@ class MarketplaceReconciliationService
                 'order_processing_fee' => $line->processing,
                 'pph22' => $line->tax,
                 'refund_amount' => $line->refund_amount,
+                'total_income' => $line->total_income,
             ], [
                 'cost_status' => $line->cost_status ?? null,
                 'total_hpp' => $line->hpp ?? null,
