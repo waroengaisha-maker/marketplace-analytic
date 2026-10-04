@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\AccountStatus;
+use App\Jobs\ShopeeSyncJob;
 use App\Models\ShopeeApiConnection;
 use App\Models\User;
 use App\Services\ReportLineIdentity;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ShopeeShadowValidationTest extends TestCase
@@ -30,6 +32,30 @@ class ShopeeShadowValidationTest extends TestCase
     private const ACCESS_TOKEN = 'TENANT_ACCESS_TOKEN_SECRET_1';
 
     private const REFRESH_TOKEN = 'TENANT_REFRESH_TOKEN_SECRET_1';
+
+    private function runQueuedSync(User $user, string $route, array $payload = []): array
+    {
+        Queue::fake();
+
+        $response = $this->actingAs($user)
+            ->postJson(route($route), $payload)
+            ->assertStatus(202);
+
+        $operationId = $response->json('operation_id');
+        $this->assertIsInt($operationId);
+
+        Queue::assertPushed(ShopeeSyncJob::class);
+
+        (new ShopeeSyncJob($operationId))->handle(
+            app(ShopeeSyncService::class),
+            app(\App\Services\ShopeeSyncAuditService::class),
+        );
+
+        return $this->actingAs($user)
+            ->getJson(route('integrations.shopee-api.sync-status', $operationId))
+            ->assertOk()
+            ->json();
+    }
 
     private function activeUser(): User
     {
@@ -165,9 +191,8 @@ class ShopeeShadowValidationTest extends TestCase
                 ]])),
         ]);
 
-        $result = $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-escrow'), ['limit' => 5])
-            ->assertOk()
-            ->json();
+        $status = $this->runQueuedSync($user, 'integrations.shopee-api.sync-escrow', ['limit' => 5]);
+        $result = $status['result'];
 
         $this->assertTrue($result['ok']);
         $this->assertSame(2, $result['escrow_count']);
@@ -245,7 +270,7 @@ class ShopeeShadowValidationTest extends TestCase
             ]])),
         ]);
 
-        $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-escrow'), ['limit' => 5])->assertOk();
+        $this->runQueuedSync($user, 'integrations.shopee-api.sync-escrow', ['limit' => 5]);
 
         $other = $this->connectedConnection($this->activeUser(), [
             'partner_id' => 'TENANT_PARTNER_ID_2',
@@ -257,9 +282,8 @@ class ShopeeShadowValidationTest extends TestCase
             ],
         ]);
 
-        $result = $this->actingAs($other->user)->postJson(route('integrations.shopee-api.sync-escrow'), ['limit' => 5])
-            ->assertOk()
-            ->json();
+        $status = $this->runQueuedSync($other->user, 'integrations.shopee-api.sync-escrow', ['limit' => 5]);
+        $result = $status['result'];
 
         $this->assertSame(1, $result['escrow_count']);
         $this->assertSame('220404AB12CDEF', $result['normalized'][0]['order_number']);
