@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "\${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
 COMPOSE=(docker compose -f compose.yaml -f compose.server.yaml)
 APP_URL="http://127.0.0.1:8080"
-BACKUP_DIR="\${BACKUP_DIR:-$HOME/Backups/marketplace-analytic}"
+BACKUP_DIR="${BACKUP_DIR:-$HOME/Backups/marketplace-analytic}"
 
 warn_count=0
 fail_count=0
@@ -31,24 +31,24 @@ printf ' Disk /     : %s\n' "$disk_line"
 
 disk_pct="$(df --output=pcent / | tail -1 | tr -dc '0-9')"
 if (( disk_pct >= 95 )); then
-    fail "Disk / usage is \${disk_pct}%."
+    fail "Disk / usage is ${disk_pct}%."
 elif (( disk_pct >= 85 )); then
-    warn "Disk / usage is \${disk_pct}%."
+    warn "Disk / usage is ${disk_pct}%."
 else
-    ok "Disk / usage is \${disk_pct}%."
+    ok "Disk / usage is ${disk_pct}%."
 fi
 printf '\n'
 
 printf '%s\n' '[Docker]'
-if ! "\${COMPOSE[@]}" config --quiet >/dev/null 2>&1; then
+if ! "${COMPOSE[@]}" config --quiet >/dev/null 2>&1; then
     fail "Docker Compose configuration is invalid."
 else
     for service in caddy laravel.test mysql redis adminer; do
-        if ! "\${COMPOSE[@]}" ps --status running --services | grep -qx "$service"; then
+        if ! "${COMPOSE[@]}" ps --status running --services | grep -qx "$service"; then
             fail "Container service '$service' is not running."
         else
             if [[ "$service" == "mysql" || "$service" == "redis" ]]; then
-                container_id="$("\${COMPOSE[@]}" ps -q "$service")"
+                container_id="$("${COMPOSE[@]}" ps -q "$service")"
                 health="$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$container_id" 2>/dev/null || true)"
                 if [[ "$health" == "healthy" ]]; then
                     ok "$service: running / healthy."
