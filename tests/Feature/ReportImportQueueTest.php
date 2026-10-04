@@ -3,10 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\AccountStatus;
+use App\Enums\AccountStatus;
 use App\Jobs\ImportReportsJob;
 use App\Models\ReportImportOperation;
 use App\Models\User;
 use App\Services\IncomeReportImporter;
+use RuntimeException;
 use RuntimeException;
 use App\Services\OrderReportImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -60,7 +62,7 @@ class ReportImportQueueTest extends TestCase
     public function test_operation_status_is_tenant_scoped(): void
     {
         $user = User::factory()->create([
-            'account_status' => \App\Enums\AccountStatus::Active,
+            'account_status' => AccountStatus::Active,
         ]);
         $other = User::factory()->create([
             'account_status' => \App\Enums\AccountStatus::Active,
@@ -116,7 +118,7 @@ class ReportImportQueueTest extends TestCase
         $income = $this->mock(IncomeReportImporter::class);
         $orders->shouldReceive('import')->once()->andThrow(new RuntimeException('private SQL path'));
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
 
         try {
             (new ImportReportsJob($operation->id))->handle($orders, $income);
