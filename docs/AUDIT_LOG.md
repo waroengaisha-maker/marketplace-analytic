@@ -101,7 +101,7 @@ Application audit logs (misalnya Shopee integration audit events) adalah mekanis
 | AUDIT-015 | P2 | Reconciliation architecture | `MarketplaceReconciliationService` terlalu besar dan memiliki area yang dapat dipecah secara bertahap. | **Deferred** | Refactoring bukan prioritas selama behavior benar. Jangan melakukan decomposition spekulatif tanpa regression protection. |
 | AUDIT-016 | P2 | Financial query duplication | Beberapa financial SQL/query logic berpotensi duplikatif; canonical projection tetap menjadi source of truth. | **Deferred** | Tidak boleh direfactor hanya demi cleanliness. Perubahan harus menjaga canonical financial projection semantics. |
 | AUDIT-017 | P2 | Repository hygiene | Repository pernah memiliki artifact/note files yang perlu dibedakan antara project-owned documentation dan accidental artifacts. | **Completed** | Root-level artifacts `NUL`, `hello.py`, dan `tmp_master_hpp_test_output.txt` diverifikasi sebagai non-project artifacts dan dihapus pada commit `41a7ea8d1fee195bd128c9963e466180f3618e49`. `devnotes.txt` diverifikasi sebagai project-owned note dan dipertahankan. |
-| AUDIT-018 | P2 | Code style | Pint masih menemukan style debt pada sejumlah existing files. | **Open** | Last recorded Pint check menemukan 32 style issues. Jangan mencampur cleanup massal dengan domain/security changes tanpa task terpisah. |
+| AUDIT-018 | P2 | Code style | Pint masih menemukan style debt pada sejumlah existing files. | **Completed** | Laravel Pint **143 files PASS** pada 2026-10-04 setelah focused formatting cleanup; perubahan style dipisahkan dari domain/security fixes. Commit `7ef275b`. |
 
 ---
 
@@ -147,8 +147,8 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - **Finding:** Core controllers already used Laravel injection in many endpoints, but ShopeeApiController still used service-locator/manual construction and the dashboard contained non-trivial request orchestration in a route closure.
 - **Assessment before remediation:** Partially compliant with MVC/DI best practice.
 - **Remediation:** Added ShopeeApiClientFactory; injected controller dependencies; injected the factory into ShopeeSyncService; removed controller app()/manual service construction; moved dashboard handling into DashboardController; added container-resolution regression tests.
-- **Verification:** Verification is pending local/CI test execution. Existing CI already gates PHPUnit, Pint, frontend typecheck/build, dependency audits, and Docker build.
-- **Status:** In Progress — verification pending.
+- **Verification:** Local verification completed on 2026-10-04: full PHPUnit suite **302 passed, 2,103 assertions**; Laravel Pint **143 files PASS**; `git diff --check` **PASS**. The added `ControllerDependencyInjectionTest` is included in the full suite.
+- **Status:** **Completed**
 
 ### AUDIT-020 — Shopee token refresh ordering
 
@@ -158,8 +158,8 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - **Finding:** Sync workflows could construct a connection-scoped ShopeeApiClient before refreshing an expired access token. Because the client snapshots the connection credentials, a successful refresh could still leave the current sync request using the expired token.
 - **Remediation:** All three sync paths — orders, income, and escrow — now refresh the access token before constructing the API client.
 - **Additional cleanup:** Removed obsolete static service-locator factories from ShopeeApiClient after introducing the explicit factory; removed unused controller imports/injected parameters.
-- **Verification:** Code-level remediation completed; runtime PHPUnit/Pint/typecheck/full-suite verification remains pending local execution.
-- **Status:** In Progress — verification pending.
+- **Verification:** Local verification completed on 2026-10-04: full PHPUnit suite **302 passed, 2,103 assertions**; Laravel Pint **143 files PASS**; `git diff --check` **PASS**. The Shopee integration and shadow-validation coverage for the sync paths passed.
+- **Status:** **Completed**
 
 ## AUDIT-021 — Shopee sync missing-connection precondition
 - Date: 2026-10-04
