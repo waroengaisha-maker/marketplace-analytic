@@ -273,6 +273,13 @@ class ShopeeApiController extends Controller
                 $sync = $this->syncService;
                 $connection = $this->connectionFor($request->user()->id);
 
+                if ($connection === null) {
+                    return response()->json([
+                        'ok' => false,
+                        'error' => 'No Shopee API connection for this account.',
+                    ], 422);
+                }
+
                 $result = $sync->syncSampleOrders($connection, $validated);
 
                 $this->auditSync($request->user()->id, 'orders', $result);
@@ -299,6 +306,13 @@ class ShopeeApiController extends Controller
                 $sync = $this->syncService;
                 $connection = $this->connectionFor($request->user()->id);
 
+                if ($connection === null) {
+                    return response()->json([
+                        'ok' => false,
+                        'error' => 'No Shopee API connection for this account.',
+                    ], 422);
+                }
+
                 $result = $sync->syncSampleIncome($connection, $validated);
 
                 $this->auditSync($request->user()->id, 'income', $result);
@@ -320,6 +334,13 @@ class ShopeeApiController extends Controller
             try {
                 $sync = $this->syncService;
                 $connection = $this->connectionFor($request->user()->id);
+
+                if ($connection === null) {
+                    return response()->json([
+                        'ok' => false,
+                        'error' => 'No Shopee API connection for this account.',
+                    ], 422);
+                }
 
                 $result = $sync->syncSampleEscrow($connection, $validated);
 
