@@ -84,11 +84,12 @@ class ShopeeSyncJob implements ShouldQueue, ShouldBeUnique
             $audit->record($operation->user_id, $operation->operation, $result);
 
             $operation->update([
-                'status' => ($result['ok'] ?? false) ? 'completed' : 'failed',
+                // A returned Shopee error is a completed queue execution.
+                // The result carries the business outcome; "failed" is reserved
+                // for an exception that exhausts queue retries.
+                'status' => 'completed',
                 'result' => $this->summary($result),
-                'error_message' => ($result['ok'] ?? false)
-                    ? null
-                    : 'Shopee sync gagal. Silakan coba lagi atau hubungi administrator.',
+                'error_message' => null,
                 'finished_at' => now(),
             ]);
         } finally {
