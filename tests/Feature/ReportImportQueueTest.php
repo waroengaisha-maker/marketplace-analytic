@@ -21,7 +21,9 @@ class ReportImportQueueTest extends TestCase
     {
         Storage::fake('local');
         Queue::fake();
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'account_status' => \App\Enums\AccountStatus::Active,
+        ]);
 
         $response = $this->actingAs($user)->post(route('imports.upload.store'), [
             'order_report' => UploadedFile::fake()->create('orders.xlsx', 10),
@@ -39,8 +41,12 @@ class ReportImportQueueTest extends TestCase
 
     public function test_operation_status_is_tenant_scoped(): void
     {
-        $user = User::factory()->create();
-        $other = User::factory()->create();
+        $user = User::factory()->create([
+            'account_status' => \App\Enums\AccountStatus::Active,
+        ]);
+        $other = User::factory()->create([
+            'account_status' => \App\Enums\AccountStatus::Active,
+        ]);
         $operation = ReportImportOperation::query()->create([
             'user_id' => $other->id,
             'status' => 'processing',
