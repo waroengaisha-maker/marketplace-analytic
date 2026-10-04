@@ -115,3 +115,4 @@ jobs:
 # final test rerun
 # final image verification
 # final vendor image verification
+# verify Alpine GD vendor stage
