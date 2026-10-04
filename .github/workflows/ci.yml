@@ -1,6 +1,6 @@
 name: CI
 # Temporary verification branch: test/audit failures are surfaced without blocking PHPUnit.
-# rerun
+ # rerun canonical propagation
 
 
 on:
