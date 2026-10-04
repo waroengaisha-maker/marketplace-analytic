@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Enums\AccountStatus;
 use App\Models\ShopeeApiConnection;
 use App\Models\User;
-use App\Services\ShopeeApiClient;
+use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeePromotionService;
 use App\Services\ReportLineIdentity;
@@ -286,7 +286,7 @@ class ShopeeApiIntegrationTest extends TestCase
         ]);
 
         $sync = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             new ShopeeOAuthService(app(HttpFactory::class)),
             app(ShopeeResponseNormalizer::class),
         );
