@@ -57,8 +57,7 @@ class ServerDashboardTest extends TestCase
 
         config([
             'adminer.local_url' => 'http://localhost:8081',
-            'adminer.server_tunnel_command' => 'ssh -L 18081:127.0.0.1:18081 warungaisha@192.168.100.48',
-            'adminer.server_tunnel_url' => 'http://127.0.0.1:18081',
+            'adminer.server_url' => 'https://adminer.marketplace-analytics.my.id',
         ]);
 
         $this->actingAs($admin)
@@ -71,8 +70,7 @@ class ServerDashboardTest extends TestCase
                 ->where('status.host', 'fedora')
                 ->where('status.disk.percent', 50)
                 ->where('adminer.local_url', 'http://localhost:8081')
-                ->where('adminer.server_tunnel_command', 'ssh -L 18081:127.0.0.1:18081 warungaisha@192.168.100.48')
-                ->where('adminer.server_tunnel_url', 'http://127.0.0.1:18081')
+                ->where('adminer.server_url', 'https://adminer.marketplace-analytics.my.id')
             );
     }
 
