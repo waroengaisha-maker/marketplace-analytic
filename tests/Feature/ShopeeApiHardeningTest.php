@@ -729,14 +729,6 @@ class ShopeeApiHardeningTest extends TestCase
                 'integrations.shopee-api.sync-income',
                 'integrations.shopee-api.sync-escrow',
             ] as $route) {
-                ShopeeSyncOperation::query()->create([
-                    'user_id' => $user->id,
-                    'connection_id' => ShopeeApiConnection::forUser($user->id)->first()->id,
-                    'operation' => 'orders',
-                    'status' => 'processing',
-                    'fingerprint' => hash('sha256', 'existing'),
-                ]);
-
                 $this->actingAs($user)
                     ->postJson(route($route))
                     ->assertStatus(409)
