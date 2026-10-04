@@ -107,13 +107,44 @@ compose.server.yaml
 
 `compose.server.yaml` adalah konfigurasi khusus server dan tidak digunakan sebagai konfigurasi development utama.
 
+### Source-of-truth dan pembagian peran
+
+Workflow repository yang digunakan:
+
+```text
+WSL / PC
+   │
+   │ edit, test, commit, push
+   ▼
+GitHub (origin/development)
+   │
+   │ fetch + fast-forward melalui deploy.sh
+   ▼
+Fedora Home Server
+   │
+   └── runtime / Docker / Laravel / MySQL / Redis / Caddy
+```
+
+Prinsipnya:
+
+- **WSL/PC adalah environment development dan tempat utama operasi Git.**
+- **GitHub adalah source of truth untuk branch `development`.**
+- **Fedora adalah deployment/runtime server, bukan tempat development utama.**
+- Deployment normal ke Fedora dilakukan melalui SSH dari WSL/PC.
+- Jangan melakukan `git pull` manual sebagai workflow deployment normal di Fedora; gunakan `./deploy.sh`.
+- Perubahan source code sebaiknya dibuat dan diuji di WSL/PC, lalu di-commit dan push ke GitHub.
+- Perubahan server-only seperti `compose.server.yaml` dan konfigurasi lokal server tetap berada di server dan dikelola sebagai konfigurasi runtime lokal.
+
 ## 6. Deployment
 
 ### Workflow normal
 
-Dari PC, commit dan push perubahan:
+Dari WSL/PC, setelah perubahan siap:
 
 ```bash
+git status
+git add <files>
+git commit -m "<message>"
 git push origin development
 ```
 
@@ -411,6 +442,7 @@ http://127.0.0.1:18081
 ### Deploy
 
 ```bash
+ssh warungaisha@192.168.100.48
 cd ~/Dev/Projects/marketplace-analytic
 ./deploy.sh
 ```
@@ -452,11 +484,14 @@ sudo firewall-cmd --zone=FedoraWorkstation --list-all
 
 1. Akses server menggunakan user `warungaisha`, bukan `root`.
 2. Gunakan `sudo` hanya ketika membutuhkan privilege administrator.
-3. Jangan menghapus Docker volumes tanpa memastikan backup tersedia.
-4. Jangan menjalankan `docker compose down -v` pada server tanpa alasan dan backup yang valid.
-5. Gunakan `./deploy.sh` untuk deployment normal.
-6. Jangan melakukan force reset Git pada server tanpa memahami dampaknya.
-7. Gunakan SSH tunnel untuk Adminer.
-8. Pastikan backup database tersedia sebelum operasi database yang berisiko.
-9. Jangan mengekspos MySQL, Redis, atau Adminer langsung ke LAN.
-10. Jika server dipindahkan ke hardware baru, gunakan dokumen ini sebagai checklist migrasi.
+3. Source code development dikerjakan di WSL/PC.
+4. Commit dan push perubahan melalui WSL/PC ke `origin/development`.
+5. Akses dan operasi server dilakukan melalui SSH dari WSL/PC.
+6. Gunakan `./deploy.sh` untuk deployment normal; jangan `git pull` manual di server sebagai workflow deployment.
+7. GitHub branch `development` adalah source of truth untuk source code yang dideploy.
+8. Jangan menghapus Docker volumes tanpa memastikan backup tersedia.
+9. Jangan menjalankan `docker compose down -v` pada server tanpa alasan dan backup yang valid.
+10. Gunakan SSH tunnel untuk Adminer.
+11. Pastikan backup database tersedia sebelum operasi database yang berisiko.
+12. Jangan mengekspos MySQL, Redis, atau Adminer langsung ke LAN.
+13. Jika server dipindahkan ke hardware baru, gunakan dokumen ini sebagai checklist migrasi.
