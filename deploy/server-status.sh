@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_DIR="${MARKETPLACE_ANALYTICS_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$PROJECT_DIR"
 
 COMPOSE=(docker compose -f compose.yaml -f compose.server.yaml)
@@ -101,9 +101,7 @@ PY
                 container_id="$("${COMPOSE[@]}" ps -q "$service")"
 
                 health="$(
-                    docker inspect \
-                        --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
-                        "$container_id" 2>/dev/null || true
+                    docker inspect                         --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}'                         "$container_id" 2>/dev/null || true
                 )"
 
                 if [[ "$health" == "healthy" ]]; then
@@ -159,10 +157,7 @@ application_status="fail"
 
 printf '%s\n' '[Application]'
 
-if curl --silent --show-error --fail --max-time 5 \
-    --header "Host: $APP_HOST" \
-    --output /dev/null \
-    "$APP_URL"; then
+if curl --silent --show-error --fail --max-time 5     --header "Host: $APP_HOST"     --output /dev/null     "$APP_URL"; then
     ok "HTTP $APP_URL responded successfully."
     application_status="ok"
 else
@@ -199,11 +194,7 @@ else
 fi
 
 latest_backup="$(
-    find "$BACKUP_DIR" \
-        -maxdepth 1 \
-        -type f \
-        -name 'mysql-*.sql.gz' \
-        -printf '%T@ %p\n' 2>/dev/null |
+    find "$BACKUP_DIR"         -maxdepth 1         -type f         -name 'mysql-*.sql.gz'         -printf '%T@ %p\n' 2>/dev/null |
         sort -nr |
         head -1 |
         cut -d' ' -f2- || true
