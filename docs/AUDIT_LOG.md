@@ -96,7 +96,7 @@ Application audit logs (misalnya Shopee integration audit events) adalah mekanis
 | AUDIT-010 | P2 | Migration hygiene | Dua migration menggunakan timestamp yang sama. Keduanya sudah applied dan Laravel membedakan full migration filename. | **Accepted / No Action** | Jangan rename applied migrations hanya untuk memperbaiki timestamp collision. Gunakan unique timestamps untuk migration baru. |
 | AUDIT-011 | P2 | Import scalability | Report import masih berpotensi mahal bila dilakukan synchronous untuk dataset besar. | **Open** | Queue/import job merupakan roadmap hardening; belum boleh dianggap selesai tanpa implementation + regression/operational verification. |
 | AUDIT-012 | P2 | Shopee sync scalability | Sync order/income/escrow perlu queueing dan retry-safe execution untuk workload production. | **Open** | Queue/Redis tersedia di architecture, tetapi sync workflow harus diverifikasi sebelum status dapat dinaikkan. |
-| AUDIT-013 | P2 | Sync concurrency | Sync yang sama berpotensi membutuhkan overlap protection/idempotency dan persisted progress/cursor. | **Completed** | Persisted order/income cursors dan promotion fingerprint sudah ada. Per-account cache lock pada order/income/escrow sync dengan configurable TTL mencegah overlapping sync untuk account yang sama. Fix import `Cache` dikomit pada `9d4f2ef40d1ef92c874ee0067f1fcd546f13f5c1`. Regression: `ShopeeApiHardeningTest` **18 passed, 109 assertions**; full PHPUnit **299 passed, 2,098 assertions**; `git diff --check` PASS. |
+| AUDIT-013 | P2 | Sync concurrency | Sync yang sama berpotensi membutuhkan overlap protection/idempotency dan persisted progress/cursor. | **Completed** | Persisted order/income cursors dan promotion fingerprint sudah ada. Per-account cache lock pada order/income/escrow sync dengan configurable TTL mencegah overlapping sync untuk account yang sama. Fix import `Cache` dikomit pada `9d4f2ef40d1ef92c874ee0067f1fcd546f13f5c1`. Regression: `ShopeeApiHardeningTest` **18 passed, 109 assertions**; full PHPUnit **302 passed, 2,103 assertions** pada verification 2026-10-04; `git diff --check` PASS. |
 | AUDIT-014 | P2 | Queue operations | Production queue workload membutuhkan monitoring/visibility dan failure handling yang dapat diaudit. | **Open** | Belum ada evidence yang cukup untuk menyatakan operational monitoring sebagai Completed. |
 | AUDIT-015 | P2 | Reconciliation architecture | `MarketplaceReconciliationService` terlalu besar dan memiliki area yang dapat dipecah secara bertahap. | **Deferred** | Refactoring bukan prioritas selama behavior benar. Jangan melakukan decomposition spekulatif tanpa regression protection. |
 | AUDIT-016 | P2 | Financial query duplication | Beberapa financial SQL/query logic berpotensi duplikatif; canonical projection tetap menjadi source of truth. | **Deferred** | Tidak boleh direfactor hanya demi cleanliness. Perubahan harus menjaga canonical financial projection semantics. |
@@ -162,15 +162,15 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - **Status:** **Completed**
 
 ## AUDIT-021 — Shopee sync missing-connection precondition
-- Date: 2026-10-04
-- Priority: P1
-- Finding: After the Shopee sync dependency-injection hardening, sync controller actions could pass a missing `ShopeeApiConnection` into `ShopeeSyncService`, whose contract correctly requires a non-null connection. This caused a TypeError/HTTP 500 before the endpoint could return its expected validation response.
-- Impact: Unconfigured accounts could receive HTTP 500 from sync endpoints; the rate-limit feature test therefore failed before reaching its intended 422 assertions.
-- Remediation: Added explicit connection guards to orders, income, and escrow sync actions. Missing connections now return HTTP 422 before invoking the sync service. The service contract remains non-null.
-- Regression coverage: Existing `RateLimitingTest::test_shopee_sync_limit_is_scoped_to_authenticated_user` exercises the missing-connection path while verifying the sixth request reaches HTTP 429.
-- Status: Fixed — targeted verification pending.
 
-
+- **Date:** 2026-10-04
+- **Priority:** P1
+- **Finding:** After the Shopee sync dependency-injection hardening, sync controller actions could pass a missing `ShopeeApiConnection` into `ShopeeSyncService`, whose contract correctly requires a non-null connection. This caused a TypeError/HTTP 500 before the endpoint could return its expected validation response.
+- **Impact:** Unconfigured accounts could receive HTTP 500 from sync endpoints; the rate-limit feature test therefore failed before reaching its intended 422 assertions.
+- **Remediation:** Added explicit connection guards to orders, income, and escrow sync actions. Missing connections now return HTTP 422 before invoking the sync service. The service contract remains non-null.
+- **Regression coverage:** Existing `RateLimitingTest::test_shopee_sync_limit_is_scoped_to_authenticated_user` exercises the missing-connection path while verifying the sixth request reaches HTTP 429.
+- **Verification:** Local verification completed on 2026-10-04: full PHPUnit suite **302 passed, 2,103 assertions**; `RateLimitingTest` passed; `git diff --check` PASS.
+- **Status:** **Completed**
 
 ### AUDIT-022 — Shopee promotion item-index parity
 
@@ -180,8 +180,8 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - **Finding:** `ShopeePromotionService::orderRow()` calculated `item_index` from net quantity after returns, while `OrderReportImporter` calculates it from the ordered quantity. The promotion contract therefore did not actually preserve the Excel import identity algorithm when a line had returned quantity.
 - **Impact:** API-promoted order rows could receive a different legacy `item_index` from the equivalent Excel row. This can alter legacy item-index fallback matching and violates the documented requirement that promotion preserve importer identity semantics.
 - **Remediation:** Changed promotion `item_index` calculation to use the ordered quantity, matching `OrderReportImporter`. Added a regression assertion in `ShopeeApiPromotionTest::test_promote_writes_validated_lines_income_and_allocations` using a returned quantity of 1 against an ordered quantity of 2.
-- **Status:** Fixed — targeted and full-suite verification pending local execution.
-
+- **Verification:** Local verification completed on 2026-10-04: `ShopeeApiPromotionTest` passed in the full suite; full PHPUnit suite **302 passed, 2,103 assertions**; `git diff --check` PASS.
+- **Status:** **Completed**
 
 ### AUDIT-023 — Shopee income promotion duplicate identity without refund event
 
@@ -191,4 +191,5 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - **Finding:** `IncomeReportImporter::persistForPromotion()` skipped duplicate detection whenever `refund_event_identity` was NULL. This allowed identical non-refund income rows with the same `line_identity` to pass validation. The database unique index cannot safely prevent this because `refund_event_identity` is nullable under MySQL uniqueness semantics.
 - **Impact:** A duplicate Shopee income snapshot without an application number could be promoted twice, creating duplicate financial evidence and violating the promotion contract's duplicate rejection rule.
 - **Remediation:** Duplicate promotion identity detection now uses `user_id + line_identity + refund_event_identity`, with an explicit sentinel for missing refund event identity. Added regression coverage in `IncomeReportImporterTest::test_income_promotion_rejects_duplicate_identity_without_refund_event`.
-- **Status:** Fixed — targeted and full-suite verification pending local execution.
+- **Verification:** Local verification completed on 2026-10-04: `IncomeReportImporterTest` passed in the full suite; full PHPUnit suite **302 passed, 2,103 assertions**; `git diff --check` PASS.
+- **Status:** **Completed**
