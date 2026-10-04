@@ -11,8 +11,10 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Inertia\Inertia;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
+use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
 use App\Http\Responses\LogoutResponse as LogoutResponseHandler;
+use App\Http\Responses\LoginResponse as LoginResponseHandler;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -21,6 +23,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         $this->app->singleton(CreatesNewUsers::class, CreateNewUser::class);
         $this->app->singleton(LogoutResponse::class, LogoutResponseHandler::class);
+        $this->app->singleton(LoginResponse::class, LoginResponseHandler::class);
     }
 
     public function boot(): void
