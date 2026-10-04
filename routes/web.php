@@ -37,6 +37,8 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
     Route::post('/imports/upload', [UploadReportsController::class, 'store'])
         ->middleware('throttle:report-upload')
         ->name('imports.upload.store');
+    Route::get('/imports/upload/{operation}/status', [UploadReportsController::class, 'status'])
+        ->name('imports.upload.status');
     Route::get('/orders', [OrdersController::class, 'index'])->name('orders.index');
     Route::get('/orders/export-lines', [OrdersController::class, 'exportLines'])->name('orders.export-lines');
     Route::get('/orders/export-data', [OrdersController::class, 'exportData'])->name('orders.export-data');
