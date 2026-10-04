@@ -149,11 +149,7 @@ class IncomeReportImporter
             }
 
             $eventIdentity = $row['refund_event_identity'] ?? null;
-            if ($eventIdentity === null) {
-                continue;
-            }
-
-            $key = $userId.'|'.$identity.'|'.$eventIdentity;
+            $key = $userId.'|'.$identity.'|'.($eventIdentity ?? 'no-refund-event');
             if (isset($seen[$key])) {
                 throw new \RuntimeException('Duplicate Shopee income identity detected during promotion.');
             }
