@@ -93,4 +93,30 @@ class ServerDashboardTest extends TestCase
                 ->where('status.available', false)
             );
     }
+    public function test_super_admin_can_view_services_hub(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::SuperAdmin]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.services.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Admin/Services/Index')
+                ->has('services', 4)
+                ->where('services.0.key', 'netdata')
+                ->where('services.1.key', 'portainer')
+                ->where('services.2.key', 'adminer')
+                ->where('services.3.key', 'redisinsight')
+            );
+    }
+
+    public function test_regular_admin_cannot_view_services_hub(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.services.index'))
+            ->assertForbidden();
+    }
+
 }
