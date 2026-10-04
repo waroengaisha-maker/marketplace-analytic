@@ -249,6 +249,11 @@ class MarketplaceReconciliationService
                 CASE WHEN l.promo_xtra_service_fee IS NULL THEN NULL ELSE (l.promo_xtra_service_fee) END AS promo,
                 CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (l.order_processing_fee) END AS processing,
                 CASE WHEN l.pph22 IS NULL THEN NULL ELSE (l.pph22) END AS tax,
+                CASE
+                    WHEN l.total_income IS NOT NULL THEN l.total_income
+                    WHEN l.order_subtotal IS NULL OR l.platform_fee IS NULL OR l.free_shipping_xtra_fee IS NULL OR l.promo_xtra_service_fee IS NULL OR l.order_processing_fee IS NULL OR l.pph22 IS NULL THEN NULL
+                    ELSE l.order_subtotal + COALESCE(l.refund_amount, 0) + l.platform_fee + l.free_shipping_xtra_fee + l.promo_xtra_service_fee + l.order_processing_fee + l.pph22
+                END AS penghasilan,
                 l.cost_status,
                 CASE WHEN l.cost_status = 'ok' AND l.total_hpp IS NOT NULL THEN l.total_hpp ELSE NULL END AS hpp
             ");
@@ -270,7 +275,7 @@ class MarketplaceReconciliationService
                 CASE WHEN COUNT(g.subtotal) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) END AS subtotal,
                 CASE WHEN COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) THEN NULL ELSE SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) END AS total_fee,
                 CASE WHEN COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.tax) END AS tax,
-                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax) END AS penghasilan,
+                CASE WHEN COUNT(g.penghasilan) <> COUNT(*) THEN NULL ELSE SUM(g.penghasilan) END AS penghasilan,
                 CASE WHEN COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE SUM(g.hpp) END AS hpp,
                 CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) OR COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp) END AS laba
             ')
@@ -636,7 +641,7 @@ class MarketplaceReconciliationService
                 CASE WHEN COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) THEN NULL ELSE SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) END AS total_fee,
                 CASE WHEN COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.tax) END AS tax,
                 CASE WHEN COUNT(g.refund_amount) <> COUNT(*) THEN NULL ELSE SUM(g.refund_amount) END AS refund_amount,
-                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.refund_amount) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax) END AS penghasilan,
+                CASE WHEN COUNT(g.penghasilan) <> COUNT(*) THEN NULL ELSE SUM(g.penghasilan) END AS penghasilan,
                 CASE WHEN COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE SUM(g.hpp) END AS hpp,
                 CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.refund_amount) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) OR COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp) END AS laba
             ")
@@ -912,6 +917,7 @@ class MarketplaceReconciliationService
                 l.quantity,
                 l.returned_quantity,
                 l.refund_amount AS refund_amount,
+                l.total_income,
                 (CASE WHEN l.quantity IS NULL THEN NULL WHEN l.quantity - COALESCE(l.returned_quantity, 0) > 0 THEN l.quantity - COALESCE(l.returned_quantity, 0) ELSE 0 END) AS net_quantity,
                 l.discounted_price,
                 (CASE WHEN l.discounted_price IS NULL OR l.quantity IS NULL THEN NULL ELSE l.discounted_price * l.quantity END) AS subtotal,
@@ -938,6 +944,7 @@ class MarketplaceReconciliationService
                 'order_processing_fee' => $row->processing ?? null,
                 'pph22' => $row->tax ?? null,
                 'refund_amount' => $row->refund_amount ?? null,
+                'total_income' => $row->total_income ?? null,
             ], [
                 'cost_status' => $row->cost_status ?? null,
                 'total_hpp' => $row->total_hpp ?? null,
