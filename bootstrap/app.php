@@ -15,22 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $trustedProxies = getenv('TRUSTED_PROXIES');
+        $middleware->trustProxies(at: ['172.30.0.0/16']);
 
-        if ($trustedProxies === null || $trustedProxies === '') {
-            $trustedProxies = (getenv('APP_ENV') ?: 'production') === 'production' ? [] : '*';
-        }
-
-        $middleware->trustProxies(at: $trustedProxies);
-
-        $trustedHosts = array_values(array_filter(array_map(
-            'trim',
-            explode(',', (string) getenv('TRUSTED_HOSTS')),
-        )));
-
-        if ($trustedHosts !== []) {
-            $middleware->trustHosts(at: $trustedHosts);
-        }
+        $middleware->trustHosts(at: [
+            'marketplace-analytics.my.id',
+        ]);
 
         $middleware->web(append: [
             HandleInertiaRequests::class,
