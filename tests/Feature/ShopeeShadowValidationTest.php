@@ -6,7 +6,7 @@ use App\Enums\AccountStatus;
 use App\Models\ShopeeApiConnection;
 use App\Models\User;
 use App\Services\ReportLineIdentity;
-use App\Services\ShopeeApiClient;
+use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeSyncService;
@@ -208,7 +208,7 @@ class ShopeeShadowValidationTest extends TestCase
         ]);
 
         $service = new ShopeeSyncService(
-            ShopeeApiClient::fromConnection($connection),
+            app(ShopeeApiClientFactory::class),
             app(ShopeeOAuthService::class),
             app(ShopeeResponseNormalizer::class),
             fn (int $seconds): null => null,
