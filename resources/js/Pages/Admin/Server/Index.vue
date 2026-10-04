@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
-import AppLayout from '@/Layouts/AppLayout.vue'
 
 type ServiceStatus = {
     status?: string
@@ -75,8 +74,7 @@ const boolLabel = (value?: boolean) => value ? 'Enabled' : 'Not enabled'
 </script>
 
 <template>
-    <AppLayout>
-        <div class="mx-auto max-w-7xl space-y-6">
+    <div class="mx-auto max-w-7xl space-y-6">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <div class="flex items-center gap-3">
@@ -164,6 +162,5 @@ const boolLabel = (value?: boolean) => value ? 'Enabled' : 'Not enabled'
                     </div>
                 </section>
             </template>
-        </div>
-    </AppLayout>
+    </div>
 </template>
