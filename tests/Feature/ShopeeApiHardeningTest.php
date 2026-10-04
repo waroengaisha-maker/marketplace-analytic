@@ -619,6 +619,8 @@ class ShopeeApiHardeningTest extends TestCase
             ->getJson(route('integrations.shopee-api.sync-status', $operationId))
             ->assertOk()
             ->json();
+
+        $this->assertSame('completed', $status['status']);
         $response = $status['result'];
         $this->assertFalse($response['ok']);
         $this->assertSame('Shopee API request failed. Please try again later.', $response['error']);
