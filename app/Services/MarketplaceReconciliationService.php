@@ -250,7 +250,7 @@ class MarketplaceReconciliationService
                 CASE WHEN l.order_processing_fee IS NULL THEN NULL ELSE (l.order_processing_fee) END AS processing,
                 CASE WHEN l.pph22 IS NULL THEN NULL ELSE (l.pph22) END AS tax,
                 CASE
-                    WHEN l.total_income IS NOT NULL THEN l.total_income
+                    WHEN l.total_income IS NOT NULL AND l.platform_fee IS NOT NULL AND l.free_shipping_xtra_fee IS NOT NULL AND l.promo_xtra_service_fee IS NOT NULL AND l.order_processing_fee IS NOT NULL AND l.pph22 IS NOT NULL THEN l.total_income
                     WHEN l.order_subtotal IS NULL OR l.platform_fee IS NULL OR l.free_shipping_xtra_fee IS NULL OR l.promo_xtra_service_fee IS NULL OR l.order_processing_fee IS NULL OR l.pph22 IS NULL THEN NULL
                     ELSE l.order_subtotal + COALESCE(l.refund_amount, 0) + l.platform_fee + l.free_shipping_xtra_fee + l.promo_xtra_service_fee + l.order_processing_fee + l.pph22
                 END AS penghasilan,
@@ -809,6 +809,7 @@ class MarketplaceReconciliationService
             'order_processing_fee' => 0.0,
             'pph22' => $row->tax,
             'refund_amount' => $row->refund_amount,
+            'total_income' => $row->penghasilan,
         ], [
             'cost_status' => $row->hpp === null ? 'hpp_missing' : 'ok',
             'total_hpp' => $row->hpp,
