@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Closure;
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
 use App\Services\ShopeeApiClient;
