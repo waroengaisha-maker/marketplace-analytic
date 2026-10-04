@@ -303,17 +303,21 @@ Order
 
 ## Current Git Checkpoint
 
-Latest confirmed development HEAD:
+Latest development HEAD after the profitability analytics exposure work:
 
-`ad00777` — `pin TypeScript and update project notes`
+`500a54b` — `fix: adapt profitability lines to canonical fields`
 
-This checkpoint is on `origin/development`.
+Recent profitability commits include:
+- `938255b` — `feat: add canonical profitability analytics`
+- `b302db5` — `test: cover profitability analytics dimensions`
+- `1dbb38c` — `test: enforce profitability metric contract`
+- `fbea0d0` — `fix: route profitability analytics through canonical projection`
+- `6c4adb1` — `fix: preserve HPP status in profitability lines`
+- `500a54b` — `fix: adapt profitability lines to canonical fields`
 
-Latest local status also has two unrelated Docker/Vite changes:
-- `Caddyfile`
-- `compose.yaml`
+Profitability analytics is exposed at `/analytics/profitability` for product, SKU, variation, day, and month dimensions.
 
-Jangan memasukkan kedua file tersebut ke commit domain/documentation tanpa memastikan perubahan tersebut memang bagian dari task Docker/Vite yang sedang dikerjakan.
+Runtime/full-suite and frontend typecheck/build verification for the latest profitability exposure remains pending until the repository runtime is available.
 
 ## Git Commit Principles
 
