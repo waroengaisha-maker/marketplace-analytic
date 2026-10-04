@@ -160,3 +160,13 @@ ChatGPT Project context boleh membantu orientasi awal, tetapi sebelum menyimpulk
 - **Additional cleanup:** Removed obsolete static service-locator factories from ShopeeApiClient after introducing the explicit factory; removed unused controller imports/injected parameters.
 - **Verification:** Code-level remediation completed; runtime PHPUnit/Pint/typecheck/full-suite verification remains pending local execution.
 - **Status:** In Progress — verification pending.
+
+## AUDIT-021 — Shopee sync missing-connection precondition
+- Date: 2026-10-04
+- Priority: P1
+- Finding: After the Shopee sync dependency-injection hardening, sync controller actions could pass a missing `ShopeeApiConnection` into `ShopeeSyncService`, whose contract correctly requires a non-null connection. This caused a TypeError/HTTP 500 before the endpoint could return its expected validation response.
+- Impact: Unconfigured accounts could receive HTTP 500 from sync endpoints; the rate-limit feature test therefore failed before reaching its intended 422 assertions.
+- Remediation: Added explicit connection guards to orders, income, and escrow sync actions. Missing connections now return HTTP 422 before invoking the sync service. The service contract remains non-null.
+- Regression coverage: Existing `RateLimitingTest::test_shopee_sync_limit_is_scoped_to_authenticated_user` exercises the missing-connection path while verifying the sixth request reaches HTTP 429.
+- Status: Fixed — targeted verification pending.
+
