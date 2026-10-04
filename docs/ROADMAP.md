@@ -126,8 +126,11 @@ Mengubah financial projection + HPP menjadi profitability analytics.
 - NULL/unknown dibedakan dari zero untuk HPP dan profitability.
 - Aggregation analytics wajib mempertahankan availability/data-quality state.
 
+### Completed in this step
+- Regression test untuk canonical profitability values, margin, dan unavailable HPP sudah ditambahkan.
+
 ### Remaining
-- Regression coverage khusus untuk contract aggregation.
+- Verifikasi test suite pada repository runtime/CI.
 - Bentuk analytics profitability yang eksplisit dan reusable lintas dimensi.
 - Profit/margin by SKU/product/variation/period.
 
