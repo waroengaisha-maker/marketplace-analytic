@@ -21,7 +21,7 @@ Roadmap ini adalah product roadmap, bukan daftar seluruh audit engineering. Stat
 ---
 
 ## Phase 1 — Data Foundation
-**Status: In Progress**
+**Status: Completed (core capability)**
 
 ### Goal
 Membangun fondasi ingestion dan model data untuk tiga sumber resmi: Shopee Order, Shopee Income, dan Master HPP.
@@ -33,15 +33,21 @@ Membangun fondasi ingestion dan model data untuk tiga sumber resmi: Shopee Order
 - Import workflow sudah memiliki queue-backed execution dan persisted operation status.
 - Master HPP/cost data sudah menjadi bagian dari domain cost allocation model, tetapi capability lengkap untuk pengelolaan/import Master HPP belum dinyatakan selesai sebagai milestone produk.
 
-### Remaining
-- Tetapkan dan implementasikan workflow Master HPP yang benar-benar diperlukan.
-- Pastikan mapping HPP ke SKU/product/variation memiliki identity dan provenance yang jelas.
-- Tambahkan data-quality visibility untuk missing/ambiguous HPP.
+### Current state
+- Master Product catalog dan unit model sudah tersedia.
+- HPP versioning/effective-date resolution sudah tersedia dan diuji.
+- Master HPP dapat menjadi sumber cost allocation untuk order line.
+- Queue-backed ingestion untuk Shopee Order dan Income sudah tersedia.
+- Data-quality state untuk cost allocation tersedia melalui mapping/HPP status.
+
+### Remaining refinement
+- Validasi workflow UX end-to-end terhadap kebutuhan pengguna aktual.
+- Perluasan observability/reporting atas kualitas data bila dibutuhkan oleh analytics berikutnya.
 
 ---
 
 ## Phase 2 — Identity & Mapping
-**Status: In Progress**
+**Status: Completed (core capability)**
 
 ### Goal
 Menghubungkan identity dari Order, Income, dan Master HPP tanpa silent merge atau fabricated identity.
@@ -55,10 +61,14 @@ Menghubungkan identity dari Order, Income, dan Master HPP tanpa silent merge ata
 - Deduplication mengikuti source-event identity semantics.
 - API promotion mempertahankan identity semantics importer.
 
-### Remaining
-- Product/SKU/variation-to-HPP mapping sebagai capability produk yang eksplisit.
-- Data-quality UI untuk unmatched/ambiguous mapping.
-- Mapping workflow yang dapat diaudit oleh user.
+### Current state
+- Product/SKU/variation-to-HPP mapping sudah tersedia.
+- Manual mapping, automatic/exact mapping, ambiguous mapping, dan tenant isolation sudah diuji.
+- Mapping dan allocation mempertahankan provenance/status, termasuk `mapping_missing`, `mapping_ambiguous`, dan `mapping_unconfirmed`.
+- HPP mapping page sudah mendukung server-side pagination/filter dan manual mapping workflow.
+
+### Remaining refinement
+- Penyempurnaan UX/exception workflow bila diperlukan oleh profitability analytics.
 
 ---
 
@@ -83,7 +93,7 @@ Milestone ini dianggap selesai pada level core engine. Penyempurnaan UI, analyti
 ---
 
 ## Phase 4 — Financial Projection
-**Status: In Progress**
+**Status: Completed (core capability)**
 
 ### Goal
 Menghasilkan financial view yang reproducible dari Order + Income dan, bila tersedia, HPP.
@@ -94,28 +104,35 @@ Menghasilkan financial view yang reproducible dari Order + Income dan, bila ters
 - Reconciliation sudah menggunakan financial projection.
 - Cost allocation domain sudah ada.
 
-### Remaining
-- Menetapkan contract final untuk revenue/net revenue/marketplace cost/profit dengan memperhitungkan HPP.
-- Menyelesaikan end-to-end projection yang menggabungkan Master HPP.
-- Menyediakan provenance dan data-quality state untuk missing HPP.
+### Current state
+- `CanonicalFinancialProjectionService` menjadi boundary financial projection.
+- Projection mencakup subtotal, fee, tax, refund, penghasilan, HPP, laba, status, dan provenance.
+- Aggregate projection dan settlement comparison tersedia.
+- HPP hanya masuk profitability ketika allocation berstatus `ok`; missing/ambiguous/unconfirmed HPP tidak diperlakukan sebagai zero cost.
+- Reconciliation, order summaries, customer summaries, dan export menggunakan financial model yang konsisten.
+
+### Remaining refinement
+- Finalisasi vocabulary/contract analytics (misalnya revenue vs net revenue dan margin) sebelum membangun metric lintas dimensi.
 
 ---
 
 ## Phase 5 — Profitability Analytics
-**Status: Planned**
+**Status: In Progress**
 
 ### Goal
 Mengubah financial projection + HPP menjadi profitability analytics.
 
-Target capability:
-- HPP per order line/SKU.
-- Revenue dan net revenue.
-- Marketplace fees/cost.
-- Promotion impact.
-- Refund impact.
-- Profit.
-- Margin.
-- Profitability by SKU/product/variation/order/period.
+### Already available
+- HPP per order line.
+- Revenue/order subtotal, marketplace fee components, promotion fee, refund, penghasilan, dan laba.
+- Profitability pada level reconciliation/order/customer summary.
+- Margin calculation sudah tersedia pada dashboard/reconciliation layer.
+- Historical HPP dan HPP data-quality status sudah ikut memengaruhi profitability.
+
+### Remaining
+- Bentuk analytics profitability yang eksplisit dan reusable lintas dimensi.
+- Profit/margin by SKU/product/variation/period.
+- Metric contract final dan regression coverage untuk analytics baru.
 
 Semua metric harus dapat ditelusuri kembali ke Order, Income, dan Master HPP.
 
@@ -204,13 +221,13 @@ Insight harus berbasis evidence yang tersedia. Sistem tidak boleh mengubah data 
 
 ## Current Roadmap Position
 
-**Current focus: Phase 1 → Phase 4**
+**Current focus: Phase 5 — Profitability Analytics**
 
 Urutan prioritas berikutnya:
 
-1. Lengkapi **Master HPP foundation dan mapping**.
-2. Finalisasi **financial projection contract** untuk Order + Income + HPP.
-3. Bangun **profitability analytics**.
+1. Finalisasi **profitability metric contract** di atas financial projection yang sudah ada.
+2. Bangun **profitability analytics** by SKU/product/variation/period.
+3. Perluas regression coverage untuk aggregation, margin, dan data-quality states.
 4. Lanjutkan **product/SKU analytics**.
 5. Tambahkan **promotion/fee/refund analytics**.
 6. Baru bangun **dashboard/reporting** di atas metric yang sudah stabil.
