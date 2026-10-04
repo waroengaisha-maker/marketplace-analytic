@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { Head, router } from '@inertiajs/vue3'
 
 type ServiceStatus = {
     status?: string
@@ -74,11 +74,12 @@ const boolLabel = (value?: boolean) => value ? 'Enabled' : 'Not enabled'
 </script>
 
 <template>
-    <div class="mx-auto max-w-7xl space-y-6">
+    <Head title="Server Dashboard" />
+    <div class="flex flex-col gap-6">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <div class="flex items-center gap-3">
-                        <h1 class="text-xl font-semibold text-slate-900 dark:text-slate-100">Server Dashboard</h1>
+                        <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Server Dashboard</h1>
                         <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="overallClass">{{ overallLabel }}</span>
                     </div>
                     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
