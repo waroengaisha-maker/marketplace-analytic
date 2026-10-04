@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\AccountStatus;
+use App\Jobs\ShopeeSyncJob;
+use App\Models\ShopeeSyncOperation;
 use App\Models\AccountAuditLog;
 use App\Models\MasterProduct;
 use App\Models\ShopeeApiConnection;
@@ -21,6 +23,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ShopeeApiHardeningTest extends TestCase
@@ -120,6 +123,30 @@ class ShopeeApiHardeningTest extends TestCase
             'discounted_price' => 45,
             'quantity_purchased' => 2,
         ], $overrides);
+    }
+
+    private function runQueuedSync(User $user, string $route, array $payload = []): array
+    {
+        Queue::fake();
+
+        $response = $this->actingAs($user)
+            ->postJson(route($route), $payload)
+            ->assertStatus(202);
+
+        $operationId = $response->json('operation_id');
+        $this->assertIsInt($operationId);
+
+        Queue::assertPushed(ShopeeSyncJob::class, fn (ShopeeSyncJob $job): bool => $job->operationId === $operationId);
+
+        (new ShopeeSyncJob($operationId))->handle(
+            app(ShopeeSyncService::class),
+            app(\App\Services\ShopeeSyncAuditService::class),
+        );
+
+        return $this->actingAs($user)
+            ->getJson(route('integrations.shopee-api.sync-status', $operationId))
+            ->assertOk()
+            ->json();
     }
 
     private function syncService(ShopeeApiConnection $connection, ?callable $sleeper = null): ShopeeSyncService
@@ -410,7 +437,8 @@ class ShopeeApiHardeningTest extends TestCase
             ])),
         ]);
 
-        $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-orders'), ['page_size' => 5])->assertOk();
+        $status = $this->runQueuedSync($user, 'integrations.shopee-api.sync-orders', ['page_size' => 5]);
+        $this->assertSame('completed', $status['status']);
 
         $connection->refresh();
         $this->assertFalse($connection->isStagingStale());
@@ -440,7 +468,7 @@ class ShopeeApiHardeningTest extends TestCase
             ])),
         ]);
 
-        $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-orders'), ['page_size' => 5])->assertOk();
+        $this->runQueuedSync($user, 'integrations.shopee-api.sync-orders', ['page_size' => 5]);
 
         $audit = AccountAuditLog::query()->where('action', 'shopee_api.sync.orders')->first();
         $this->assertNotNull($audit);
@@ -468,9 +496,10 @@ class ShopeeApiHardeningTest extends TestCase
                 ->push('', 429),
         ]);
 
-        $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-income'))
-            ->assertOk()
-            ->assertJson(['ok' => false, 'rate_limited' => true]);
+        $status = $this->runQueuedSync($user, 'integrations.shopee-api.sync-income');
+        $this->assertSame('completed', $status['status']);
+        $this->assertFalse($status['result']['ok']);
+        $this->assertTrue($status['result']['rate_limited']);
 
         $audit = AccountAuditLog::query()->where('action', 'shopee_api.sync.income')->first();
         $this->assertNotNull($audit);
@@ -577,10 +606,20 @@ class ShopeeApiHardeningTest extends TestCase
             ]), 500),
         ]);
 
+        Queue::fake();
         $response = $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-income'))
+            ->assertStatus(202)
+            ->json();
+        $operationId = $response['operation_id'];
+        (new ShopeeSyncJob($operationId))->handle(
+            app(ShopeeSyncService::class),
+            app(\App\Services\ShopeeSyncAuditService::class),
+        );
+        $status = $this->actingAs($user)
+            ->getJson(route('integrations.shopee-api.sync-status', $operationId))
             ->assertOk()
             ->json();
-
+        $response = $status['result'];
         $this->assertFalse($response['ok']);
         $this->assertSame('Shopee API request failed. Please try again later.', $response['error']);
         $this->assertStringNotContainsString('SECRET_REMOTE_ERROR', json_encode($response));
@@ -676,12 +715,13 @@ class ShopeeApiHardeningTest extends TestCase
         $user = $this->activeUser();
         $this->connectedConnection($user);
 
-        $lock = Cache::lock(
-            'shopee-api:sync:user:'.$user->id,
-            (int) config('shopee-api.sync.lock_seconds', 1800)
-        );
-
-        $this->assertTrue($lock->get());
+        ShopeeSyncOperation::query()->create([
+            'user_id' => $user->id,
+            'connection_id' => ShopeeApiConnection::forUser($user->id)->first()->id,
+            'operation' => 'orders',
+            'status' => 'processing',
+            'fingerprint' => hash('sha256', 'existing'),
+        ]);
 
         try {
             foreach ([
@@ -689,6 +729,14 @@ class ShopeeApiHardeningTest extends TestCase
                 'integrations.shopee-api.sync-income',
                 'integrations.shopee-api.sync-escrow',
             ] as $route) {
+                ShopeeSyncOperation::query()->create([
+                    'user_id' => $user->id,
+                    'connection_id' => ShopeeApiConnection::forUser($user->id)->first()->id,
+                    'operation' => 'orders',
+                    'status' => 'processing',
+                    'fingerprint' => hash('sha256', 'existing'),
+                ]);
+
                 $this->actingAs($user)
                     ->postJson(route($route))
                     ->assertStatus(409)
@@ -698,7 +746,7 @@ class ShopeeApiHardeningTest extends TestCase
                     ]);
             }
         } finally {
-            $lock->release();
+            ShopeeSyncOperation::query()->where('user_id', $user->id)->delete();
         }
     }
 
@@ -723,10 +771,8 @@ class ShopeeApiHardeningTest extends TestCase
         ]);
 
         try {
-            $this->actingAs($userB)
-                ->postJson(route('integrations.shopee-api.sync-orders'))
-                ->assertOk()
-                ->assertJson(['ok' => true]);
+            $status = $this->runQueuedSync($userB, 'integrations.shopee-api.sync-orders');
+            $this->assertSame('completed', $status['status']);
         } finally {
             $lock->release();
         }
