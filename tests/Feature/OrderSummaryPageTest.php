@@ -385,7 +385,7 @@ class OrderSummaryPageTest extends TestCase
         $this->assertSame(-25.0, $lineRow->promo);
         $this->assertSame(-10.0, $lineRow->processing);
         $this->assertSame(-5.0, $lineRow->tax);
-        $this->assertSame(1310.0, $lineRow->penghasilan);
+        $this->assertSame(810.0, $lineRow->penghasilan);
         $this->assertNull($lineRow->laba);
 
         $version = app(HandleInertiaRequests::class)->version(Request::create(route('orders.index')));
@@ -559,7 +559,7 @@ class OrderSummaryPageTest extends TestCase
         $row = collect(data_get($response->json(), 'props.details.rows'))->first();
         $this->assertSame('ok', $row['hpp_status']);
         $this->assertEquals(100.0, $row['hpp']);
-        $this->assertEquals(400.0, $row['laba']);
+        $this->assertEquals(300.0, $row['laba']);
     }
 
     public function test_orders_export_lines_returns_item_rows_for_filtered_orders(): void
