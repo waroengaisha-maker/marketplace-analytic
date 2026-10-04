@@ -137,9 +137,9 @@ Mengubah financial projection + HPP menjadi profitability analytics.
 
 ### Remaining
 - Verifikasi test suite pada repository runtime/CI.
-- Expose analytics melalui application/UI boundary.
+- Profitability analytics sudah diekspos melalui halaman `/analytics/profitability` dengan dimensi product, SKU, variation, day, dan month.
 - Perluasan profitability analytics bila dimension tambahan benar-benar dibutuhkan.
-- Profit/margin by SKU/product/variation/period.
+- Verifikasi runtime/full suite dan frontend typecheck/build setelah exposure.
 
 Semua metric harus dapat ditelusuri kembali ke Order, Income, dan Master HPP.
 
@@ -228,13 +228,13 @@ Insight harus berbasis evidence yang tersedia. Sistem tidak boleh mengubah data 
 
 ## Current Roadmap Position
 
-**Current focus: Phase 5 — Profitability Analytics (aggregation complete; exposure next)**
+**Current focus: Phase 5 — Profitability Analytics (aggregation and initial UI exposure complete; verification next)**
 
 Urutan prioritas berikutnya:
 
 1. Tambahkan regression coverage untuk **profitability metric contract**.
-2. Bangun **profitability analytics** by SKU/product/variation/period.
-3. Perluas regression coverage untuk aggregation, margin, dan data-quality states.
+2. Verifikasi runtime/full suite dan frontend build/typecheck setelah exposure.
+3. Perluas regression coverage untuk aggregation, margin, dan data-quality states bila failure mode baru ditemukan.
 4. Lanjutkan **product/SKU analytics**.
 5. Tambahkan **promotion/fee/refund analytics**.
 6. Baru bangun **dashboard/reporting** di atas metric yang sudah stabil.
