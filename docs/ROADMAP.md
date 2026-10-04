@@ -34,8 +34,6 @@ Membangun fondasi ingestion dan model data untuk tiga sumber resmi: Shopee Order
 - Master Product catalog dan unit model sudah tersedia.
 - HPP versioning/effective-date resolution sudah tersedia dan diuji.
 - Master HPP dapat menjadi sumber cost allocation untuk order line.
-- HPP versioning/effective-date resolution sudah tersedia dan diuji.
-- Master HPP dapat menjadi sumber cost allocation untuk order line.
 - Queue-backed ingestion untuk Shopee Order dan Income sudah tersedia.
 - Data-quality state untuk cost allocation tersedia melalui mapping/HPP status.
 
@@ -122,10 +120,16 @@ Mengubah financial projection + HPP menjadi profitability analytics.
 - Margin calculation sudah tersedia pada dashboard/reconciliation layer.
 - Historical HPP dan HPP data-quality status sudah ikut memengaruhi profitability.
 
+### Completed in this step
+- Profitability metric contract didokumentasikan di `docs/DOMAIN_CONTRACTS.md`.
+- Canonical projection ditetapkan sebagai satu-satunya sumber formula profitability analytics.
+- NULL/unknown dibedakan dari zero untuk HPP dan profitability.
+- Aggregation analytics wajib mempertahankan availability/data-quality state.
+
 ### Remaining
+- Regression coverage khusus untuk contract aggregation.
 - Bentuk analytics profitability yang eksplisit dan reusable lintas dimensi.
 - Profit/margin by SKU/product/variation/period.
-- Metric contract final dan regression coverage untuk analytics baru.
 
 Semua metric harus dapat ditelusuri kembali ke Order, Income, dan Master HPP.
 
@@ -218,7 +222,7 @@ Insight harus berbasis evidence yang tersedia. Sistem tidak boleh mengubah data 
 
 Urutan prioritas berikutnya:
 
-1. Finalisasi **profitability metric contract** di atas financial projection yang sudah ada.
+1. Tambahkan regression coverage untuk **profitability metric contract**.
 2. Bangun **profitability analytics** by SKU/product/variation/period.
 3. Perluas regression coverage untuk aggregation, margin, dan data-quality states.
 4. Lanjutkan **product/SKU analytics**.
