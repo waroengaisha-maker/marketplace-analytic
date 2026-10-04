@@ -11,14 +11,18 @@ RUN npm run build
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
+RUN apk add --no-cache freetype-dev libjpeg-turbo-dev libpng-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" gd
 RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader --no-scripts
 COPY . .
 RUN composer dump-autoload --no-dev --classmap-authoritative --no-scripts
 
 FROM php:8.4-fpm-bookworm AS app
 WORKDIR /var/www/html
-RUN apt-get update && apt-get install -y --no-install-recommends nginx supervisor curl libicu-dev libzip-dev unzip \
-    && docker-php-ext-install -j"$(nproc)" bcmath intl mbstring opcache pdo_mysql zip \
+RUN apt-get update && apt-get install -y --no-install-recommends nginx supervisor curl libicu-dev libzip-dev libonig-dev libfreetype6-dev libjpeg62-turbo-dev libpng-dev unzip \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j"$(nproc)" bcmath gd intl mbstring opcache pdo_mysql zip \
     && rm -rf /var/lib/apt/lists/*
 COPY docker/production/nginx.conf /etc/nginx/sites-available/default
 COPY docker/production/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
@@ -32,6 +36,6 @@ RUN rm -f /var/www/html/.env \
     && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
     && chmod -R ug+rwx /var/www/html/storage /var/www/html/bootstrap/cache
 EXPOSE 8080
-HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD-SHELL curl -fsS -H "Host: ${APP_DOMAIN:-localhost}" http://127.0.0.1:8080/up || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 CMD curl -fsS -H "Host: ${APP_DOMAIN:-localhost}" http://127.0.0.1:8080/up || exit 1
 ENTRYPOINT ["/usr/local/bin/production-entrypoint"]
 CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

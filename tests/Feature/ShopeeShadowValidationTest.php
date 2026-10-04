@@ -10,6 +10,7 @@ use App\Services\ReportLineIdentity;
 use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeOAuthService;
 use App\Services\ShopeeResponseNormalizer;
+use App\Services\ShopeeSyncAuditService;
 use App\Services\ShopeeSyncService;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,7 +49,7 @@ class ShopeeShadowValidationTest extends TestCase
 
         (new ShopeeSyncJob($operationId))->handle(
             app(ShopeeSyncService::class),
-            app(\App\Services\ShopeeSyncAuditService::class),
+            app(ShopeeSyncAuditService::class),
         );
 
         return $this->actingAs($user)
