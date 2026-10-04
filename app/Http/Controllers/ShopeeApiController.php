@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use Closure;
+use \Closure;
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
 use App\Services\ShopeeApiClient;
@@ -318,7 +318,7 @@ class ShopeeApiController extends Controller
 
         return $this->withSyncLock($request, function () use ($request, $validated): JsonResponse {
             try {
-                $sync = $this->syncFor($request->user()->id);
+                $sync = $this->syncService;
                 $connection = $this->connectionFor($request->user()->id);
 
                 $result = $sync->syncSampleEscrow($connection, $validated);
