@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { Head } from '@inertiajs/vue3'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -180,6 +180,8 @@ type ValidationReport = {
 
 const escrowLimit = ref('5')
 const syncEscrowResult = ref<LabResult | null>(null)
+const syncOperationId = ref<number | null>(null)
+let syncPollTimer: ReturnType<typeof window.setTimeout> | null = null
 const validateResult = ref<ValidationReport | null>(null)
 const promoteDryRun = ref(true)
 const promoteResult = ref<LabResult | null>(null)
@@ -304,51 +306,68 @@ async function getAuthLink() {
     }
 }
 
-async function runSyncOrders() {
-    lab.busy = true
-    try {
-        syncOrdersResult.value = await apiPost('/integrations/shopee-api/sync-orders', {
-            page_size: syncParams.page_size,
-            date_from: syncParams.date_from,
-            date_to: syncParams.date_to,
-        })
-        lab.error = null
-        lab.rateLimited = false
-    } catch (error) {
-        applyError(error)
-    } finally {
+async function pollSyncStatus(operationId: number) {
+    syncOperationId.value = operationId
+    const result = await apiGet(`/integrations/shopee-api/sync-status/${operationId}`)
+    const status = String(result.status ?? '')
+
+    if (status === 'completed') {
+        const operation = String(result.operation ?? '')
+        if (operation === 'orders') syncOrdersResult.value = (result.result as LabResult | null) ?? null
+        if (operation === 'income') syncIncomeResult.value = (result.result as LabResult | null) ?? null
+        if (operation === 'escrow') syncEscrowResult.value = (result.result as LabResult | null) ?? null
+        syncOperationId.value = null
         await loadStatus()
         lab.busy = false
+        return
     }
+
+    if (status === 'failed') {
+        lab.error = String(result.error ?? 'Shopee sync gagal.')
+        syncOperationId.value = null
+        await loadStatus()
+        lab.busy = false
+        return
+    }
+
+    syncPollTimer = window.setTimeout(() => {
+        void pollSyncStatus(operationId).catch((error) => {
+            applyError(error)
+            lab.busy = false
+        })
+    }, 1500)
+}
+
+async function queueSync(path: string, body: Record<string, unknown> = {}) {
+    lab.busy = true
+    try {
+        const result = await apiPost(path, body)
+        lab.error = null
+        lab.rateLimited = false
+        if (typeof result.operation_id === 'number') {
+            await pollSyncStatus(result.operation_id)
+        }
+    } catch (error) {
+        applyError(error)
+        lab.busy = false
+    }
+}
+
+async function runSyncOrders() {
+    await queueSync('/integrations/shopee-api/sync-orders', {
+        page_size: syncParams.page_size,
+        date_from: syncParams.date_from,
+        date_to: syncParams.date_to,
+    })
 }
 
 async function runSyncIncome() {
-    lab.busy = true
-    try {
-        syncIncomeResult.value = await apiPost('/integrations/shopee-api/sync-income')
-        lab.error = null
-        lab.rateLimited = false
-    } catch (error) {
-        applyError(error)
-    } finally {
-        await loadStatus()
-        lab.busy = false
-    }
+    await queueSync('/integrations/shopee-api/sync-income')
 }
 
 async function runSyncEscrow() {
-    lab.busy = true
-    try {
-        syncEscrowResult.value = await apiPost('/integrations/shopee-api/sync-escrow', { limit: escrowLimit.value })
-        validateResult.value = null
-        lab.error = null
-        lab.rateLimited = false
-    } catch (error) {
-        applyError(error)
-    } finally {
-        await loadStatus()
-        lab.busy = false
-    }
+    validateResult.value = null
+    await queueSync('/integrations/shopee-api/sync-escrow', { limit: escrowLimit.value })
 }
 
 async function runValidate() {
@@ -490,6 +509,9 @@ function prettyJson(value: unknown): string {
 }
 
 onMounted(loadStatus)
+onUnmounted(() => {
+    if (syncPollTimer !== null) window.clearTimeout(syncPollTimer)
+})
 </script>
 
 <template>
