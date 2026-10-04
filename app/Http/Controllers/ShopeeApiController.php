@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AccountAuditLog;
 use App\Models\ShopeeApiConnection;
 use App\Services\ShopeeApiClientFactory;
+use Closure;
 use App\Services\ShopeeApiException;
 use App\Services\ShopeeApiResearchService;
 use App\Services\ShopeeOAuthService;
