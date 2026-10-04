@@ -398,6 +398,62 @@ class MarketplaceReconciliationService
     }
 
     /**
+     * Profitability analytics aggregated from canonical reconciliation lines.
+     *
+     * @param  'product'|'sku'|'variation'|'day'|'month'  $dimension
+     * @param  array<string, mixed>  $parameters
+     * @return array<int, array<string, mixed>>
+     */
+    public function profitabilityAnalytics(int $userId, string $dimension, ?string $from = null, ?string $to = null, array $parameters = []): array
+    {
+        $dimensions = [
+            'product' => ['key' => 'g.product_key', 'label' => 'g.order_product_name'],
+            'sku' => ['key' => 'g.sku_reference', 'label' => 'g.sku_reference'],
+            'variation' => ['key' => 'g.variation_key', 'label' => 'g.variation_name'],
+            'day' => ['key' => 'DATE(g.order_created_at)', 'label' => 'DATE(g.order_created_at)'],
+            'month' => ['key' => "DATE_FORMAT(g.order_created_at, '%Y-%m')", 'label' => "DATE_FORMAT(g.order_created_at, '%Y-%m')"],
+        ];
+
+        if (! isset($dimensions[$dimension])) {
+            throw new \InvalidArgumentException('Unsupported profitability dimension.');
+        }
+
+        $groupKey = $dimensions[$dimension]['key'];
+        $groupLabel = $dimensions[$dimension]['label'];
+        $lines = $this->orderSummaryLines($userId, $from, $to, $parameters);
+
+        $query = DB::query()->fromSub($lines, 'g')
+            ->selectRaw("\n                {$groupKey} AS dimension_key,\n                {$groupLabel} AS dimension_label,\n                COUNT(*) AS line_count,\n                COUNT(g.hpp) AS hpp_available_line_count,\n                COUNT(*) - COUNT(g.hpp) AS hpp_unavailable_line_count,\n                SUM(g.net_quantity) AS net_quantity,\n                CASE WHEN COUNT(g.subtotal) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) END AS subtotal,\n                CASE WHEN COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) THEN NULL ELSE SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) END AS total_fee,\n                CASE WHEN COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.tax) END AS tax,\n                CASE WHEN COUNT(g.refund_amount) <> COUNT(*) THEN NULL ELSE SUM(g.refund_amount) END AS refund_amount,\n                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) THEN NULL ELSE SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax) END AS penghasilan,\n                CASE WHEN COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE SUM(g.hpp) END AS hpp,\n                CASE WHEN COUNT(g.subtotal) <> COUNT(*) OR COUNT(g.admin) <> COUNT(*) OR COUNT(g.shipping) <> COUNT(*) OR COUNT(g.promo) <> COUNT(*) OR COUNT(g.processing) <> COUNT(*) OR COUNT(g.tax) <> COUNT(*) OR COUNT(g.hpp) <> COUNT(*) THEN NULL ELSE (SUM(g.subtotal) + SUM(g.refund_amount) + SUM(g.admin) + SUM(g.shipping) + SUM(g.promo) + SUM(g.processing) + SUM(g.tax)) - SUM(g.hpp) END AS laba\n            ")
+            ->groupBy(DB::raw($groupKey), DB::raw($groupLabel));
+
+        $sortOrder = strtolower((string) ($parameters['sort_order'] ?? 'desc')) === 'asc' ? 'asc' : 'desc';
+        $query->orderBy('penghasilan', $sortOrder)->orderBy('dimension_label');
+
+        return $query->get()->map(function (object $row): array {
+            $penghasilan = $row->penghasilan === null ? null : (float) $row->penghasilan;
+            $laba = $row->laba === null ? null : (float) $row->laba;
+
+            return [
+                'dimension_key' => $row->dimension_key,
+                'dimension_label' => $row->dimension_label,
+                'line_count' => (int) $row->line_count,
+                'hpp_available_line_count' => (int) $row->hpp_available_line_count,
+                'hpp_unavailable_line_count' => (int) $row->hpp_unavailable_line_count,
+                'net_quantity' => $row->net_quantity === null ? null : (float) $row->net_quantity,
+                'subtotal' => $row->subtotal === null ? null : (float) $row->subtotal,
+                'total_fee' => $row->total_fee === null ? null : (float) $row->total_fee,
+                'tax' => $row->tax === null ? null : (float) $row->tax,
+                'refund_amount' => $row->refund_amount === null ? null : (float) $row->refund_amount,
+                'penghasilan' => $penghasilan,
+                'hpp' => $row->hpp === null ? null : (float) $row->hpp,
+                'laba' => $laba,
+                'profit_margin' => $penghasilan === null || $laba === null || $penghasilan == 0.0 ? null : ($laba / $penghasilan) * 100,
+                'financial_status' => $penghasilan === null ? 'unavailable' : ($row->hpp === null ? 'partial' : 'complete'),
+            ];
+        })->values()->all();
+    }
+
+    /**
      * Aggregated customer totals (order_count, subtotal, hpp, laba) across all
      * filtered orders, ignoring pagination. Used for the Customers summary
      * cards that must reflect the active date range / search.
