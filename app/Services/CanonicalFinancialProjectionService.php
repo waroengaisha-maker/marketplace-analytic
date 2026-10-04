@@ -21,13 +21,10 @@ final class CanonicalFinancialProjectionService
         $processingFee = $this->number($source['order_processing_fee'] ?? null);
         $tax = $this->number($source['pph22'] ?? null);
         $refund = ($source['refund_amount'] ?? null) === null ? 0.0 : $this->number($source['refund_amount']);
-        $totalIncome = $this->number($source['total_income'] ?? null);
         $subtotal = ($source['order_subtotal'] ?? null) !== null ? $this->number($source['order_subtotal']) : ($price !== null && $quantity !== null ? $price * $quantity : null);
         $feeSubtotal = $platformFee === null || $shippingFee === null || $promoFee === null ? null : $platformFee + $shippingFee + $promoFee;
         $totalFee = $feeSubtotal === null || $processingFee === null ? null : $feeSubtotal + $processingFee;
-        $penghasilan = $subtotal === null || $totalFee === null || $tax === null
-            ? null
-            : ($totalIncome ?? ($subtotal + $refund + $totalFee + $tax));
+        $penghasilan = $subtotal === null || $totalFee === null || $tax === null ? null : $subtotal + $refund + $totalFee + $tax;
         $costStatus = trim((string) ($allocationData['cost_status'] ?? $source['cost_status'] ?? ''));
         $feeProvenance = $this->feeProvenance($source, $feeSubtotal, $totalFee);
         $hppStatus = $costStatus !== '' ? $costStatus : 'no_allocation';
@@ -45,7 +42,6 @@ final class CanonicalFinancialProjectionService
                 'revenue' => $subtotal === null ? 'unavailable' : 'source_order',
                 'fees' => $feeProvenance,
                 'tax' => $this->taxProvenance($source, $tax),
-                'earnings' => $totalIncome === null ? 'derived_from_components' : 'source_income',
                 'refund' => ($source['refund_amount'] ?? null) === null ? 'default_zero_when_no_refund_evidence' : 'source_income',
                 'hpp' => $hpp === null ? $hppStatus : 'confirmed_allocation',
                 'fulfillment' => ($source['fulfilled_quantity'] ?? null) === null ? 'unknown' : 'source_order',
