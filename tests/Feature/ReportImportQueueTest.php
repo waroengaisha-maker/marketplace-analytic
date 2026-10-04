@@ -11,6 +11,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
 
 class ReportImportQueueTest extends TestCase
@@ -25,9 +27,23 @@ class ReportImportQueueTest extends TestCase
             'account_status' => \App\Enums\AccountStatus::Active,
         ]);
 
-        $response = $this->actingAs($user)->post(route('imports.upload.store'), [
-            'order_report' => UploadedFile::fake()->create('orders.xlsx', 10),
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('orders');
+        $sheet->fromArray([
+            ['No. Pesanan', 'Nama Produk', 'Jumlah', 'Harga Setelah Diskon'],
+            ['TEST-001', 'Test Product', 1, 10000],
         ]);
+        $temporaryPath = tempnam(sys_get_temp_dir(), 'report-import-');
+        (new Xlsx($spreadsheet))->save($temporaryPath);
+        $spreadsheet->disconnectWorksheets();
+        unset($spreadsheet);
+
+        $response = $this->actingAs($user)->post(route('imports.upload.store'), [
+            'order_report' => UploadedFile::fake()->createWithContent('orders.xlsx', file_get_contents($temporaryPath)),
+        ]);
+
+        unlink($temporaryPath);
 
         $response->assertRedirect(route('imports.upload'))
             ->assertSessionHas('success', 'Laporan berhasil masuk ke antrean import.');
