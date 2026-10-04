@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\AccountStatus;
 use App\Models\ShopeeApiConnection;
 use App\Models\User;
+use App\Jobs\ShopeeSyncJob;
 use App\Services\ReportLineIdentity;
 use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeOAuthService;
@@ -18,6 +19,7 @@ use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ShopeeApiIntegrationTest extends TestCase
@@ -40,6 +42,30 @@ class ShopeeApiIntegrationTest extends TestCase
             'account_status' => AccountStatus::Active,
             'trial_ends_at' => now()->addDay(),
         ]);
+    }
+
+    private function runQueuedSync(User $user, string $route, array $payload = []): array
+    {
+        Queue::fake();
+
+        $response = $this->actingAs($user)
+            ->postJson(route($route), $payload)
+            ->assertStatus(202);
+
+        $operationId = $response->json('operation_id');
+        $this->assertIsInt($operationId);
+
+        Queue::assertPushed(ShopeeSyncJob::class);
+
+        (new ShopeeSyncJob($operationId))->handle(
+            app(ShopeeSyncService::class),
+            app(\App\Services\ShopeeSyncAuditService::class),
+        );
+
+        return $this->actingAs($user)
+            ->getJson(route('integrations.shopee-api.sync-status', $operationId))
+            ->assertOk()
+            ->json();
     }
 
     private function connectedConnection(User $user): ShopeeApiConnection
@@ -471,12 +497,12 @@ class ShopeeApiIntegrationTest extends TestCase
                 ->push($this->orderEnvelope([['order_sn' => 'PROD-CTRL-2']])),
         ]);
 
-        $response = $this->actingAs($user)->postJson(
-            route('integrations.shopee-api.sync-orders'),
-            ['mode' => 'production', 'page_size' => 100]
-        );
+        $status = $this->runQueuedSync($user, 'integrations.shopee-api.sync-orders', ['mode' => 'production', 'page_size' => 100]);
 
-        $response->assertOk()->assertJson(['ok' => true, 'pages' => 2, 'capped' => false]);
+        $this->assertSame('completed', $status['status']);
+        $this->assertTrue($status['result']['ok']);
+        $this->assertSame(2, $status['result']['pages']);
+        $this->assertFalse($status['result']['capped']);
 
         $this->assertCount(2, $connection->refresh()->staging_orders);
         $this->assertDatabaseCount('marketplace_orders', 0);
@@ -497,8 +523,10 @@ class ShopeeApiIntegrationTest extends TestCase
             ])),
         ]);
 
-        $this->actingAs($first)->postJson(route('integrations.shopee-api.sync-orders'), ['page_size' => 5])
-            ->assertOk()->assertJson(['ok' => true, 'order_count' => 1]);
+        $status = $this->runQueuedSync($first, 'integrations.shopee-api.sync-orders', ['page_size' => 5]);
+        $this->assertSame('completed', $status['status']);
+        $this->assertTrue($status['result']['ok']);
+        $this->assertSame(1, $status['result']['order_count']);
 
         $firstConnection = ShopeeApiConnection::forUser($first->id)->first();
         $secondConnection = ShopeeApiConnection::forUser($second->id)->first();
@@ -799,9 +827,8 @@ class ShopeeApiIntegrationTest extends TestCase
             ])),
         ]);
 
-        $result = $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-orders'), ['page_size' => 5])
-            ->assertOk()
-            ->json();
+        $status = $this->runQueuedSync($user, 'integrations.shopee-api.sync-orders', ['page_size' => 5]);
+        $result = $status['result'];
 
         $this->assertTrue($result['ok']);
         $this->assertSame(1, $result['order_count']);
@@ -835,9 +862,8 @@ class ShopeeApiIntegrationTest extends TestCase
             ],
         ]);
 
-        $result = $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-income'))
-            ->assertOk()
-            ->json();
+        $status = $this->runQueuedSync($user, 'integrations.shopee-api.sync-income');
+        $result = $status['result'];
 
         $this->assertTrue($result['ok']);
         $this->assertSame(1, $result['row_count']);
@@ -1080,8 +1106,8 @@ class ShopeeApiIntegrationTest extends TestCase
             ])),
         ]);
 
-        $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-orders'))->assertOk();
-        $this->actingAs($user)->postJson(route('integrations.shopee-api.sync-income'))->assertOk();
+        $this->runQueuedSync($user, 'integrations.shopee-api.sync-orders');
+        $this->runQueuedSync($user, 'integrations.shopee-api.sync-income');
         $this->actingAs($user)->getJson(route('integrations.shopee-api.status'))->assertOk();
         $this->actingAs($user)->postJson(route('integrations.shopee-api.test'))->assertOk();
         $this->actingAs($user)->getJson(route('integrations.shopee-api.orders'))->assertOk();
