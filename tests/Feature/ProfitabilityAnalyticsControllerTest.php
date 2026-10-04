@@ -27,7 +27,7 @@ class ProfitabilityAnalyticsControllerTest extends TestCase
             ->get('/analytics/profitability')
             ->assertSuccessful()
             ->assertInertia(fn ($page) => $page
-                ->component('Analytics/Profitability')
+                ->component('Analytics/Profitability', false)
                 ->where('rows', [])
                 ->where('dimension', 'product')
                 ->where('hasAppliedFilter', false)
