@@ -119,3 +119,33 @@ Khususnya refund_event_identity tidak boleh hilang atau berubah karena data berp
 ## Contract changes
 
 Perubahan contract harus memiliki alasan domain, impact analysis, regression tests, dan update dokumentasi.
+
+
+## Profitability Metrics
+
+Profitability analytics MUST consume the canonical financial projection rather than reimplementing financial formulas per report.
+
+Canonical metric semantics:
+- **Order Subtotal**: nilai subtotal order line sebagaimana direkonstruksi oleh canonical financial projection.
+- **Total Fee**: agregasi platform/admin fee, shipping fee, promotion/service fee, dan processing fee sesuai projection contract.
+- **Tax**: tax/PPH yang berasal dari financial record dan diproyeksikan secara canonical.
+- **Refund**: financial refund amount; tidak boleh diperlakukan sebagai physical returned quantity.
+- **Penghasilan**: canonical financial result after subtotal, refund, fees, and tax according to the existing projection contract.
+- **HPP**: allocated Master HPP cost for the order line. HPP is only financially usable when cost allocation status is `ok`.
+- **Laba**: `penghasilan - HPP` when both values are available.
+- **Profit Margin**: `laba / penghasilan * 100` when `penghasilan` is non-zero and `laba` is available; otherwise NULL.
+
+### Unknown versus zero
+
+Unknown financial evidence remains NULL. In particular:
+- missing/ambiguous/unconfirmed HPP MUST NOT become zero HPP;
+- unavailable canonical profit MUST remain unavailable;
+- zero is valid only when the underlying canonical metric is actually zero.
+
+### Analytics aggregation
+
+Analytics by SKU, product, variation, order, or period MUST aggregate canonical line-level metrics and preserve availability/status information.
+
+A report MUST NOT replace NULL metrics with zero merely to make aggregation appear complete. If a requested aggregate contains unavailable financial components, the report must expose the corresponding availability/data-quality state according to its contract.
+
+Legacy presentation names such as `gross_profit` or `net_profit` MUST NOT introduce a second financial definition. They must either map explicitly to a canonical metric or be removed/renamed as part of a documented contract change.
