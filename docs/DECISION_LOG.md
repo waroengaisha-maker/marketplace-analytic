@@ -141,3 +141,25 @@ Jika keputusan berubah:
 9. run git diff --check.
 
 Gunakan nomor keputusan berikutnya secara berurutan.
+
+## Decision 012 — Maintain the 2026-10-04 Verified Engineering Baseline
+
+Status: Accepted
+
+Setelah remediation Shopee promotion identity dan income promotion duplicate identity diverifikasi, commit `63352f8` menjadi verified code baseline untuk branch `development`.
+
+Verified state pada 2026-10-04:
+- branch `development` synchronized dengan `origin/development`;
+- working tree clean;
+- full PHPUnit suite: **302 tests passed, 2,103 assertions**;
+- Laravel Pint: **143 files PASS**;
+- `git diff --check`: **PASS**;
+- `AUDIT-018` sampai `AUDIT-023` yang telah memiliki remediation dan evidence dinyatakan **Completed**;
+- baseline mencakup MVC/DI hardening, Shopee token-refresh ordering, sync connection precondition, promotion item-index parity, duplicate income promotion protection, dan local Docker/Caddy hardening.
+
+Reason: checkpoint sebelumnya (`7ef275b`) telah dilampaui oleh beberapa remediation yang sekarang sudah memiliki regression coverage dan full-suite evidence. Project membutuhkan checkpoint baru sebelum audit/domain work berikutnya.
+
+Consequence:
+- pekerjaan berikutnya dimulai dari verified code state `63352f8`;
+- documentation-only commit setelah checkpoint tidak mengubah code baseline;
+- baseline hanya diganti setelah checkpoint berikutnya kembali memenuhi verification criteria.
