@@ -7,4 +7,6 @@ Requires=docker.service
 Type=oneshot
 User=warungaisha
 WorkingDirectory=/home/warungaisha/Dev/Projects/marketplace-analytic
-ExecStart=/home/warungaisha/Dev/Projects/marketplace-analytic/deploy/server-status.sh
+Environment=HOME=/home/warungaisha
+Environment=MARKETPLACE_ANALYTICS_PROJECT_DIR=/home/warungaisha/Dev/Projects/marketplace-analytic
+ExecStart=/usr/local/libexec/marketplace-analytics-server-status
