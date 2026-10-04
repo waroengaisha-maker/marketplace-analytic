@@ -7,6 +7,7 @@ use App\Services\OrderReportImporter;
 use App\Services\IncomeReportImporter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -14,16 +15,22 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
 
-class ImportReportsJob implements ShouldQueue
+class ImportReportsJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 120;
     public int $tries = 1;
+    public int $uniqueFor = 3600;
 
     public function __construct(
         public readonly int $operationId,
     ) {}
+
+    public function uniqueId(): string
+    {
+        return (string) $this->operationId;
+    }
 
     public function handle(OrderReportImporter $orders, IncomeReportImporter $income): void
     {
