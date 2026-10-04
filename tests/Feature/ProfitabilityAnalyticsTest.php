@@ -26,7 +26,7 @@ class ProfitabilityAnalyticsTest extends TestCase
 
         $product = $service->profitabilityAnalytics($user->id, 'product');
         $this->assertCount(2, $product);
-        $productA = collect($product)->firstWhere('dimension_key', 'product-a');
+        $productA = collect($product)->firstWhere('dimension_key', hash('sha256', 'product-a'));
         $this->assertSame(300.0, $productA['penghasilan']);
         $this->assertSame(120.0, $productA['hpp']);
         $this->assertSame(180.0, $productA['laba']);
