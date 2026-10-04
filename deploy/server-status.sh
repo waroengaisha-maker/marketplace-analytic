@@ -41,6 +41,7 @@ fi
 printf '\n'
 
 docker_snapshot=''
+service_health="unknown"
 printf '%s\n' '[Docker]'
 if ! "${COMPOSE[@]}" config --quiet >/dev/null 2>&1; then
     fail "Docker Compose configuration is invalid."
