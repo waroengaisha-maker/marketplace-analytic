@@ -297,6 +297,34 @@ class IncomeReportImporterTest extends TestCase
         $this->assertSame(-12000.0, (float) $stored[0]->refund_to_buyer);
     }
 
+    public function test_income_promotion_rejects_duplicate_identity_without_refund_event(): void
+    {
+        $user = User::factory()->create();
+        $lineIdentity = str_repeat('i', 64);
+
+        $row = [
+            'user_id' => $user->id,
+            'order_number' => 'ORDER-DUP-NO-EVENT',
+            'line_identity' => $lineIdentity,
+            'refund_event_identity' => null,
+            'application_number' => null,
+            'product_name' => 'Product',
+            'product_key' => str_repeat('p', 64),
+            'product_price' => 100,
+            'quantity' => 1,
+            'total_income' => 100,
+            'refund_to_buyer' => 0,
+            'raw_data' => '{}',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Duplicate Shopee income identity detected during promotion.');
+
+        $this->importer->persistForPromotion([$row, $row], $user->id);
+    }
+
     public function test_income_event_identity_uses_application_number_and_stays_null_without_one(): void
     {
         $user = User::factory()->create();
