@@ -311,6 +311,41 @@ Untuk diagnosis, jalankan langsung dari project directory agar konfigurasi serve
 
 > Catatan: health check aplikasi pada script menggunakan `http://127.0.0.1:8080`. Untuk pengecekan public HTTPS/Cloudflare, gunakan `curl -i https://marketplace-analytics.my.id/` secara terpisah.
 
+### Server Dashboard snapshot
+
+Super Admin memiliki read-only **Server Dashboard** di `/admin/server`.
+
+Dashboard tidak menjalankan arbitrary shell command dari browser. Laravel hanya membaca snapshot JSON `storage/app/server-status.json` yang dibuat oleh host.
+
+Snapshot menggunakan schema version `1` dan dianggap stale setelah 120 detik secara default. Browser melakukan refresh data setiap 30 detik.
+
+Pasang systemd timer pada server:
+
+```bash
+cd ~/Dev/Projects/marketplace-analytic
+bash ./deploy/install-server-status-timer.sh
+```
+
+Verifikasi:
+
+```bash
+systemctl status marketplace-analytics-server-status.timer
+systemctl status marketplace-analytics-server-status.service
+systemctl list-timers marketplace-analytics-server-status.timer
+```
+
+Jalankan snapshot manual:
+
+```bash
+cd ~/Dev/Projects/marketplace-analytic
+./deploy/server-status.sh
+cat storage/app/server-status.json
+```
+
+Konfigurasi opsional: `SERVER_STATUS_SNAPSHOT_PATH` dan `SERVER_STATUS_STALE_AFTER`.
+
+Dashboard hanya tersedia untuk `super_admin`; `admin` biasa tidak memiliki akses server management.
+
 ## 8. Docker Operations
 
 Masuk ke project:
