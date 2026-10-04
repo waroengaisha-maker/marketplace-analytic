@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AccountStatus;
 use App\Jobs\ImportReportsJob;
 use App\Models\ReportImportOperation;
 use App\Models\User;
 use App\Services\IncomeReportImporter;
+use RuntimeException;
 use App\Services\OrderReportImporter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -24,7 +26,7 @@ class ReportImportQueueTest extends TestCase
         Storage::fake('local');
         Queue::fake();
         $user = User::factory()->create([
-            'account_status' => \App\Enums\AccountStatus::Active,
+            'account_status' => AccountStatus::Active,
         ]);
 
         $spreadsheet = new Spreadsheet();
@@ -112,7 +114,7 @@ class ReportImportQueueTest extends TestCase
 
         $orders = $this->mock(OrderReportImporter::class);
         $income = $this->mock(IncomeReportImporter::class);
-        $orders->shouldReceive('import')->once()->andThrow(new \RuntimeException('private SQL path'));
+        $orders->shouldReceive('import')->once()->andThrow(new RuntimeException('private SQL path'));
 
         $this->expectException(\RuntimeException::class);
 
