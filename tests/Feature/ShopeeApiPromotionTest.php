@@ -227,7 +227,7 @@ class ShopeeApiPromotionTest extends TestCase
 
         $this->connectedConnection($user, [
             'staging_orders' => [$this->orderStaging($orderSn)],
-            'staging_escrow' => [$this->escrowEntry($orderSn, [$this->matchedItem($orderSn)])],
+            'staging_escrow' => [$this->escrowEntry($orderSn, [$this->matchedItem($orderSn, ['quantity_returned' => 1])])],
             'staging_income' => [$this->incomeStaging($orderSn)],
         ]);
 
@@ -252,6 +252,8 @@ class ShopeeApiPromotionTest extends TestCase
         $this->assertSame(45.0, (float) $order->unit_price);
         $this->assertSame(2, (int) $order->quantity);
         $this->assertSame('COMPLETED', $order->order_status);
+        $expectedItemIndex = (int) sprintf('%u', crc32($orderSn.'|kemeja|90.00'));
+        $this->assertSame($expectedItemIndex, (int) $order->item_index);
         $this->assertNotEmpty($order->line_identity);
 
         $allocation = OrderCostAllocation::query()->where('user_id', $user->id)->first();
