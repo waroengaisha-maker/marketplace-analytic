@@ -154,6 +154,7 @@ const navigation = computed(() => [
         label: 'Access Control',
         items: [
             ...(page.props.auth?.user?.role === 'super_admin' ? [
+                { name: 'Orders', href: '/admin/orders', icon: 'pi pi-shopping-cart', color: 'text-slate-400' },
                 { name: 'Services', href: '/admin/services', icon: 'pi pi-server', color: 'text-slate-400' },
             ] : []),
             ...(page.props.auth?.user?.role === 'super_admin' ? [
