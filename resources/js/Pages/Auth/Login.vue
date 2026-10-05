@@ -120,7 +120,7 @@ function submit() {
                         <span class="text-muted-color">Don't have an account?</span>
                         <Link
                             href="/register"
-                            class="font-medium ml-1 cursor-pointer no-underline text-primary hover:text-primary-emphasis"
+                            class="register-link font-medium ml-1 cursor-pointer no-underline"
                         >
                             Register
                         </Link>
@@ -163,7 +163,12 @@ function submit() {
     text-align: left;
 }
 
-.form-options a {
+.form-options a,
+.register-link {
+    color: var(--p-primary-color);
+}
+
+.register-link:hover {
     color: var(--p-primary-color);
 }
 
