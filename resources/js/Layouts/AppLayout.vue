@@ -261,56 +261,189 @@ const submitLogout = () => {
                             </SidebarGroupContent>
                         </SidebarGroup>
                     </SidebarContent>
+                    <!-- <SidebarFooter class="border-t border-slate-200 p-3 dark:border-slate-800">
+                        <SidebarMenu>
+                            <SidebarMenuItem>
+                                <SidebarMenuButton class="p-1">
+                                    <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-200">
+                                        {{ page.props.auth?.user?.name?.charAt(0)?.toUpperCase() || 'U' }}
+                                    </span>
+                                    <span class="sidebar-footer-label truncate text-xs text-slate-500 dark:text-slate-400">
+                                        {{ page.props.auth?.user?.email || '' }}
+                                    </span>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        </SidebarMenu>
+                    </SidebarFooter> -->
                 </SidebarPanel>
             </SidebarAside>
         </Sidebar>
 
         <SidebarMain class="min-w-0 overflow-y-auto bg-slate-50 dark:bg-black">
+
+            <!-- Topbar -->
             <header class="sticky top-0 z-30 flex h-12 min-w-0 items-center border-b border-slate-200 bg-white/95 px-3 backdrop-blur dark:border-slate-800 dark:bg-black/95 sm:px-4">
+
                 <SidebarTrigger target="main-sidebar" as-child>
                     <template #default="slotProps">
                         <button v-bind="slotProps?.a11yAttrs ?? {}" type="button" :class="[slotProps?.class ?? '', 'mr-3 rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800']" aria-label="Toggle navigation" @click="slotProps?.onClick">
-                            <span class="flex h-5 w-5 items-center justify-center"><i class="pi pi-bars" aria-hidden="true" /></span>
+                            <span class="flex h-5 w-5 items-center justify-center">
+                            <i class="pi pi-bars" aria-hidden="true" />
+                            </span>
                         </button>
                     </template>
                 </SidebarTrigger>
-                <div class="flex-1"><div class="hidden text-sm font-medium text-slate-400 dark:text-slate-500 sm:block">Marketplace Analytics</div></div>
-                <div class="mr-2 flex items-center gap-2">
-                    <i class="pi text-sm text-slate-500 dark:text-slate-400" :class="darkMode ? 'pi-moon' : 'pi-sun'" aria-hidden="true" />
-                    <ToggleSwitch v-model="darkMode" :aria-label="darkMode ? 'Matikan dark mode' : 'Aktifkan dark mode'" />
+
+                <div class="flex-1">
+                    <div class="hidden text-sm font-medium text-slate-400 dark:text-slate-500 sm:block">
+                        Marketplace Analytics
+                    </div>
                 </div>
-                <button type="button" class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-400 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700 sm:flex">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0" /></svg>
-                    <span>Search</span><kbd class="ml-4 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-900">/</kbd>
+
+                <div class="mr-2 flex items-center gap-2">
+                    <i
+                        class="pi text-sm text-slate-500 dark:text-slate-400"
+                        :class="darkMode ? 'pi-moon' : 'pi-sun'"
+                        aria-hidden="true"
+                    />
+                    <ToggleSwitch
+                        v-model="darkMode"
+                        :aria-label="darkMode ? 'Matikan dark mode' : 'Aktifkan dark mode'"
+                    />
+                </div>
+
+                <!-- Search -->
+                <button
+                    type="button"
+                    class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-400 transition hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600 dark:hover:bg-slate-700 sm:flex"
+                >
+                    <svg
+                        class="h-4 w-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"
+                        />
+                    </svg>
+
+                    <span>Search</span>
+                    <kbd class="ml-4 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[10px] dark:border-slate-700 dark:bg-slate-900">
+                        /
+                    </kbd>
                 </button>
-                <button type="button" class="relative ml-2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200" aria-label="Notifications">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.5-2V10a6.5 6.5 0 0 1-13 0v5L4 17h5m6 0a3 3 0 0 0-6 0" /></svg>
+
+                <!-- Notifications -->
+                <button
+                    type="button"
+                    class="relative ml-2 rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                    aria-label="Notifications"
+                >
+                    <svg
+                        class="h-5 w-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="1.8"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M15 17h5l-1.5-2V10a6.5 6.5 0 0 0-13 0v5L4 17h5m6 0a3 3 0 0 1-6 0"
+                        />
+                    </svg>
+
                     <span class="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-red-500" />
                 </button>
+
+                <!-- User -->
                 <div class="ml-2 hidden h-8 w-px bg-slate-200 dark:bg-slate-700 sm:block" />
+
                 <div class="relative ml-3">
-                    <button type="button" class="flex items-center gap-2 rounded-lg p-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800" :aria-expanded="accountOpen" aria-haspopup="menu" aria-label="Buka menu akun" @click="accountOpen = !accountOpen">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-slate-700">{{ page.props.auth?.user?.name?.charAt(0)?.toUpperCase() || 'U' }}</div>
-                        <div class="hidden text-left lg:block"><div class="max-w-32 truncate text-xs font-semibold text-slate-800 dark:text-slate-100">{{ page.props.auth?.user?.name || 'User' }}</div></div>
-                        <svg class="h-4 w-4 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" /></svg>
-                    </button>
-                    <div v-if="accountOpen" class="absolute right-0 top-11 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800" role="menu">
-                        <div class="border-b border-slate-100 px-3 py-2 dark:border-slate-700">
-                            <div class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{{ page.props.auth?.user?.name || 'User' }}</div>
-                            <div class="truncate text-xs text-slate-400">{{ page.props.auth?.user?.email || '' }}</div>
+                    <button
+                        type="button"
+                        class="flex items-center gap-2 rounded-lg p-1.5 transition hover:bg-slate-100 dark:hover:bg-slate-800"
+                        :aria-expanded="accountOpen"
+                        aria-haspopup="menu"
+                        aria-label="Buka menu akun"
+                        @click="accountOpen = !accountOpen"
+                    >
+                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white dark:bg-slate-700">
+                            {{ page.props.auth?.user?.name?.charAt(0)?.toUpperCase() || 'U' }}
                         </div>
-                        <button type="button" role="menuitem" class="mt-2 flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white disabled:opacity-50" :disabled="logout.processing" @click="submitLogout">
+
+                        <div class="hidden text-left lg:block">
+                            <div class="max-w-32 truncate text-xs font-semibold text-slate-800 dark:text-slate-100">
+                                {{ page.props.auth?.user?.name || 'User' }}
+                            </div>
+                        </div>
+
+                        <svg class="h-4 w-4 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6" />
+                        </svg>
+                    </button>
+
+                    <div
+                        v-if="accountOpen"
+                        class="absolute right-0 top-11 z-50 w-56 rounded-xl border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+                        role="menu"
+                    >
+                        <div class="border-b border-slate-100 px-3 py-2 dark:border-slate-700">
+                            <div class="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                {{ page.props.auth?.user?.name || 'User' }}
+                            </div>
+                            <div class="truncate text-xs text-slate-400">
+                                {{ page.props.auth?.user?.email || '' }}
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            role="menuitem"
+                            class="mt-2 flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-700 dark:hover:text-white disabled:opacity-50"
+                            :disabled="logout.processing"
+                            @click="submitLogout"
+                        >
                             {{ logout.processing ? 'Keluar...' : 'Logout' }}
                         </button>
                     </div>
                 </div>
             </header>
-            <main class="w-full min-w-0 bg-transparent p-4 sm:p-6 lg:p-8" :aria-busy="isNavigating">
-                <div v-if="isNavigating" class="fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden bg-transparent lg:left-20" aria-label="Memuat konten" role="status"><div class="h-full w-1/3 animate-[loading-bar_1.2s_ease-in-out_infinite] rounded-full bg-blue-500" /></div>
-                <div class="relative" :class="isNavigating ? 'pointer-events-none opacity-60 transition-opacity' : ''">
+
+            <!-- Page content -->
+            <main
+                class="w-full min-w-0 bg-transparent p-4 sm:p-6 lg:p-8"
+                :aria-busy="isNavigating"
+            >
+                <div
+                    v-if="isNavigating"
+                    class="fixed inset-x-0 top-0 z-[100] h-0.5 overflow-hidden bg-transparent lg:left-20"
+                    aria-label="Memuat konten"
+                    role="status"
+                >
+                    <div class="h-full w-1/3 animate-[loading-bar_1.2s_ease-in-out_infinite] rounded-full bg-blue-500" />
+                </div>
+
+                <div
+                    class="relative"
+                    :class="isNavigating ? 'pointer-events-none opacity-60 transition-opacity' : ''"
+                >
                     <slot />
-                    <div v-if="isNavigating" class="fixed z-40 flex items-center justify-center bg-white/20 backdrop-blur-[1px] dark:bg-black/20" :style="{ left: mainAreaLeft, top: '3rem', right: '0', bottom: '0' }" aria-hidden="true">
-                        <div class="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"><i class="pi pi-spin pi-spinner text-blue-500" /><span>Memuat...</span></div>
+
+<div
+                    v-if="isNavigating"
+                    class="fixed z-40 flex items-center justify-center bg-white/20 backdrop-blur-[1px] dark:bg-black/20"
+                    :style="{ left: mainAreaLeft, top: '3rem', right: '0', bottom: '0' }"
+                    aria-hidden="true"
+                >
+                        <div class="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                            <i class="pi pi-spin pi-spinner text-blue-500" />
+                            <span>Memuat...</span>
+                        </div>
                     </div>
                 </div>
             </main>
