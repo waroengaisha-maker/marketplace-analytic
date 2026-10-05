@@ -16,6 +16,8 @@ const form = useForm({ name: '', username: '', email: '', phone: '', password: '
 const clientError = ref('')
 const passwordPopover = ref<InstanceType<typeof Popover> | null>(null)
 const confirmationPopover = ref<InstanceType<typeof Popover> | null>(null)
+const passwordMask = ref(true)
+const confirmationMask = ref(true)
 
 const passwordRequirements = computed(() => [
     { label: 'At least 8 characters', valid: form.password.length >= 8 },
@@ -120,6 +122,7 @@ function sanitizePhone(value: string) {
                                 v-model="form.password"
                                 input-class="w-full"
                                 :invalid="passwordIsInvalid"
+                                v-model:mask="passwordMask"
                                 autocomplete="new-password"
                                 minlength="8"
                                 required
@@ -152,6 +155,7 @@ function sanitizePhone(value: string) {
                                 v-model="form.password_confirmation"
                                 input-class="w-full"
                                 :invalid="confirmationIsInvalid"
+                                v-model:mask="confirmationMask"
                                 autocomplete="new-password"
                                 required
                                 fluid
