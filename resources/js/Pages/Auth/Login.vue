@@ -51,7 +51,7 @@ function submit() {
                     </svg>
 
                     <div class="text-center mb-8">
-                        <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Welcome to Marketplace Analytics!</div>
+                        <h1 class="text-black dark:text-black text-3xl font-medium mb-4">Welcome to Marketplace Analytics!</h1>
                         <span class="text-muted-color font-medium">Sign in to continue</span>
                     </div>
 
@@ -118,10 +118,14 @@ function submit() {
 }
 
 .login-border {
-    width: min(100%, 560px);
+    width: min(100%, 568px);
     padding: 0.3rem;
     border-radius: 56px;
-    background: linear-gradient(180deg, var(--p-primary-color) 10%, transparent 30%);
+    background: linear-gradient(180deg, var(--p-primary-color) 8%, transparent 30%);
+}
+
+.p-inputtext {
+    min-height: 34px;
 }
 
 .login-card {
