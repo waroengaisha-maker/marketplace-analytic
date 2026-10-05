@@ -17,6 +17,7 @@ import SidebarMenu from 'primevue/sidebarmenu'
 import SidebarMenuButton from 'primevue/sidebarmenubutton'
 import SidebarMenuItem from 'primevue/sidebarmenuitem'
 import SidebarPanel from 'primevue/sidebarpanel'
+import SidebarSpacer from 'primevue/sidebarspacer'
 import SidebarTrigger from 'primevue/sidebartrigger'
 import { confirmAction } from '../utils/confirmAction'
 
@@ -226,25 +227,9 @@ const submitLogout = () => {
             icon-width="5rem"
             class="border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-black"
         >
+            <SidebarSpacer />
             <SidebarAside>
                 <SidebarPanel>
-                    <SidebarHeader class="h-12 border-b border-slate-200 px-4 dark:border-slate-800">
-                        <SidebarMenu>
-                            <SidebarMenuItem>
-                                <SidebarMenuButton as-child class="px-1">
-                                    <template #default="slotProps">
-                                        <Link v-bind="slotProps?.a11yAttrs ?? {}" href="/" :class="[slotProps?.class ?? '', 'no-underline']" @click="closeSidebar">
-                                            <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold leading-none text-white shadow-sm">M</span>
-                                            <span class="sidebar-brand-text min-w-0">
-                                                <span class="block text-sm font-bold tracking-tight text-slate-900 dark:text-slate-100">Marketplace</span>
-                                                <span class="block text-[10px] font-medium uppercase tracking-wider text-slate-400">Analytics</span>
-                                            </span>
-                                        </Link>
-                                    </template>
-                                </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        </SidebarMenu>
-                    </SidebarHeader>
                     <SidebarContent class="overflow-y-auto px-3 py-5">
                         <SidebarGroup v-for="section in navigation" :key="section.label" class="mb-1">
                             <SidebarGroupLabel class="px-3 pb-1 text-[10px] font-medium tracking-normal text-slate-400 dark:text-slate-500">{{ section.label }}</SidebarGroupLabel>
