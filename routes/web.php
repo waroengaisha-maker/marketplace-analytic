@@ -106,6 +106,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/roles', [UserController::class, 'index'])->name('roles.index');
     Route::get('/admins', [UserController::class, 'index'])->name('admins.index');
     Route::get('/users', [UserController::class, 'access'])->name('users.index');
+    Route::get('/ui-style-guide', fn () => Inertia::render('Admin/UIStyleGuide'))->name('ui-style-guide.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
