@@ -229,13 +229,11 @@ a {
 }
 
 .layout-menu .layout-root-menuitem > .layout-menuitem-root-text {
-    font-size: 12px;
-    line-height: 1.5;
+    font-size: 0.857rem;
     text-transform: uppercase;
-    font-weight: 600;
+    font-weight: 700;
     color: var(--text-color);
     margin: 0.75rem 0;
-    letter-spacing: 0;
 }
 
 .layout-menu .layout-root-menuitem:first-child > .layout-menuitem-root-text {
@@ -249,25 +247,19 @@ a {
     outline: 0 none;
     color: var(--text-color);
     cursor: pointer;
-    min-height: 38px;
-    padding: 0 1rem;
-    gap: 10px;
+    padding: 0.75rem 1rem;
     border-radius: var(--content-border-radius);
-    transition: background-color var(--element-transition-duration), color var(--element-transition-duration);
-    font-family: 'Lato', sans-serif;
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 1.5;
+    transition: box-shadow var(--element-transition-duration);
 }
 
 .layout-menu ul a .layout-menuitem-icon {
     width: 1.25rem;
-    margin-right: 0;
+    margin-right: 0.5rem;
     font-size: 1rem;
 }
 
 .layout-menu ul a.active-route {
-    font-weight: 600;
+    font-weight: 700;
     color: #10b981;
 }
 
