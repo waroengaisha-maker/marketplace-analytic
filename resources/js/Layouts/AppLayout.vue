@@ -230,7 +230,7 @@ const submitLogout = () => {
             <SidebarSpacer />
             <SidebarAside>
                 <SidebarPanel>
-                    <SidebarHeader class="border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+                    <SidebarHeader class="h-12 border-b border-slate-200 px-4 dark:border-slate-800">
                         <SidebarMenu>
                             <SidebarMenuItem>
                                 <SidebarMenuButton as-child class="px-1">
