@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class ServerDashboardTest extends TestCase
@@ -143,6 +144,55 @@ class ServerDashboardTest extends TestCase
         $this->actingAs($admin)
             ->get(route('admin.services.index'))
             ->assertForbidden();
+    }
+
+
+    public function test_super_admin_can_read_service_status(): void
+    {
+        Http::fake(['http://service-manager:8080/status' => Http::response([
+            'services' => ['netdata' => ['status' => 'running', 'container' => 'marketplace-analytic-netdata-1']],
+        ])]);
+
+        config(['services-hub.manager.url' => 'http://service-manager:8080', 'services-hub.manager.token' => 'test-token']);
+        $admin = User::factory()->create(['role' => UserRole::SuperAdmin]);
+
+        $this->actingAs($admin)
+            ->get(route('admin.services.status'))
+            ->assertOk()
+            ->assertJsonPath('services.netdata.status', 'running');
+    }
+
+    public function test_super_admin_can_control_allowlisted_service(): void
+    {
+        Http::fake(['http://service-manager:8080/services/netdata/restart' => Http::response([
+            'service' => 'netdata', 'action' => 'restart', 'status' => 'ok',
+        ])]);
+
+        config(['services-hub.manager.url' => 'http://service-manager:8080', 'services-hub.manager.token' => 'test-token']);
+        $admin = User::factory()->create(['role' => UserRole::SuperAdmin]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.services.action', ['service' => 'netdata', 'action' => 'restart']))
+            ->assertOk()
+            ->assertJsonPath('status', 'ok');
+    }
+
+    public function test_regular_admin_cannot_control_services(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.services.action', ['service' => 'netdata', 'action' => 'restart']))
+            ->assertForbidden();
+    }
+
+    public function test_unknown_service_cannot_be_controlled(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::SuperAdmin]);
+
+        $this->actingAs($admin)
+            ->post(route('admin.services.action', ['service' => 'unknown', 'action' => 'restart']))
+            ->assertNotFound();
     }
 
 }
