@@ -275,6 +275,15 @@ a {
     box-shadow: inset var(--p-focus-ring-shadow);
 }
 
+:root:not([class*='app-dark']) .layout-sidebar {
+    background: #fff;
+}
+
+:root:not([class*='app-dark']) .layout-menu .layout-root-menuitem > .layout-menuitem-root-text,
+:root:not([class*='app-dark']) .layout-menu ul a {
+    color: #111827;
+}
+
 .layout-menu ul a:focus-visible {
     outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);
     outline-offset: var(--p-focus-ring-offset);
