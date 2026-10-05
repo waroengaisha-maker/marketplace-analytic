@@ -250,7 +250,7 @@ a {
     list-style-type: none;
 }
 
-.layout-menu ul a {
+ .layout-menu ul a {
     display: flex;
     align-items: center;
     position: relative;
@@ -260,6 +260,9 @@ a {
     padding: .75rem 1rem;
     border-radius: var(--content-border-radius);
     transition: box-shadow var(--element-transition-duration);
+    font-family: 'Lato', sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
 }
 
 .layout-menu ul a .layout-menuitem-icon {
