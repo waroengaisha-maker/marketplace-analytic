@@ -141,8 +141,7 @@ a {
 }
 
 .layout-topbar-logo:focus-visible,
-.layout-topbar-action:focus-visible,
-.layout-menu a:focus {
+.layout-topbar-action:focus-visible {
     outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);
     outline-offset: var(--p-focus-ring-offset);
     box-shadow: var(--p-focus-ring-shadow);
@@ -265,9 +264,6 @@ a {
     background-color: var(--surface-hover);
 }
 
-.layout-menu ul a:focus {
-    box-shadow: inset var(--p-focus-ring-shadow);
-}
 
 :root:not([class*='app-dark']) .layout-sidebar {
     background: #fff;
