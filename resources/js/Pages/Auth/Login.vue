@@ -113,7 +113,11 @@ function submit() {
 </template>
 
 <style scoped>
-.login-page {\n    background: #f8f9fa;\n}\n\n.login-border {
+.login-page {
+    background: #f8f9fa;
+}
+
+.login-border {
     width: min(100%, 560px);
     padding: 0.3rem;
     border-radius: 56px;
@@ -129,7 +133,15 @@ function submit() {
     background: var(--p-surface-900);
 }
 
-.form-field label {\n    text-align: left;\n}\n\n.form-options a {\n    color: var(--p-primary-color);\n}\n\n.pi-eye {
+.form-field label {
+    text-align: left;
+}
+
+.form-options a {
+    color: var(--p-primary-color);
+}
+
+.pi-eye {
     transform: scale(1.6);
     margin-right: 1rem;
 }
