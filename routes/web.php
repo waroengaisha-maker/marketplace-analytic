@@ -98,6 +98,11 @@ Route::middleware(['auth', 'account.active'])->group(function (): void {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function (): void {
     Route::get('/server', ServerStatusController::class)->name('server.index');
+    Route::get('/orders', function (Request $request) {
+        abort_unless($request->user()?->isSuperAdmin(), 403);
+
+        return Inertia::render('Admin/Orders/Index');
+    })->name('orders.index');
     Route::get('/services', ServiceHubController::class)->name('services.index');
     Route::get('/services/status', [ServiceControlController::class, 'status'])->name('services.status');
     Route::post('/services/{service}/{action}', [ServiceControlController::class, 'action'])
