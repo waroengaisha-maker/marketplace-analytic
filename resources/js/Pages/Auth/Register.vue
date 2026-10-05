@@ -18,13 +18,16 @@ const passwordPopover = ref<InstanceType<typeof Popover> | null>(null)
 const confirmationPopover = ref<InstanceType<typeof Popover> | null>(null)
 const passwordMask = ref(true)
 const confirmationMask = ref(true)
+const passwordTouched = ref(false)
+const confirmationTouched = ref(false)
+const submitAttempted = ref(false)
 
 const passwordRequirements = computed(() => [
-    { label: 'At least 8 characters', valid: form.password.length >= 8 },
-    { label: 'Uppercase letter', valid: /[A-Z]/.test(form.password) },
-    { label: 'Lowercase letter', valid: /[a-z]/.test(form.password) },
-    { label: 'Number', valid: /\d/.test(form.password) },
-    { label: 'Special character', valid: /[^A-Za-z0-9]/.test(form.password) },
+    { label: 'At least 12 characters', valid: form.password.length >= 12 },
+    { label: 'Contains uppercase letter', valid: /[A-Z]/.test(form.password) },
+    { label: 'Contains lowercase letter', valid: /[a-z]/.test(form.password) },
+    { label: 'Contains number', valid: /\d/.test(form.password) },
+    { label: 'Contains special character', valid: /[^A-Za-z0-9]/.test(form.password) },
 ])
 
 const passwordStrength = computed(() => passwordRequirements.value.filter((requirement) => requirement.valid).length)
@@ -35,8 +38,16 @@ const passwordStrengthLabel = computed(() => {
     if (passwordStrength.value === 4) return 'Strong'
     return 'Very strong'
 })
-const passwordIsInvalid = computed(() => Boolean(form.errors.password) || form.password.length > 0 && form.password.length < 8)
-const confirmationIsInvalid = computed(() => Boolean(form.errors.password_confirmation) || form.password_confirmation.length > 0 && form.password !== form.password_confirmation)
+const passwordIsInvalid = computed(() =>
+    Boolean(form.errors.password) ||
+    (passwordTouched.value || submitAttempted.value) &&
+    !passwordRequirements.value.every((requirement) => requirement.valid),
+)
+const confirmationIsInvalid = computed(() =>
+    Boolean(form.errors.password_confirmation) ||
+    (confirmationTouched.value || submitAttempted.value) &&
+    form.password !== form.password_confirmation,
+)
 
 function showPasswordPopover(event: FocusEvent) {
     passwordPopover.value?.show(event, event.currentTarget as HTMLElement)
@@ -48,9 +59,10 @@ function showConfirmationPopover(event: FocusEvent) {
 
 function submit() {
     clientError.value = ''
+    submitAttempted.value = true
 
-    if (form.password.length < 8) {
-        clientError.value = 'Password minimal 8 karakter.'
+    if (!passwordRequirements.value.every((requirement) => requirement.valid)) {
+        clientError.value = 'Password belum memenuhi semua persyaratan.'
         return
     }
 
@@ -82,7 +94,7 @@ function sanitizePhone(value: string) {
                         <label for="name">Name <span class="required-mark" aria-hidden="true">*</span></label>
                         <IconField iconPosition="left">
                             <InputIcon class="pi pi-user" />
-                            <InputText id="name" v-model="form.name" autocomplete="name" class="w-full" :invalid="Boolean(form.errors.name)" required />
+                            <InputText id="name" v-model="form.name" autocomplete="name" class="w-full" :invalid="Boolean(form.errors.name) || (submitAttempted && !form.name)" required />
                         </IconField>
                         <small v-if="form.errors.name" class="p-error">{{ form.errors.name }}</small>
                     </div>
@@ -90,7 +102,7 @@ function sanitizePhone(value: string) {
                         <label for="username">Username <span class="required-mark" aria-hidden="true">*</span></label>
                         <IconField iconPosition="left">
                             <InputIcon class="pi pi-at" />
-                            <InputText id="username" v-model="form.username" autocomplete="username" class="w-full" :invalid="Boolean(form.errors.username)" required />
+                            <InputText id="username" v-model="form.username" autocomplete="username" class="w-full" :invalid="Boolean(form.errors.username) || (submitAttempted && !form.username)" required />
                         </IconField>
                         <small v-if="form.errors.username" class="p-error">{{ form.errors.username }}</small>
                     </div>
@@ -98,7 +110,7 @@ function sanitizePhone(value: string) {
                         <label for="email">Email <span class="required-mark" aria-hidden="true">*</span></label>
                         <IconField iconPosition="left">
                             <InputIcon class="pi pi-envelope" />
-                            <InputText id="email" v-model="form.email" type="email" autocomplete="email" class="w-full" :invalid="Boolean(form.errors.email)" required />
+                            <InputText id="email" v-model="form.email" type="email" autocomplete="email" class="w-full" :invalid="Boolean(form.errors.email) || (submitAttempted && !form.email)" required />
                         </IconField>
                         <small v-if="form.errors.email" class="p-error">{{ form.errors.email }}</small>
                     </div>
@@ -131,14 +143,15 @@ function sanitizePhone(value: string) {
                                 v-model:mask="passwordMask"
                                 :feedback="false"
                                 autocomplete="new-password"
-                                minlength="8"
+                                minlength="12"
                                 required
                                 fluid
                                 @focus="showPasswordPopover"
-                                aria-describedby="password-help"
+                                @blur="passwordTouched = true"
+                                aria-describedby="password-requirements"
                             />
                         </IconField>
-                        <Popover ref="passwordPopover" aria-label="Password requirements">
+                        <Popover ref="passwordPopover" aria-label="Password requirements" id="password-requirements">
                             <div class="w-72 flex flex-col gap-3">
                                 <div class="font-medium">Password requirements</div>
                                 <MeterGroup :value="passwordMeter" :max="100" />
@@ -170,6 +183,7 @@ function sanitizePhone(value: string) {
                                 required
                                 fluid
                                 @focus="showConfirmationPopover"
+                                @blur="confirmationTouched = true"
                                 aria-describedby="password-confirmation-help"
                             />
                         </IconField>
