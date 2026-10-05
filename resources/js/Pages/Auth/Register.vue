@@ -29,6 +29,12 @@ const passwordRequirements = computed(() => [
 
 const passwordStrength = computed(() => passwordRequirements.value.filter((requirement) => requirement.valid).length)
 const passwordMeter = computed(() => [{ label: 'Password strength', value: passwordStrength.value * 20 }])
+const passwordStrengthLabel = computed(() => {
+    if (passwordStrength.value <= 1) return 'Weak'
+    if (passwordStrength.value <= 3) return 'Medium'
+    if (passwordStrength.value === 4) return 'Strong'
+    return 'Very strong'
+})
 const passwordIsInvalid = computed(() => Boolean(form.errors.password) || form.password.length > 0 && form.password.length < 8)
 const confirmationIsInvalid = computed(() => Boolean(form.errors.password_confirmation) || form.password_confirmation.length > 0 && form.password !== form.password_confirmation)
 
@@ -123,6 +129,7 @@ function sanitizePhone(value: string) {
                                 input-class="w-full"
                                 :invalid="passwordIsInvalid"
                                 v-model:mask="passwordMask"
+                                :feedback="false"
                                 autocomplete="new-password"
                                 minlength="8"
                                 required
@@ -131,12 +138,14 @@ function sanitizePhone(value: string) {
                                 aria-describedby="password-help"
                             />
                         </IconField>
-                        <small id="password-help" class="text-color-secondary">Minimal 8 karakter.</small>
                         <Popover ref="passwordPopover" aria-label="Password requirements">
                             <div class="w-72 flex flex-col gap-3">
                                 <div class="font-medium">Password requirements</div>
                                 <MeterGroup :value="passwordMeter" :max="100" />
-                                <div class="text-sm text-color-secondary">{{ passwordStrength }}/5 requirements met</div>
+                                <div class="flex justify-between text-sm text-color-secondary">
+                                    <span>{{ passwordStrengthLabel }}</span>
+                                    <span>{{ passwordStrength }}/5</span>
+                                </div>
                                 <ul class="m-0 p-0 list-none flex flex-col gap-2 text-sm">
                                     <li v-for="requirement in passwordRequirements" :key="requirement.label" class="flex items-center gap-2">
                                         <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle text-color-secondary'" aria-hidden="true" />
@@ -156,6 +165,7 @@ function sanitizePhone(value: string) {
                                 input-class="w-full"
                                 :invalid="confirmationIsInvalid"
                                 v-model:mask="confirmationMask"
+                                :feedback="false"
                                 autocomplete="new-password"
                                 required
                                 fluid
