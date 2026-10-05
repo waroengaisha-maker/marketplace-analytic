@@ -68,7 +68,7 @@ function submit() {
                         {{ form.errors.login }}
                     </Message>
 
-                    <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
+                    <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email Address</label>
                     <IconField class="w-full mb-8">
                         <InputIcon class="pi pi-envelope" />
                         <InputText
@@ -120,7 +120,7 @@ function submit() {
                         <span class="text-muted-color">Don't have an account?</span>
                         <Link
                             href="/register"
-                            class="font-medium ml-1 text-primary cursor-pointer no-underline hover:text-primary-emphasis"
+                            class="font-medium ml-1 cursor-pointer no-underline text-primary hover:text-primary-emphasis"
                         >
                             Register
                         </Link>
