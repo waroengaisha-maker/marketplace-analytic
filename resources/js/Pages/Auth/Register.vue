@@ -4,7 +4,7 @@ import Card from 'primevue/card'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
-import Password from 'primevue/password'
+import InputPassword from 'primevue/inputpassword'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 import Message from 'primevue/message'
@@ -96,7 +96,7 @@ function sanitizePhone(value: string) {
                         <label for="password">Password <span class="required-mark" aria-hidden="true">*</span></label>
                         <IconField iconPosition="left">
                             <InputIcon class="pi pi-lock" />
-                            <Password
+                            <InputPassword
                                 id="password"
                                 v-model="form.password"
                                 input-class="w-full"
@@ -118,7 +118,7 @@ function sanitizePhone(value: string) {
                         <label for="password_confirmation">Confirm password <span class="required-mark" aria-hidden="true">*</span></label>
                         <IconField iconPosition="left">
                             <InputIcon class="pi pi-lock" />
-                            <Password
+                            <InputPassword
                                 id="password_confirmation"
                                 v-model="form.password_confirmation"
                                 input-class="w-full"
