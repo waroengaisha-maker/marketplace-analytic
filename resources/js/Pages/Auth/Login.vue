@@ -133,7 +133,9 @@ function submit() {
     background: var(--p-surface-900);
 }
 
-.form-field label {
+.login-card label[for="email1"],
+.login-card label[for="password1"] {
+    display: block;
     text-align: left;
 }
 
