@@ -1,10 +1,10 @@
-# Page UI Standard
+# UI Style Guide
 
 ## Purpose
 
 Dokumen ini menetapkan **standar visual dan struktur dasar page** untuk seluruh page Marketplace Analytics.
 
-Page **Orders** menjadi reference implementation untuk standar ini. Yang dijadikan standar adalah **page shell/header pattern**, bukan fitur atau isi bisnis Orders.
+Page **UI Style Guide** menjadi reference implementation untuk standar ini. Yang dijadikan standar adalah **page shell/header pattern**, bukan fitur bisnis tertentu.
 
 ## Reference Pattern
 
@@ -13,7 +13,7 @@ Struktur dasar page:
 1. **Section label**
    - Posisi paling atas.
    - Menggunakan label singkat dalam uppercase.
-   - Contoh: `Operations`.
+   - Contoh: `Design System`.
    - Visual: kecil, semibold, muted, dengan letter spacing.
 
 2. **Page title**
@@ -32,11 +32,11 @@ Struktur dasar page:
 Contoh canonical:
 
 ```text
-Operations
+Design System
 
-Orders
+UI Style Guide
 
-Ringkasan transaksi per nomor order lengkap dengan rincian biaya hingga laba bersih.
+Referensi struktur dan pola visual dasar untuk seluruh page di Marketplace Analytics.
 ```
 
 ## Layout
@@ -98,7 +98,7 @@ Page hanya bertanggung jawab terhadap:
 
 Reference implementation saat ini:
 
-`resources/js/Pages/Orders/Index.vue`
+`resources/js/Pages/Admin/UIStyleGuide.vue`
 
 Header tersebut menjadi baseline ketika membuat page baru.
 
