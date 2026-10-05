@@ -80,6 +80,7 @@ const navigation = computed<NavigationSection[]>(() => {
             label: 'Main',
             items: [
                 { name: 'Dashboard', href: '/', icon: 'pi pi-fw pi-home' },
+                { name: 'Orders', href: '/orders', icon: 'pi pi-fw pi-shopping-cart' },
             ],
         },
         {
