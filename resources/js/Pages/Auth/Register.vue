@@ -39,13 +39,6 @@ function sanitizePhone(value: string) {
     <main class="min-h-screen flex items-center justify-center bg-surface-50 p-4">
         <Card class="w-full max-w-md">
             <template #title>Marketplace Analytics</template>
-
-<style scoped>
-.required-mark {
-    color: var(--p-primary-color);
-    margin-left: 0.125rem;
-}
-</style>
             <template #subtitle>Create your account</template>
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
@@ -142,3 +135,10 @@ function sanitizePhone(value: string) {
         </Card>
     </main>
 </template>
+
+<style scoped>
+.required-mark {
+    color: var(--p-primary-color);
+    margin-left: 0.125rem;
+}
+</style>
