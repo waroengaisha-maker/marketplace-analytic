@@ -12,6 +12,7 @@ import Message from 'primevue/message'
 import MultiSelect from 'primevue/multiselect'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
+import PageMenu from '@/Components/PageMenu.vue'
 import DateRangeFilter from '@/Components/DateRangeFilter.vue'
 import {
     AppDataTable,
@@ -524,6 +525,8 @@ const exportExcel = async () => {
     <Head title="Orders" />
 
     <div class="flex w-full min-w-0 flex-col gap-6">
+        <PageMenu />
+
         <div>
             <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Operations</p>
             <h1 class="mt-1 text-3xl font-bold text-slate-900">Orders</h1>
