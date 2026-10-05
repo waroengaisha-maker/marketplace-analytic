@@ -110,6 +110,8 @@ function submit() {
         </div>
     </div>
 
+</template>
+
 <style scoped>
 .login-border {
     width: min(100%, 560px);
