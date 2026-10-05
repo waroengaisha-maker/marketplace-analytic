@@ -102,6 +102,15 @@ function submit() {
                             :loading="form.processing"
                         />
 
+                        <div class="text-center mt-6">
+                            <span class="text-muted-color">Don't have an account?</span>
+                            <Link
+                                href="/register"
+                                class="font-medium ml-1 text-primary cursor-pointer no-underline hover:text-primary-emphasis"
+                            >
+                                Register
+                            </Link>
+                        </div>
                     </form>
                 </div>
             </div>
