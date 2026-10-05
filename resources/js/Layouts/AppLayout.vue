@@ -106,7 +106,7 @@ const navigation = computed(() => [
     ...(isPrivileged.value ? [] : [{
         label: 'Operations',
         items: [
-            { name: 'Orders', href: '/orders', icon: 'pi pi-shopping-cart', color: 'text-slate-400' },
+            { name: 'UI Style Guide', href: '/admin/ui-style-guide', icon: 'pi pi-palette', color: 'text-slate-400' },
             { name: 'Returns', href: '/returns', icon: 'pi pi-replay', color: 'text-slate-400' },
             { name: 'Customers', href: '/customers', icon: 'pi pi-users', color: 'text-slate-400' },
         ],
