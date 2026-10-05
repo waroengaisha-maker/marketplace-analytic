@@ -52,7 +52,7 @@ function submit() {
                     </svg>
 
                     <div class="text-center mb-8">
-                        <h1 class="text-black dark:text-black text-3xl font-medium mb-4">Welcome to Marketplace Analytics!</h1>
+                        <h1 class="text-black dark:text-black text-3xl font-medium mb-4">Marketplace Analytics</h1>
                         <span class="text-muted-color font-medium">Sign in to continue</span>
                     </div>
 
