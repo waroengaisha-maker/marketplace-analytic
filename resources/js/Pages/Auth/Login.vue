@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/vue3'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
+import Message from 'primevue/message'
 import Password from 'primevue/password'
 
 const form = useForm({
@@ -55,6 +56,17 @@ function submit() {
                         <span class="text-muted-color font-medium">Sign in to continue</span>
                     </div>
 
+                    <Message
+                        v-if="form.errors.login"
+                        severity="error"
+                        variant="simple"
+                        size="small"
+                        icon="pi pi-exclamation-circle"
+                        class="mb-4"
+                    >
+                        {{ form.errors.login }}
+                    </Message>
+
                     <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
                     <InputText
                         id="email1"
@@ -63,6 +75,7 @@ function submit() {
                         placeholder="Email address"
                         autocomplete="username"
                         class="w-full mb-8"
+                        :invalid="Boolean(form.errors.login)"
                         required
                     />
 
@@ -75,6 +88,7 @@ function submit() {
                         :feedback="false"
                         fluid
                         class="mb-4"
+                        :invalid="Boolean(form.errors.password)"
                         autocomplete="current-password"
                         required
                     />
