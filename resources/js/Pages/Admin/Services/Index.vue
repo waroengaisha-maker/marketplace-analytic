@@ -62,8 +62,8 @@ function statusDescription(status?: string): string {
     }
 }
 
-function riskTooltip(service: Service): string {
-    return `${riskLabel[service.risk]} — ${riskDescription[service.risk]} Impact on ${service.name}: ${serviceImpact[service.key] ?? service.description}`
+function riskTooltip(risk: Service['risk']): string {
+    return riskDescription[risk]
 }
 
 async function refresh() {
@@ -133,7 +133,7 @@ onMounted(refresh)
                                 type="button"
                                 class="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                                 :aria-label="`Explain ${riskLabel[service.risk]}`"
-                                v-tooltip.bottom="riskTooltip(service)"
+                                v-tooltip.bottom="riskTooltip(service.risk)"
                             >
                                 <i class="pi pi-question-circle text-xs" />
                             </button>
