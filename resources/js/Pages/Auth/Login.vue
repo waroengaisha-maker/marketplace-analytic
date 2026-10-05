@@ -22,8 +22,7 @@ function submit() {
     <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="flex flex-col items-center justify-center">
             <div
-                class="p-[0.3rem] border border-surface-200 dark:border-surface-700"
-                style="border-radius: 56px"
+                style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)"
             >
                 <div
                     class="w-full bg-surface-0 dark:bg-surface-900 py-20 px-8 sm:px-20"
@@ -111,15 +110,6 @@ function submit() {
                             :loading="form.processing"
                         />
 
-                        <div class="text-center mt-6">
-                            <span class="text-muted-color">Don't have an account?</span>
-                            <Link
-                                href="/register"
-                                class="font-medium ml-1 text-primary cursor-pointer no-underline hover:text-primary-emphasis"
-                            >
-                                Register
-                            </Link>
-                        </div>
                     </form>
                 </div>
             </div>
