@@ -96,85 +96,93 @@ watch(sidebarOpen, (open) => {
     }
 })
 
-const navigation = computed(() => [
-    ...(!isPrivileged.value ? [{
-        label: 'Main',
-        items: [
-            { name: 'Dashboard', href: '/', icon: 'pi pi-home', color: 'text-slate-400' },
-        ],
-    }] : []),
-    ...(isPrivileged.value ? [] : [{
-        label: 'Operations',
-        items: [
-            { name: 'Returns', href: '/returns', icon: 'pi pi-replay', color: 'text-slate-400' },
-            { name: 'Customers', href: '/customers', icon: 'pi pi-users', color: 'text-slate-400' },
-        ],
-    },
-    {
-        label: 'Finance',
-        items: [
-            { name: 'Income', href: '/finance/income', icon: 'pi pi-wallet', color: 'text-slate-400' },
-            { name: 'Reconciliation', href: '/finance/reconciliation', icon: 'pi pi-sync', color: 'text-slate-400' },
-            { name: 'Income Reconciliation', href: '/finance/income-reconciliation', icon: 'pi pi-wallet', color: 'text-slate-400' },
-            { name: 'Profit', href: '/finance/profit', icon: 'pi pi-chart-line', color: 'text-slate-400' },
-        ],
-    },
-    {
-        label: 'Products',
-        items: [
-            { name: 'Products', href: '/products', icon: 'pi pi-box', color: 'text-slate-400' },
-            { name: 'HPP', href: '/products/hpp', icon: 'pi pi-tags', color: 'text-slate-400' },
-            { name: 'HPP Mapping', href: '/products/hpp-mapping', icon: 'pi pi-share-alt', color: 'text-slate-400' },
-        ],
-    },
-    {
-        label: 'Imports',
-        items: [
-            { name: 'Import History', href: '/imports', icon: 'pi pi-history', color: 'text-slate-400' },
-            { name: 'Upload Files', href: '/imports/upload', icon: 'pi pi-upload', color: 'text-slate-400' },
-        ],
-    },
-    {
-        label: 'Integrations',
-        items: [
-            { name: 'Shopee API', href: '/integrations/shopee-api', icon: 'pi pi-link', color: 'text-slate-400' },
-        ],
-    },
-    {
-        label: 'Analytics',
-        items: [
-            { name: 'Sales', href: '/analytics/sales', icon: 'pi pi-chart-bar', color: 'text-slate-400' },
-            { name: 'Products', href: '/analytics/products', icon: 'pi pi-box', color: 'text-slate-400' },
-            { name: 'Customers', href: '/analytics/customers', icon: 'pi pi-users', color: 'text-slate-400' },
-            { name: 'Profitability', href: '/analytics/profitability', icon: 'pi pi-percentage', color: 'text-slate-400' },
-        ],
-    }]),
-    ...(page.props.auth?.user?.role === 'super_admin' ? [{
-        label: 'System Design',
-        items: [
-            { name: 'UI Style Guide', href: '/admin/ui-style-guide', icon: 'pi pi-palette', color: 'text-slate-400' },
-        ],
-    }] : []),
-    ...(isPrivileged.value ? [{
-        label: 'Access Control',
-        items: [
-            ...(page.props.auth?.user?.role === 'super_admin' ? [
-                { name: 'Services', href: '/admin/services', icon: 'pi pi-server', color: 'text-slate-400' },
-            ] : []),
-            ...(page.props.auth?.user?.role === 'super_admin' ? [
-                { name: 'Kelola Admin', href: '/admin/admins', icon: 'pi pi-shield', color: 'text-slate-400' },
-            ] : []),
-            { name: 'Kelola Akses User', href: '/admin/users', icon: 'pi pi-user-edit', color: 'text-slate-400' },
-        ],
-    }] : []),
-    ...(isPrivileged.value ? [] : [{
-        label: 'Settings',
-        items: [
-            { name: 'Shop', href: '/settings/shop', icon: 'pi pi-cog', color: 'text-slate-400' },
-            { name: 'Akun & Langganan', href: '/account/subscription', icon: 'pi pi-credit-card', color: 'text-slate-400' },
-        ],
-    }]),
-])
+const navigation = computed(() => {
+    if (page.props.auth?.user?.role === 'super_admin') {
+        return [
+            {
+                label: 'Access Control',
+                items: [
+                    { name: 'Kelola Admin', href: '/admin/admins', icon: 'pi pi-shield', color: 'text-slate-400' },
+                    { name: 'Kelola Akses User', href: '/admin/users', icon: 'pi pi-user-edit', color: 'text-slate-400' },
+                ],
+            },
+            {
+                label: 'Server',
+                items: [
+                    { name: 'Services', href: '/admin/services', icon: 'pi pi-server', color: 'text-slate-400' },
+                ],
+            },
+            {
+                label: 'System Design',
+                items: [
+                    { name: 'UI Style Guide', href: '/admin/ui-style-guide', icon: 'pi pi-palette', color: 'text-slate-400' },
+                ],
+            },
+        ]
+    }
+
+    return [
+        {
+            label: 'Main',
+            items: [
+                { name: 'Dashboard', href: '/', icon: 'pi pi-home', color: 'text-slate-400' },
+            ],
+        },
+        {
+            label: 'Operations',
+            items: [
+                { name: 'Returns', href: '/returns', icon: 'pi pi-replay', color: 'text-slate-400' },
+                { name: 'Customers', href: '/customers', icon: 'pi pi-users', color: 'text-slate-400' },
+            ],
+        },
+        {
+            label: 'Finance',
+            items: [
+                { name: 'Income', href: '/finance/income', icon: 'pi pi-wallet', color: 'text-slate-400' },
+                { name: 'Reconciliation', href: '/finance/reconciliation', icon: 'pi pi-sync', color: 'text-slate-400' },
+                { name: 'Income Reconciliation', href: '/finance/income-reconciliation', icon: 'pi pi-wallet', color: 'text-slate-400' },
+                { name: 'Profit', href: '/finance/profit', icon: 'pi pi-chart-line', color: 'text-slate-400' },
+            ],
+        },
+        {
+            label: 'Products',
+            items: [
+                { name: 'Products', href: '/products', icon: 'pi pi-box', color: 'text-slate-400' },
+                { name: 'HPP', href: '/products/hpp', icon: 'pi pi-tags', color: 'text-slate-400' },
+                { name: 'HPP Mapping', href: '/products/hpp-mapping', icon: 'pi pi-share-alt', color: 'text-slate-400' },
+            ],
+        },
+        {
+            label: 'Imports',
+            items: [
+                { name: 'Import History', href: '/imports', icon: 'pi pi-history', color: 'text-slate-400' },
+                { name: 'Upload Files', href: '/imports/upload', icon: 'pi pi-upload', color: 'text-slate-400' },
+            ],
+        },
+        {
+            label: 'Integrations',
+            items: [
+                { name: 'Shopee API', href: '/integrations/shopee-api', icon: 'pi pi-link', color: 'text-slate-400' },
+            ],
+        },
+        {
+            label: 'Analytics',
+            items: [
+                { name: 'Sales', href: '/analytics/sales', icon: 'pi pi-chart-bar', color: 'text-slate-400' },
+                { name: 'Products', href: '/analytics/products', icon: 'pi pi-box', color: 'text-slate-400' },
+                { name: 'Customers', href: '/analytics/customers', icon: 'pi pi-users', color: 'text-slate-400' },
+                { name: 'Profitability', href: '/analytics/profitability', icon: 'pi pi-percentage', color: 'text-slate-400' },
+            ],
+        },
+        {
+            label: 'Settings',
+            items: [
+                { name: 'Shop', href: '/settings/shop', icon: 'pi pi-cog', color: 'text-slate-400' },
+                { name: 'Akun & Langganan', href: '/account/subscription', icon: 'pi pi-credit-card', color: 'text-slate-400' },
+            ],
+        },
+    ]
+})
 
 const currentUrl = computed(() => page.url)
 
