@@ -55,7 +55,7 @@ function submit() {
                         <span class="text-muted-color font-medium">Sign in to continue</span>
                     </div>
 
-                    <div class="form-field">\n                        <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
+                    <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
                     <InputText
                         id="email1"
                         v-model="form.login"
@@ -79,7 +79,7 @@ function submit() {
                         required
                     />
 
-                    <div class="flex items-center justify-between mt-2 mb-8 gap-8">
+                    <div class="form-options flex items-center justify-between mt-2 mb-8 gap-8">
                         <div class="flex items-center">
                             <Checkbox v-model="form.remember" id="rememberme1" binary class="mr-2" />
                             <label for="rememberme1">Remember me</label>
