@@ -63,7 +63,7 @@ function statusDescription(status?: string): string {
 }
 
 function riskTooltip(service: Service): string {
-    return `<strong>${riskLabel[service.risk]}</strong><br>${riskDescription[service.risk]}<br><br><strong>Impact on ${service.name}</strong><br>${serviceImpact[service.key] ?? service.description}`
+    return `${riskLabel[service.risk]} — ${riskDescription[service.risk]} Impact on ${service.name}: ${serviceImpact[service.key] ?? service.description}`
 }
 
 async function refresh() {
