@@ -77,15 +77,15 @@ const navigation = computed<NavigationSection[]>(() => {
 
     return [
         {
-            label: 'Main',
+            label: 'Home',
             items: [
                 { name: 'Dashboard', href: '/', icon: 'pi pi-fw pi-home' },
-                { name: 'Orders', href: '/orders', icon: 'pi pi-fw pi-shopping-cart' },
             ],
         },
         {
             label: 'Operations',
             items: [
+                { name: 'Orders', href: '/orders', icon: 'pi pi-fw pi-shopping-cart' },
                 { name: 'Returns', href: '/returns', icon: 'pi pi-fw pi-replay' },
                 { name: 'Customers', href: '/customers', icon: 'pi pi-fw pi-users' },
             ],
