@@ -17,7 +17,6 @@ import SidebarMenu from 'primevue/sidebarmenu'
 import SidebarMenuButton from 'primevue/sidebarmenubutton'
 import SidebarMenuItem from 'primevue/sidebarmenuitem'
 import SidebarPanel from 'primevue/sidebarpanel'
-import SidebarSpacer from 'primevue/sidebarspacer'
 import SidebarTrigger from 'primevue/sidebartrigger'
 import { confirmAction } from '../utils/confirmAction'
 
@@ -227,7 +226,6 @@ const submitLogout = () => {
             icon-width="5rem"
             class="border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-black"
         >
-            <SidebarSpacer />
             <SidebarAside>
                 <SidebarPanel>
                     <SidebarHeader class="h-12 border-b border-slate-200 px-4 dark:border-slate-800">
