@@ -235,9 +235,6 @@ a {
     margin: 0.75rem 0;
 }
 
-.layout-menu .layout-root-menuitem:first-child > .layout-menuitem-root-text {
-    margin-top: 0;
-}
 
 .layout-menu ul a {
     display: flex;
