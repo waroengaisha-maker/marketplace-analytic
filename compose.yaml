@@ -77,6 +77,20 @@ services:
             retries: 3
             timeout: 5s
 
+    service-manager:
+        profiles:
+            - service-manager
+        restart: unless-stopped
+        build:
+            context: './docker/service-manager'
+        environment:
+            SERVICES_MANAGER_TOKEN: '${SERVICES_MANAGER_TOKEN:?SERVICES_MANAGER_TOKEN is required}'
+            COMPOSE_PROJECT: '${COMPOSE_PROJECT_NAME:-marketplace-analytic}'
+        volumes:
+            - '/var/run/docker.sock:/var/run/docker.sock'
+        networks:
+            - sail
+
     adminer:
         restart: unless-stopped
         image: 'adminer:6.0.1'
