@@ -60,9 +60,8 @@ function submit() {
                         v-if="form.errors.login"
                         severity="error"
                         variant="simple"
-                        size="small"
                         icon="pi pi-exclamation-circle"
-                        class="mb-4"
+                        class="mb-4 justify-center text-center"
                     >
                         {{ form.errors.login }}
                     </Message>
