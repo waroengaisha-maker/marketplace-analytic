@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3'
+import { onMounted, ref } from 'vue'
 
 type Service = {
     key: string
@@ -9,88 +10,105 @@ type Service = {
     icon: string
     risk: 'medium' | 'high' | 'critical'
 }
+type ServiceState = { status: string; container?: string }
 
-defineProps<{
-    services: Service[]
-}>()
+const props = defineProps<{ services: Service[] }>()
+const states = ref<Record<string, ServiceState>>({})
+const busy = ref<string | null>(null)
+const error = ref<string | null>(null)
+const loading = ref(true)
 
-const riskLabel: Record<Service['risk'], string> = {
-    medium: 'Medium risk',
-    high: 'High risk',
-    critical: 'Critical access',
-}
-
+const riskLabel: Record<Service['risk'], string> = { medium: 'Medium risk', high: 'High risk', critical: 'Critical access' }
 const riskClass: Record<Service['risk'], string> = {
     medium: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
     high: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300',
     critical: 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300',
 }
+
+async function refresh() {
+    loading.value = true
+    error.value = null
+    try {
+        const response = await fetch('/admin/services/status', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.message ?? 'Unable to read service status.')
+        states.value = data.services ?? {}
+    } catch (e) {
+        error.value = e instanceof Error ? e.message : 'Unable to read service status.'
+    } finally {
+        loading.value = false
+    }
+}
+
+async function action(service: Service, operation: 'start' | 'stop' | 'restart') {
+    if ((operation === 'stop' || operation === 'restart') && !window.confirm(`${operation === 'stop' ? 'Stop' : 'Restart'} ${service.name}?`)) return
+    busy.value = `${service.key}:${operation}`
+    error.value = null
+    try {
+        const response = await fetch(`/admin/services/${service.key}/${operation}`, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '' },
+            credentials: 'same-origin',
+        })
+        const data = await response.json()
+        if (!response.ok) throw new Error(data.message ?? `Unable to ${operation} ${service.name}.`)
+        await refresh()
+    } catch (e) {
+        error.value = e instanceof Error ? e.message : 'Service operation failed.'
+    } finally {
+        busy.value = null
+    }
+}
+
+onMounted(refresh)
 </script>
 
 <template>
     <Head title="Services" />
-
     <div class="mx-auto flex max-w-7xl flex-col gap-8">
-        <header>
+        <header class="flex items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900">
-                    <i class="pi pi-server" aria-hidden="true" />
-                </div>
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"><i class="pi pi-server" /></div>
                 <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">
-                        Services
-                    </h1>
-                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Operational tools for the Marketplace Analytics home server.
-                    </p>
+                    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">Services</h1>
+                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Operational tools for the Marketplace Analytics home server.</p>
                 </div>
             </div>
+            <button type="button" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700" :disabled="loading" @click="refresh">
+                <i class="pi pi-refresh mr-2" :class="{ 'animate-spin': loading }" />Refresh
+            </button>
         </header>
 
-        <section class="grid gap-5 md:grid-cols-2">
-            <article
-                v-for="service in services"
-                :key="service.key"
-                class="group flex min-h-52 flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-950 dark:hover:border-slate-700"
-            >
-                <div class="flex items-start justify-between gap-4">
-                    <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        <i :class="[service.icon, 'text-lg']" aria-hidden="true" />
-                    </div>
-                    <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="riskClass[service.risk]">
-                        {{ riskLabel[service.risk] }}
-                    </span>
-                </div>
+        <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{{ error }}</div>
 
+        <section class="grid gap-5 md:grid-cols-2">
+            <article v-for="service in props.services" :key="service.key" class="flex min-h-64 flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><i :class="[service.icon, 'text-lg']" /></div>
+                    <div class="flex items-center gap-2">
+                        <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="riskClass[service.risk]">{{ riskLabel[service.risk] }}</span>
+                        <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="states[service.key]?.status === 'running' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">
+                            {{ states[service.key]?.status ?? (loading ? 'Checking…' : 'unknown') }}
+                        </span>
+                    </div>
+                </div>
                 <div class="mt-5">
                     <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ service.name }}</h2>
                     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{{ service.description }}</p>
                 </div>
-
-                <div class="mt-auto pt-6">
-                    <a
-                        :href="service.url"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-700 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-white"
-                    >
-                        Open {{ service.name }}
-                        <i class="pi pi-external-link text-xs" aria-hidden="true" />
-                    </a>
+                <div class="mt-auto grid grid-cols-3 gap-2 pt-6">
+                    <button type="button" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold disabled:opacity-50 dark:border-slate-700" :disabled="busy !== null" @click="action(service, 'start')">Start</button>
+                    <button type="button" class="rounded-xl border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 disabled:opacity-50 dark:border-amber-900 dark:text-amber-300" :disabled="busy !== null" @click="action(service, 'restart')">Restart</button>
+                    <button type="button" class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50 dark:border-red-900 dark:text-red-300" :disabled="busy !== null" @click="action(service, 'stop')">Stop</button>
                 </div>
+                <a :href="service.url" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
+                    Open {{ service.name }} <i class="pi pi-external-link text-xs" />
+                </a>
             </article>
         </section>
 
         <section class="rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
-            <div class="flex gap-3">
-                <i class="pi pi-shield mt-0.5 text-slate-500" aria-hidden="true" />
-                <div>
-                    <h2 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Restricted operations</h2>
-                    <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                        This hub is available only to Super Admin. Service subdomains must also be protected at the reverse-proxy layer; Laravel route authorization alone does not protect external Docker services.
-                    </p>
-                </div>
-            </div>
+            <div class="flex gap-3"><i class="pi pi-shield mt-0.5 text-slate-500" /><div><h2 class="text-sm font-semibold">Restricted operations</h2><p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">Only Super Admin can control these services. Laravel never receives the Docker socket; operations are delegated to the internal service manager.</p></div></div>
         </section>
     </div>
 </template>
