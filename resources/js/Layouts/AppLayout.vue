@@ -301,20 +301,6 @@ const navigation = computed(() => {
     ]
 })
 
-const currentUrl = computed(() => page.url)
-
-const isActive = (href: string) => {
-    if (href === '/') return currentUrl.value === '/'
-    return currentUrl.value === href || currentUrl.value.startsWith(`${href}/`)
-}
-
-const closeSidebar = () => {
-    if (isMobile.value) sidebarOpen.value = false
-}
-
-const submitLogout = () => {
-    if (confirmAction('Apakah Anda yakin ingin logout?')) logout.post('/logout')
-}
 </script>
 
 <template>
