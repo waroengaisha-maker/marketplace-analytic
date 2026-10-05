@@ -62,6 +62,10 @@ function statusDescription(status?: string): string {
     }
 }
 
+function riskTooltip(service: Service): string {
+    return `<strong>${riskLabel[service.risk]}</strong><br>${riskDescription[service.risk]}<br><br><strong>Impact on ${service.name}</strong><br>${serviceImpact[service.key] ?? service.description}`
+}
+
 async function refresh() {
     loading.value = true
     error.value = null
@@ -111,7 +115,7 @@ onMounted(refresh)
                     <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Operational tools for the Marketplace Analytics home server.</p>
                 </div>
             </div>
-            <button type="button" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700" :disabled="loading" title="Refresh service container status" @click="refresh">
+            <button type="button" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700" :disabled="loading" @click="refresh" v-tooltip.bottom="'Refresh service container status'">
                 <i class="pi pi-refresh mr-2" :class="{ 'animate-spin': loading }" />Refresh
             </button>
         </header>
@@ -123,23 +127,18 @@ onMounted(refresh)
                 <div class="flex items-start justify-between gap-4">
                     <div class="flex h-11 w-11 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200"><i :class="[service.icon, 'text-lg']" /></div>
                     <div class="flex items-center gap-2">
-                        <div class="relative">
+                        <div class="flex items-center">
                             <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="riskClass[service.risk]">{{ riskLabel[service.risk] }}</span>
                             <button
                                 type="button"
                                 class="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                                 :aria-label="`Explain ${riskLabel[service.risk]}`"
-                                :title="riskDescription[service.risk]"
+                                v-tooltip.bottom="riskTooltip(service)"
                             >
                                 <i class="pi pi-question-circle text-xs" />
                             </button>
-                            <div class="pointer-events-none absolute right-0 top-full z-20 mt-2 w-72 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs leading-5 text-slate-600 opacity-0 shadow-lg transition-opacity group-hover:opacity-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                                <strong class="text-slate-900 dark:text-slate-100">{{ riskLabel[service.risk] }}</strong>
-                                <p class="mt-1">{{ riskDescription[service.risk] }}</p>
-                                <p class="mt-2">{{ serviceImpact[service.key] }}</p>
-                            </div>
                         </div>
-                        <div class="relative">
+                        <div class="flex items-center">
                             <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" :class="states[service.key]?.status === 'running' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'">
                                 {{ states[service.key]?.status ?? (loading ? 'Checking…' : 'unknown') }}
                             </span>
@@ -147,14 +146,10 @@ onMounted(refresh)
                                 type="button"
                                 class="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
                                 aria-label="Explain service status"
-                                :title="statusDescription(states[service.key]?.status)"
+                                v-tooltip.bottom="statusDescription(states[service.key]?.status)"
                             >
                                 <i class="pi pi-question-circle text-xs" />
                             </button>
-                            <div class="pointer-events-none absolute right-0 top-full z-20 mt-2 w-64 rounded-xl border border-slate-200 bg-white p-3 text-left text-xs leading-5 text-slate-600 opacity-0 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                                <strong class="text-slate-900 dark:text-slate-100">Current status</strong>
-                                <p class="mt-1">{{ statusDescription(states[service.key]?.status) }}</p>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -163,11 +158,11 @@ onMounted(refresh)
                     <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{{ service.description }}</p>
                 </div>
                 <div class="mt-auto grid grid-cols-3 gap-2 pt-6">
-                    <button type="button" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold disabled:opacity-50 dark:border-slate-700" :disabled="busy !== null" title="Start the service container" @click="action(service, 'start')">Start</button>
-                    <button type="button" class="rounded-xl border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 disabled:opacity-50 dark:border-amber-900 dark:text-amber-300" :disabled="busy !== null" title="Restart the service container" @click="action(service, 'restart')">Restart</button>
-                    <button type="button" class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50 dark:border-red-900 dark:text-red-300" :disabled="busy !== null" title="Stop the service container" @click="action(service, 'stop')">Stop</button>
+                    <button type="button" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold disabled:opacity-50 dark:border-slate-700" :disabled="busy !== null" @click="action(service, 'start')" v-tooltip.top="'Start the service container'">Start</button>
+                    <button type="button" class="rounded-xl border border-amber-200 px-3 py-2 text-sm font-semibold text-amber-700 disabled:opacity-50 dark:border-amber-900 dark:text-amber-300" :disabled="busy !== null" @click="action(service, 'restart')" v-tooltip.top="'Restart the service container'">Restart</button>
+                    <button type="button" class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50 dark:border-red-900 dark:text-red-300" :disabled="busy !== null" @click="action(service, 'stop')" v-tooltip.top="'Stop the service container'">Stop</button>
                 </div>
-                <a :href="service.url" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white dark:bg-slate-100 dark:text-slate-900" title="Open the service in a new tab">
+                <a :href="service.url" target="_blank" rel="noopener noreferrer" class="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 font-semibold text-white dark:bg-slate-100 dark:text-slate-900" v-tooltip.top="'Open the service in a new tab'">
                     Open {{ service.name }} <i class="pi pi-external-link text-xs" />
                 </a>
             </article>
