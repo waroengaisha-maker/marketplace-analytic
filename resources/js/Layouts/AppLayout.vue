@@ -248,8 +248,8 @@ const submitLogout = () => {
                         </SidebarMenu>
                     </SidebarHeader>
                     <SidebarContent class="overflow-y-auto px-3 py-5">
-                        <SidebarGroup v-for="section in navigation" :key="section.label" class="mb-6">
-                            <SidebarGroupLabel class="px-3 pb-2 text-[10px] font-medium tracking-normal text-slate-400 dark:text-slate-500">{{ section.label }}</SidebarGroupLabel>
+                        <SidebarGroup v-for="section in navigation" :key="section.label" class="mb-1">
+                            <SidebarGroupLabel class="px-3 pb-1 text-[10px] font-medium tracking-normal text-slate-400 dark:text-slate-500">{{ section.label }}</SidebarGroupLabel>
                             <SidebarGroupContent>
                                 <SidebarMenu>
                                     <SidebarMenuItem v-for="item in section.items" :key="item.href">
