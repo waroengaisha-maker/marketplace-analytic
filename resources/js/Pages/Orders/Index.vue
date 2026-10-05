@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3'
+
+const props = defineProps<{
+    orders?: unknown[]
+    filters?: Record<string, unknown>
+}>()
 </script>
 
 <template>
