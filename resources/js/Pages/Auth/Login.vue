@@ -21,13 +21,8 @@ function submit() {
 
     <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="flex flex-col items-center justify-center">
-            <div
-                style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)"
-            >
-                <div
-                    class="w-full bg-surface-0 dark:bg-surface-900 py-20 px-8 sm:px-20"
-                    style="border-radius: 53px"
-                >
+            <div class="card-border">
+                <div class="login-card w-full bg-surface-0 dark:bg-surface-900 py-20 px-16">
                     <div class="text-center mb-8">
                         <svg
                             viewBox="0 0 54 40"
@@ -119,6 +114,16 @@ function submit() {
 </template>
 
 <style scoped>
+.card-border {
+    padding: 4px;
+    border-radius: 56px;
+    background: linear-gradient(180deg, var(--primary-color) 10%, transparent 30%);
+}
+
+.login-card {
+    border-radius: 53px;
+}
+
 .pi-eye {
     transform: scale(1.6);
     margin-right: 1rem;
