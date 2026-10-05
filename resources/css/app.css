@@ -230,27 +230,15 @@ a {
 
 .layout-menu .layout-root-menuitem > .layout-menuitem-root-text {
     font-size: .857rem;
+    line-height: 1.5;
     text-transform: uppercase;
     font-weight: 700;
     color: var(--text-color);
     margin: .75rem 0;
+    letter-spacing: 0;
 }
 
-.layout-menu .layout-root-menuitem > a {
-    display: none;
-}
-
-.layout-menu a {
-    user-select: none;
-}
-
-.layout-menu ul {
-    margin: 0;
-    padding: 0;
-    list-style-type: none;
-}
-
- .layout-menu ul a {
+.layout-menu ul a {
     display: flex;
     align-items: center;
     position: relative;
@@ -259,20 +247,17 @@ a {
     cursor: pointer;
     padding: .75rem 1rem;
     border-radius: var(--content-border-radius);
-    transition: box-shadow var(--element-transition-duration);
+    transition: background-color var(--element-transition-duration), color var(--element-transition-duration);
     font-family: 'Lato', sans-serif;
     font-size: 1rem;
+    font-weight: 400;
     line-height: 1.5;
 }
 
 .layout-menu ul a .layout-menuitem-icon {
+    width: 1.25rem;
     margin-right: .5rem;
-}
-
-.layout-menu ul a .layout-submenu-toggler {
-    font-size: 75%;
-    margin-left: auto;
-    transition: transform var(--element-transition-duration);
+    font-size: 1rem;
 }
 
 .layout-menu ul a.active-route {
@@ -288,6 +273,10 @@ a {
     box-shadow: inset var(--p-focus-ring-shadow);
 }
 
+.layout-menu ul a:focus-visible {
+    outline: var(--p-focus-ring-width) var(--p-focus-ring-style) var(--p-focus-ring-color);
+    outline-offset: var(--p-focus-ring-offset);
+}
 .layout-menu ul ul {
     overflow: hidden;
     border-radius: var(--content-border-radius);
