@@ -95,14 +95,6 @@ function submit() {
                             </Link>
                         </div>
 
-                        <p
-                            v-if="form.errors.login || form.errors.password"
-                            class="text-red-500 text-sm mb-4"
-                            role="alert"
-                        >
-                            {{ form.errors.login || form.errors.password }}
-                        </p>
-
                         <Button
                             type="submit"
                             label="Sign In"
