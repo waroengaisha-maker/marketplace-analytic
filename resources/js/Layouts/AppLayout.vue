@@ -106,7 +106,6 @@ const navigation = computed(() => [
     ...(isPrivileged.value ? [] : [{
         label: 'Operations',
         items: [
-            { name: 'UI Style Guide', href: '/admin/ui-style-guide', icon: 'pi pi-palette', color: 'text-slate-400' },
             { name: 'Returns', href: '/returns', icon: 'pi pi-replay', color: 'text-slate-400' },
             { name: 'Customers', href: '/customers', icon: 'pi pi-users', color: 'text-slate-400' },
         ],
@@ -150,6 +149,12 @@ const navigation = computed(() => [
             { name: 'Profitability', href: '/analytics/profitability', icon: 'pi pi-percentage', color: 'text-slate-400' },
         ],
     }]),
+    ...(page.props.auth?.user?.role === 'super_admin' ? [{
+        label: 'System Design',
+        items: [
+            { name: 'UI Style Guide', href: '/admin/ui-style-guide', icon: 'pi pi-palette', color: 'text-slate-400' },
+        ],
+    }] : []),
     ...(isPrivileged.value ? [{
         label: 'Access Control',
         items: [
@@ -158,9 +163,6 @@ const navigation = computed(() => [
             ] : []),
             ...(page.props.auth?.user?.role === 'super_admin' ? [
                 { name: 'Kelola Admin', href: '/admin/admins', icon: 'pi pi-shield', color: 'text-slate-400' },
-            ] : []),
-            ...(page.props.auth?.user?.role === 'super_admin' ? [
-                { name: 'UI Style Guide', href: '/admin/ui-style-guide', icon: 'pi pi-palette', color: 'text-slate-400' },
             ] : []),
             { name: 'Kelola Akses User', href: '/admin/users', icon: 'pi pi-user-edit', color: 'text-slate-400' },
         ],
