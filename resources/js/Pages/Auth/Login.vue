@@ -3,6 +3,8 @@ import { Head, Link, useForm } from '@inertiajs/vue3'
 import Button from 'primevue/button'
 import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 import Message from 'primevue/message'
 import Password from 'primevue/password'
 
@@ -67,30 +69,35 @@ function submit() {
                     </Message>
 
                     <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-                    <InputText
-                        id="email1"
-                        v-model="form.login"
-                        type="text"
-                        placeholder="Email address"
-                        autocomplete="username"
-                        class="w-full mb-8"
-                        :invalid="Boolean(form.errors.login)"
-                        required
-                    />
+                    <IconField class="w-full mb-8">
+                        <InputIcon class="pi pi-envelope" />
+                        <InputText
+                            id="email1"
+                            v-model="form.login"
+                            type="text"
+                            placeholder="Email address"
+                            autocomplete="username"
+                            class="w-full"
+                            :invalid="Boolean(form.errors.login)"
+                            required
+                        />
+                    </IconField>
 
                     <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
-                    <Password
-                        id="password1"
-                        v-model="form.password"
-                        placeholder="Password"
-                        :toggleMask="true"
-                        :feedback="false"
-                        fluid
-                        class="mb-4"
-                        :invalid="Boolean(form.errors.password)"
-                        autocomplete="current-password"
-                        required
-                    />
+                    <IconField class="w-full mb-4">
+                        <InputIcon class="pi pi-lock" />
+                        <Password
+                            id="password1"
+                            v-model="form.password"
+                            placeholder="Password"
+                            :toggleMask="true"
+                            :feedback="false"
+                            fluid
+                            :invalid="Boolean(form.errors.password)"
+                            autocomplete="current-password"
+                            required
+                        />
+                    </IconField>
 
                     <div class="form-options flex items-center justify-between mt-2 mb-8 gap-8">
                         <div class="flex items-center">
