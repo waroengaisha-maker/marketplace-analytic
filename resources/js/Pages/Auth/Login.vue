@@ -19,10 +19,10 @@ function submit() {
 <template>
     <Head title="Login" />
 
-    <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
+    <div class="login-page flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
         <div class="login-border">
             <form class="login-card w-full py-20 px-8 sm:px-20" @submit.prevent="submit">
-                <div class="text-center mb-8">
+                <div class="text-center mb-10">
                     <svg
                         viewBox="0 0 54 40"
                         fill="none"
@@ -55,7 +55,7 @@ function submit() {
                         <span class="text-muted-color font-medium">Sign in to continue</span>
                     </div>
 
-                    <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
+                    <div class="form-field">\n                        <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
                     <InputText
                         id="email1"
                         v-model="form.login"
@@ -84,7 +84,7 @@ function submit() {
                             <Checkbox v-model="form.remember" id="rememberme1" binary class="mr-2" />
                             <label for="rememberme1">Remember me</label>
                         </div>
-                        <Link href="/forgot-password" class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">
+                        <Link href="/forgot-password" class="font-medium no-underline ml-2 text-right cursor-pointer">
                             Forgot password?
                         </Link>
                     </div>
@@ -96,7 +96,7 @@ function submit() {
                         :loading="form.processing"
                     />
 
-                    <div class="text-center mt-6">
+                    <div class="text-center mt-8">
                         <span class="text-muted-color">Don't have an account?</span>
                         <Link
                             href="/register"
@@ -113,7 +113,7 @@ function submit() {
 </template>
 
 <style scoped>
-.login-border {
+.login-page {\n    background: #f8f9fa;\n}\n\n.login-border {
     width: min(100%, 560px);
     padding: 0.3rem;
     border-radius: 56px;
@@ -129,7 +129,7 @@ function submit() {
     background: var(--p-surface-900);
 }
 
-.pi-eye {
+.form-field label {\n    text-align: left;\n}\n\n.form-options a {\n    color: var(--p-primary-color);\n}\n\n.pi-eye {
     transform: scale(1.6);
     margin-right: 1rem;
 }
