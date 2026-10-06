@@ -19,6 +19,7 @@ The current shared-component refactor is intentionally incremental:
 1. `StatusBadge` — standardized status presentation.
 2. `EmptyState` — standardized empty/no-result presentation.
 3. `DataTableState` — standardized table loading/empty/error states.
+4. `FeedbackMessage` — standardized inline feedback presentation.
 
 Each component is committed independently so regressions can be isolated and reverted cleanly.
 
@@ -47,3 +48,11 @@ See `resources/js/Components/EMPTY_STATE_CONTRACT.md` for the detailed contract.
 Use it for standardized loading, empty, and error presentation around tabular data. `AppDataTable` uses it automatically for its default loading and empty states; page-specific wording may still override the named slots when needed.
 
 See `resources/js/Components/DataTable/DATA_TABLE_STATE_CONTRACT.md` for the detailed contract.
+
+## 4. FeedbackMessage
+
+**Implementation:** `resources/js/Components/FeedbackMessage.vue`
+
+Use it for repeated inline success, informational, warning, and error feedback that follows the PrimeVue Message contract. The component owns presentation only; domain wording and business conditions remain with the page or parent component.
+
+See `resources/js/Components/FEEDBACK_MESSAGE_CONTRACT.md` for the detailed contract.
