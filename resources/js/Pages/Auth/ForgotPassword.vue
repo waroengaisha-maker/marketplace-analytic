@@ -3,7 +3,7 @@ import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
-import Message from 'primevue/message'
+import FeedbackMessage from '@/Components/FeedbackMessage.vue'
 import { computed, ref } from 'vue'
 
 const page = usePage<{ status?: string }>()
@@ -48,14 +48,7 @@ function submit() {
 
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
-                    <Message
-                        v-if="successMessage"
-                        severity="success"
-                        variant="simple"
-                        icon="pi pi-check-circle"
-                    >
-                        {{ successMessage }}
-                    </Message>
+                    <FeedbackMessage v-if="successMessage" severity="success" variant="simple" icon="pi pi-check-circle" :message="successMessage" />
 
                     <Message
                         v-if="form.errors.email"
