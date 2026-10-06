@@ -182,6 +182,10 @@ function sanitizePhone(value: string) {
                         :loading="form.processing"
                         :disabled="form.processing || !registrationReady"
                     />
+                    <small v-if="!registrationReady && !form.processing" class="flex items-start justify-center gap-2 text-center text-color-secondary">
+                        <i class="pi pi-info-circle mt-0.5 shrink-0" aria-hidden="true" />
+                        <span>Complete all required fields, fulfill all password requirements, and make sure the passwords match to enable account creation.</span>
+                    </small>
                 </form>
                 <Divider />
                 <p class="text-center text-sm">Already have an account? <Link href="/login" class="text-primary font-medium">Sign in</Link></p>
