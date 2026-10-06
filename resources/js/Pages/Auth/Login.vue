@@ -54,7 +54,7 @@ function submit() {
                     </svg>
 
                     <div class="text-center mb-8">
-                        <h1 class="text-black dark:text-black text-3xl font-medium mb-4">Marketplace Analytics</h1>
+                        <h1 class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Marketplace Analytics</h1>
                         <span class="text-muted-color font-medium">Sign in to continue</span>
                     </div>
 
@@ -153,7 +153,7 @@ function submit() {
     background: var(--p-surface-0);
 }
 
-.dark .login-card {
+.app-dark .login-card {
     background: var(--p-surface-900);
 }
 
