@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3'
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
 import Card from 'primevue/card'
 import InputText from 'primevue/inputtext'
 import InputPassword from 'primevue/inputpassword'
