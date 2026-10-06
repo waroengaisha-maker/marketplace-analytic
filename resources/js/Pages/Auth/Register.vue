@@ -5,8 +5,6 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import InputPassword from 'primevue/inputpassword'
-import MeterGroup from 'primevue/metergroup'
-import Popover from 'primevue/popover'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
 import Message from 'primevue/message'
@@ -14,34 +12,16 @@ import { computed, ref } from 'vue'
 
 const form = useForm({ name: '', username: '', email: '', phone: '', password: '', password_confirmation: '' })
 const clientError = ref('')
-const passwordPopover = ref<InstanceType<typeof Popover> | null>(null)
-const confirmationPopover = ref<InstanceType<typeof Popover> | null>(null)
 const passwordMask = ref(true)
 const confirmationMask = ref(true)
 const passwordTouched = ref(false)
 const confirmationTouched = ref(false)
 const submitAttempted = ref(false)
 
-const passwordRequirements = computed(() => [
-    { label: 'At least 12 characters', valid: form.password.length >= 12 },
-    { label: 'Contains uppercase letter', valid: /[A-Z]/.test(form.password) },
-    { label: 'Contains lowercase letter', valid: /[a-z]/.test(form.password) },
-    { label: 'Contains number', valid: /\d/.test(form.password) },
-    { label: 'Contains special character', valid: /[^A-Za-z0-9]/.test(form.password) },
-])
 
-const passwordStrength = computed(() => passwordRequirements.value.filter((requirement) => requirement.valid).length)
-const passwordMeter = computed(() => [{ label: 'Password strength', value: passwordStrength.value * 20 }])
-const passwordStrengthLabel = computed(() => {
-    if (passwordStrength.value <= 1) return 'Weak'
-    if (passwordStrength.value <= 3) return 'Medium'
-    if (passwordStrength.value === 4) return 'Strong'
-    return 'Very strong'
-})
 const passwordIsInvalid = computed(() =>
     Boolean(form.errors.password) ||
-    (passwordTouched.value || submitAttempted.value) &&
-    !passwordRequirements.value.every((requirement) => requirement.valid),
+    (passwordTouched.value || submitAttempted.value) && !form.password,
 )
 const confirmationIsInvalid = computed(() =>
     Boolean(form.errors.password_confirmation) ||
@@ -49,22 +29,9 @@ const confirmationIsInvalid = computed(() =>
     form.password !== form.password_confirmation,
 )
 
-function showPasswordPopover(event: FocusEvent) {
-    passwordPopover.value?.show(event, event.currentTarget as HTMLElement)
-}
-
-function showConfirmationPopover(event: FocusEvent) {
-    confirmationPopover.value?.show(event, event.currentTarget as HTMLElement)
-}
-
 function submit() {
     clientError.value = ''
     submitAttempted.value = true
-
-    if (!passwordRequirements.value.every((requirement) => requirement.valid)) {
-        clientError.value = 'Password belum memenuhi semua persyaratan.'
-        return
-    }
 
     if (form.password !== form.password_confirmation) {
         clientError.value = 'Konfirmasi password tidak sama.'
@@ -143,30 +110,11 @@ function sanitizePhone(value: string) {
                                 v-model:mask="passwordMask"
                                 :feedback="false"
                                 autocomplete="new-password"
-                                minlength="12"
                                 required
                                 fluid
-                                @focus="showPasswordPopover"
                                 @blur="passwordTouched = true"
-                                aria-describedby="password-requirements"
                             />
                         </IconField>
-                        <Popover ref="passwordPopover" aria-label="Password requirements" id="password-requirements">
-                            <div class="w-72 flex flex-col gap-3">
-                                <div class="font-medium">Password requirements</div>
-                                <MeterGroup :value="passwordMeter" :max="100" />
-                                <div class="flex justify-between text-sm text-color-secondary">
-                                    <span>{{ passwordStrengthLabel }}</span>
-                                    <span>{{ passwordStrength }}/5</span>
-                                </div>
-                                <ul class="m-0 p-0 list-none flex flex-col gap-2 text-sm">
-                                    <li v-for="requirement in passwordRequirements" :key="requirement.label" class="flex items-center gap-2">
-                                        <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle text-color-secondary'" aria-hidden="true" />
-                                        <span>{{ requirement.label }}</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </Popover>
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="password_confirmation">Confirm password <span class="required-mark" aria-hidden="true">*</span></label>
@@ -182,21 +130,10 @@ function sanitizePhone(value: string) {
                                 autocomplete="new-password"
                                 required
                                 fluid
-                                @focus="showConfirmationPopover"
                                 @blur="confirmationTouched = true"
-                                aria-describedby="password-confirmation-help"
                             />
                         </IconField>
                         <small id="password-confirmation-help" class="text-color-secondary">Harus sama dengan password.</small>
-                        <Popover ref="confirmationPopover" aria-label="Password confirmation requirements">
-                            <div class="w-72 flex flex-col gap-3">
-                                <div class="font-medium">Password confirmation</div>
-                                <div class="flex items-center gap-2 text-sm">
-                                    <i :class="form.password_confirmation && form.password === form.password_confirmation ? 'pi pi-check text-primary' : 'pi pi-circle text-color-secondary'" aria-hidden="true" />
-                                    <span>{{ form.password_confirmation && form.password === form.password_confirmation ? 'Passwords match' : 'Passwords must match' }}</span>
-                                </div>
-                            </div>
-                        </Popover>
                     </div>
                     <Button type="submit" :label="form.processing ? 'Creating account...' : 'Create account'" :loading="form.processing" />
                 </form>
