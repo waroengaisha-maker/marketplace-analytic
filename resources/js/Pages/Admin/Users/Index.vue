@@ -2,7 +2,7 @@
 import PageHeader from '@/Components/PageHeader.vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
-import Message from 'primevue/message'
+import FeedbackMessage from '@/Components/FeedbackMessage.vue'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
@@ -115,7 +115,7 @@ const roleSeverity = (role: string) => role === 'super_admin' ? 'danger' : role 
             title="Kelola Admin"
             description="Kelola akun admin aplikasi dan ubah aksesnya menjadi user aplikasi."
         />
-        <Message v-if="validationError()" class="mb-4" severity="error">{{ validationError() }}</Message>
+        <FeedbackMessage v-if="validationError()" class="mb-4" severity="error" :message="validationError()" />
         <Card class="[&_.p-card-body]:p-4">
             <template #content>
             <AppDataTableToolbar
@@ -181,7 +181,7 @@ const roleSeverity = (role: string) => role === 'super_admin' ? 'danger' : role 
                     <InputText v-model="form.password" type="password" :placeholder="editingId ? 'Password baru (opsional)' : 'Password'" :required="!editingId" />
                     <InputText v-model="form.password_confirmation" type="password" placeholder="Konfirmasi password" :required="!!form.password" />
                 </div>
-                <Message v-if="validationError()" severity="error">{{ validationError() }}</Message>
+                <FeedbackMessage v-if="validationError()" severity="error" :message="validationError()" />
                 <div class="flex justify-end gap-2">
                     <Button label="Batal" severity="secondary" type="button" @click="cancelEdit" />
                     <Button :label="editingId ? 'Simpan' : 'Tambah Admin'" type="submit" :loading="form.processing" />
