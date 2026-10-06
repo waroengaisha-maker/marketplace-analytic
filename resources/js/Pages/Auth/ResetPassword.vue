@@ -275,7 +275,7 @@ function submit() {
     position: absolute !important;
     top: 50% !important;
     right: 0.75rem !important;
-    z-index: 9999;
+    z-index: 2;
     width: 1.5rem;
     height: 1.5rem;
     transform: translateY(-50%);
