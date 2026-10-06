@@ -11,7 +11,11 @@ import Dialog from 'primevue/dialog'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{ email: string; token: string }>()
-const page = usePage()
+const page = usePage<{
+    flash?: {
+        success?: string
+    }
+}>()
 const form = useForm({
     token: props.token,
     email: props.email,
