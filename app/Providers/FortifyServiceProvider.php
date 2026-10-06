@@ -15,8 +15,10 @@ use Laravel\Fortify\Contracts\CreatesNewUsers;
 use Laravel\Fortify\Contracts\LoginResponse;
 use Laravel\Fortify\Contracts\LogoutResponse;
 use Laravel\Fortify\Contracts\ResetsUserPasswords;
+use Laravel\Fortify\Contracts\PasswordResetResponse;
 use App\Http\Responses\LogoutResponse as LogoutResponseHandler;
 use App\Http\Responses\LoginResponse as LoginResponseHandler;
+use App\Http\Responses\PasswordResetResponse as PasswordResetResponseHandler;
 use Laravel\Fortify\Fortify;
 
 class FortifyServiceProvider extends ServiceProvider
@@ -27,6 +29,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->app->singleton(ResetsUserPasswords::class, ResetUserPassword::class);
         $this->app->singleton(LogoutResponse::class, LogoutResponseHandler::class);
         $this->app->singleton(LoginResponse::class, LoginResponseHandler::class);
+        $this->app->singleton(PasswordResetResponse::class, PasswordResetResponseHandler::class);
     }
 
     public function boot(): void
