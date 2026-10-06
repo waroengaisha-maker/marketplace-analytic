@@ -13,7 +13,7 @@ import InputIcon from 'primevue/inputicon'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
 import Popover from 'primevue/popover'
-import Message from 'primevue/message'
+import FeedbackMessage from '@/Components/FeedbackMessage.vue'
 import { AppDataTable, useDataTableContract } from '@/Components/DataTable'
 import { formatNominal } from '@/utils/formatters'
 import { buildAnalyticsExportFilename } from '@/utils/exportFilename'
@@ -441,9 +441,7 @@ function onFilter() {
                         </div>
                     </div>
                     <div class="flex flex-wrap justify-start gap-2">
-                        <Message v-if="dateValidationError" severity="error" :closable="false" class="w-full">
-                            {{ dateValidationError }}
-                        </Message>
+                        <FeedbackMessage v-if="dateValidationError" severity="error" :closable="false" class="w-full" :message="dateValidationError" />
                         <Button label="Terapkan" icon="pi pi-filter" class="h-11 w-full sm:w-auto" @click="applyDateFilter" />
                         <Button label="Reset" icon="pi pi-refresh" severity="secondary" outlined class="h-11 w-full sm:w-auto" @click="resetDateFilter" />
                     </div>
