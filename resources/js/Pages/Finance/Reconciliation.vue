@@ -691,7 +691,7 @@ function onFilter() {
                         </template>
                         <template #body="{ data }">
                             <StatusBadge v-if="field === 'business_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
-                            <Tag v-else-if="field === 'hpp_status'" :value="hppStatusLabel(rowHppStatus(data))" :severity="hppStatusSeverity(rowHppStatus(data))" />
+                            <StatusBadge v-else-if="field === 'hpp_status'" :value="hppStatusLabel(rowHppStatus(data))" :severity="hppStatusSeverity(rowHppStatus(data))" />
                             <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
                             <span v-else-if="field === 'hpp'">
                                 <Tag v-if="rowHppStatus(data) !== 'ok'" :value="hppStatusLabel(rowHppStatus(data))" severity="warn" icon="pi pi-exclamation-triangle" />
