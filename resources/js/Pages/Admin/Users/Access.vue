@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head, router, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import Message from 'primevue/message'
@@ -136,8 +137,11 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('id
 <template>
     <Head title="Kelola Akses User" />
     <div class="flex flex-col gap-6">
-        <h1 class="text-3xl font-bold">Kelola Akses User Aplikasi</h1>
-        <p class="text-sm text-slate-500">Aktifkan, atur trial, atau suspend akun pengguna aplikasi.</p>
+        <PageHeader
+            section="Administration"
+            title="Kelola Akses User Aplikasi"
+            description="Aktifkan, atur trial, atau suspend akun pengguna aplikasi."
+        />
         <Message v-if="validationError()" class="mb-4" severity="error">{{ validationError() }}</Message>
         <Card class="[&_.p-card-body]:p-4">
             <template #content>

@@ -141,3 +141,33 @@ The implementation order is:
 5. regression validation.
 
 This contract is intentionally compatible with the Sakai/PrimeVue architecture without coupling the application to Sakai source code.
+
+
+## 15. Page Header Contract
+
+Application pages MUST use the shared `PageHeader` component for the primary page heading:
+
+`resources/js/Components/PageHeader.vue`
+
+The component standardizes the hierarchy:
+
+1. optional section / eyebrow;
+2. page title;
+3. optional description;
+4. optional right-aligned actions via the `actions` slot.
+
+Example:
+
+```vue
+<PageHeader
+    section="Operations"
+    title="Orders"
+    description="Ringkasan transaksi per nomor order lengkap dengan rincian biaya hingga laba bersih."
+/>
+```
+
+Page headers MUST use semantic theme tokens through the shared component. Pages MUST NOT recreate the primary heading with hard-coded `text-slate-900`, `text-slate-500`, `text-white`, or equivalent light-only typography.
+
+The shared component is the default for application, analytics, finance, product, integration, import, account, and admin pages. Auth-specific layouts may use their own composition when the application shell is intentionally absent.
+
+Do not introduce another page-header component or local page-header typography pattern without documenting the exception here.

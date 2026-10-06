@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import Card from 'primevue/card'
@@ -81,10 +82,11 @@ function statusLabel(status: Row['financial_status']) {
 <template>
     <Head title="Profitability Analytics" />
     <div class="flex flex-col gap-6">
-        <div>
-            <h1 class="text-3xl font-bold">Profitability Analytics</h1>
-            <p class="mt-2 text-color-secondary">Profitabilitas berdasarkan financial projection canonical dan Master HPP.</p>
-        </div>
+        <PageHeader
+            section="Analytics"
+            title="Profitability Analytics"
+            description="Profitabilitas berdasarkan financial projection canonical dan Master HPP."
+        />
 
         <Card>
             <template #content>

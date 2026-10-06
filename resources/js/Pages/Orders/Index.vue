@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3'
+import PageHeader from '@/Components/PageHeader.vue'
 import { computed, ref } from 'vue'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -524,11 +525,11 @@ const exportExcel = async () => {
     <Head title="Orders" />
 
     <div class="flex w-full min-w-0 flex-col gap-6">
-        <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Operations</p>
-            <h1 class="mt-1 text-3xl font-bold text-slate-900">Orders</h1>
-            <p class="mt-2 text-sm text-slate-500">Ringkasan transaksi per nomor order lengkap dengan rincian biaya hingga laba bersih.</p>
-        </div>
+        <PageHeader
+            section="Operations"
+            title="Orders"
+            description="Ringkasan transaksi per nomor order lengkap dengan rincian biaya hingga laba bersih."
+        />
 
         <Card>
             <template #content>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3'
+import PageHeader from '@/Components/PageHeader.vue'
 import { computed, onMounted, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -394,12 +395,13 @@ const visibleRows = computed(() => props.rows || [])
     <Head title="HPP Mapping" />
 
     <div class="flex w-full min-w-0 flex-col gap-6">
-        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Master HPP</p>
-                <h1 class="mt-1 text-3xl font-bold text-slate-900">Manual Mapping Shopee</h1>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
+        <PageHeader
+            section="Master HPP"
+            title="Manual Mapping Shopee"
+            description="Petakan produk Shopee ke template HPP agar alokasi biaya dan profitabilitas tetap akurat."
+        >
+            <template #actions>
+                <div class="flex flex-wrap items-center gap-2">
                 <div class="flex items-center gap-1.5">
                     <Button size="small" severity="secondary" outlined :loading="syncingCatalog" :disabled="syncingCatalog" @click="syncTemplateCatalog">
                         {{ syncingCatalog ? 'Menyinkronkan...' : 'Sync Template Items' }}
@@ -413,8 +415,9 @@ const visibleRows = computed(() => props.rows || [])
                 <Button @click="saveMappings(props.rows)" :loading="saving" :disabled="saving">
                     Simpan Manual Override
                 </Button>
-            </div>
-        </div>
+                </div>
+            </template>
+        </PageHeader>
 
         <Card>
             <template #content>

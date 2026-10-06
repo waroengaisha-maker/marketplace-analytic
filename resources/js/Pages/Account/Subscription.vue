@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head, usePage } from '@inertiajs/vue3'
 import Card from 'primevue/card'
 import Tag from 'primevue/tag'
@@ -36,11 +37,11 @@ const statusLabel = (value: string) => value.replaceAll('_', ' ')
     <Head title="Akun & Langganan" />
 
     <div class="flex w-full min-w-0 flex-col gap-6">
-        <div>
-            <!-- <Tag value="ACCOUNT" severity="secondary" /> -->
-            <h1 class="mt-2 text-3xl font-bold">Akun & Langganan</h1>
-            <p class="mt-2 text-color-secondary">Informasi akun, masa trial, subscription, dan pembayaran.</p>
-        </div>
+        <PageHeader
+            section="Account"
+            title="Akun & Langganan"
+            description="Informasi akun, masa trial, subscription, dan pembayaran."
+        />
 
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <Card>

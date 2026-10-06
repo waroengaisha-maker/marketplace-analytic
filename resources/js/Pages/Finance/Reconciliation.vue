@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head, router } from '@inertiajs/vue3'
 import { ref, computed } from 'vue'
 import Card from 'primevue/card'
@@ -380,7 +381,7 @@ function onFilter() {
 <template>
     <Head title="Reconciliation" />
     <div class="flex flex-col gap-6">
-        <div><h1 class="text-3xl font-bold">Reconciliation</h1><p class="mt-2 text-color-secondary">Detail Order dan Income dengan pencocokan aman.</p></div>
+        <PageHeader section="Finance" title="Reconciliation" description="Detail Order dan Income dengan pencocokan aman." />
         <Card>
             <template #content>
                 <div class="flex flex-col gap-4">

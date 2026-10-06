@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head } from '@inertiajs/vue3'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -518,11 +519,11 @@ onUnmounted(() => {
     <Head title="Shopee API - Integration Lab" />
 
     <div class="flex w-full min-w-0 flex-col gap-6">
-        <div class="flex flex-col gap-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Integrations</p>
-            <h1 class="mt-1 text-3xl font-bold text-slate-900">Shopee Open Platform API</h1>
-            <p class="text-sm text-slate-500">Read-only integration lab plus feasibility research for replacing Excel report imports with the Shopee Open API v2.0.</p>
-        </div>
+        <PageHeader
+            section="Integrations"
+            title="Shopee Open Platform API"
+            description="Read-only integration lab plus feasibility research for replacing Excel report imports with the Shopee Open API v2.0."
+        />
 
         <Tabs v-model:value="activeSection">
             <TabList>

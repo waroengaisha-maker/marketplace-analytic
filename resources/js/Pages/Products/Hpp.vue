@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3'
+import PageHeader from '@/Components/PageHeader.vue'
 import { computed, ref } from 'vue'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
@@ -99,20 +100,22 @@ const statusLabel = (status: ProductRow['status']) => {
     <Head title="Master HPP" />
 
     <div class="flex w-full min-w-0 flex-col gap-6">
-        <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Products</p>
-                <h1 class="mt-1 text-3xl font-bold text-slate-900">Master HPP</h1>
-            </div>
-            <div class="flex gap-2">
+        <PageHeader
+            section="Products"
+            title="Master HPP"
+            description="Kelola master HPP dan status koneksi produk untuk perhitungan profitabilitas."
+        >
+            <template #actions>
+                <div class="flex gap-2">
                 <Button severity="secondary" outlined>
                     Import Template
                 </Button>
                 <Button>
                     Review Mapping
                 </Button>
-            </div>
-        </div>
+                </div>
+            </template>
+        </PageHeader>
 
         <div class="grid gap-4 md:grid-cols-4">
             <Card>

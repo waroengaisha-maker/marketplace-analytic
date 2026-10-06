@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head, router } from '@inertiajs/vue3'
 
 type ServiceStatus = {
@@ -84,18 +85,14 @@ const boolLabel = (value?: boolean) => value ? 'Enabled' : 'Not enabled'
 <template>
     <Head title="Server Dashboard" />
     <div class="flex flex-col gap-6">
-            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <div class="flex items-center gap-3">
-                        <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Server Dashboard</h1>
-                        <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="overallClass">{{ overallLabel }}</span>
-                    </div>
-                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        {{ status.host || 'Marketplace Analytics Server' }}
-                        <span v-if="status.generated_at_human"> · updated {{ status.generated_at_human }}</span>
-                    </p>
-                </div>
-                <div class="flex flex-wrap items-center justify-end gap-2">
+            <PageHeader
+                section="Administration"
+                title="Server Dashboard"
+                description="Marketplace Analytics home server."
+            >
+                <template #actions>
+                    <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="overallClass">{{ overallLabel }}</span>
+                    <div class="flex flex-wrap items-center justify-end gap-2">
                     <a
                         v-if="props.adminer.local_url"
                         :href="props.adminer.local_url"
@@ -121,7 +118,8 @@ const boolLabel = (value?: boolean) => value ? 'Enabled' : 'Not enabled'
                         {{ refreshing ? 'Refreshing...' : 'Refresh' }}
                     </button>
                 </div>
-            </div>
+            </template>
+        </PageHeader>
 
             <div v-if="!status.available" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
                 {{ status.reason || 'Server status is unavailable. Run the server status snapshot on the host.' }}

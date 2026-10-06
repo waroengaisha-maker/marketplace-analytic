@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import Button from 'primevue/button'
@@ -66,10 +67,11 @@ function refundSeverity(refundTypeValue: string): string {
 <template>
     <Head title="Income Reconciliation" />
     <div class="flex flex-col gap-6">
-        <div>
-            <h1 class="text-3xl font-bold">Income Reconciliation</h1>
-            <p class="mt-2 text-color-secondary">Income-side matching, orphan, dan refund evidence.</p>
-        </div>
+        <PageHeader
+            section="Finance"
+            title="Income Reconciliation"
+            description="Income-side matching, orphan, dan refund evidence."
+        />
 
         <Card>
             <template #content>

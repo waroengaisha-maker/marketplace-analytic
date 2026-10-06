@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head } from '@inertiajs/vue3'
 import { onMounted, ref } from 'vue'
 
@@ -107,18 +108,17 @@ onMounted(refresh)
 <template>
     <Head title="Services" />
     <div class="mx-auto flex max-w-7xl flex-col gap-8">
-        <header class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-3">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900"><i class="pi pi-server" /></div>
-                <div>
-                    <h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 sm:text-3xl">Services</h1>
-                    <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Operational tools for the Marketplace Analytics home server.</p>
-                </div>
-            </div>
-            <button type="button" class="rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-slate-700" :disabled="loading" @click="refresh" v-tooltip.bottom="'Refresh service container status'">
-                <i class="pi pi-refresh mr-2" :class="{ 'animate-spin': loading }" />Refresh
-            </button>
-        </header>
+        <PageHeader
+            section="Administration"
+            title="Services"
+            description="Operational tools for the Marketplace Analytics home server."
+        >
+            <template #actions>
+                <button type="button" class="rounded-xl border border-surface px-3 py-2 text-sm font-semibold text-color transition-colors hover:bg-surface-100 dark:hover:bg-surface-800" :disabled="loading" @click="refresh" v-tooltip.bottom="'Refresh service container status'">
+                    <i class="pi pi-refresh mr-2" :class="{ 'animate-spin': loading }" />Refresh
+                </button>
+            </template>
+        </PageHeader>
 
         <div v-if="error" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{{ error }}</div>
 

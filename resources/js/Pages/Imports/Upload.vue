@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import PageHeader from '@/Components/PageHeader.vue'
 import { Head, useForm, usePage } from '@inertiajs/vue3'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import AppAlert from '../../Components/AppAlert.vue'
@@ -42,10 +43,11 @@ onBeforeUnmount(() => { if (pollTimer) clearInterval(pollTimer) })
 <template>
     <Head title="Upload Files" />
     <div class="flex w-full min-w-0 flex-col gap-6">
-        <div>
-            <h1 class="mt-2 text-3xl font-bold">Upload Laporan</h1>
-            <p class="mt-2 text-color-secondary">Perbarui setiap laporan secara terpisah.</p>
-        </div>
+        <PageHeader
+            section="Imports"
+            title="Upload Laporan"
+            description="Perbarui setiap laporan secara terpisah."
+        />
         <AppAlert type="success" :message="page.props.flash?.success" />
         <AppAlert type="error" :message="page.props.flash?.error" />
         <div v-if="importStatus" class="rounded-lg border p-4">
