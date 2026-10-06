@@ -256,7 +256,11 @@ function preventNonNumericPhoneInput(event: InputEvent) {
 .password-toggle::before {
     content: '';
     position: absolute;
-    inset: 0.25rem;
+    width: 2rem;
+    height: 1.15rem;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
     z-index: -1;
     border-radius: 0.2rem;
     background: var(--p-form-field-background);
