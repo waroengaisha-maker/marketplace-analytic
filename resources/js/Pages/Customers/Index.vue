@@ -13,6 +13,7 @@ import Message from 'primevue/message'
 import MultiSelect from 'primevue/multiselect'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
+import StatusBadge from '@/Components/StatusBadge.vue'
 import DateRangeFilter from '@/Components/DateRangeFilter.vue'
 import {
     AppDataTable,
@@ -540,7 +541,7 @@ const exportExcel = async () => {
                                     <span class="font-semibold text-slate-800">{{ historyData.order_number }}</span>
                                 </template>
                                 <template v-else-if="field === 'order_created_at'">{{ formatDate(historyData.order_created_at) }}</template>
-                                <Tag v-else-if="field === 'business_status'" :value="historyData.business_status" :severity="statusSeverity(historyData.business_status)" />
+                                <StatusBadge v-else-if="field === 'business_status'" :value="historyData.business_status" :severity="statusSeverity(historyData.business_status)" />
                                 <template v-else-if="field === 'order_status'">{{ historyData.order_status || '—' }}</template>
                                 <template v-else-if="field === 'product_name'">
                                     <span class="font-medium text-slate-700">{{ historyData.product_name }}</span>

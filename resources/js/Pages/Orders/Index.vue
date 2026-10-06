@@ -13,6 +13,7 @@ import Message from 'primevue/message'
 import MultiSelect from 'primevue/multiselect'
 import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
+import StatusBadge from '@/Components/StatusBadge.vue'
 import DateRangeFilter from '@/Components/DateRangeFilter.vue'
 import {
     AppDataTable,
@@ -690,7 +691,7 @@ const exportExcel = async () => {
                                     </template>
                                     <template v-else-if="field === 'order_created_at'">{{ formatDate(data.order_created_at) }}</template>
                                     <template v-else-if="field === 'buyer_username'">{{ data.buyer_username || '—' }}</template>
-                                    <Tag v-else-if="field === 'business_status'" :value="data.business_status" :severity="statusSeverity(data.business_status)" />
+                                    <StatusBadge v-else-if="field === 'business_status'" :value="data.business_status" :severity="statusSeverity(data.business_status)" />
                                     <template v-else-if="moneyFields.has(field)">{{ formatNominal(data[field]) }}</template>
                                     <template v-else>{{ formatQuantity(data[field]) }}</template>
                                 </template>
@@ -734,7 +735,7 @@ const exportExcel = async () => {
                 <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
                     <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{{ activeOrderNumber }}</span>
                     <span class="rounded-full bg-slate-100 px-3 py-1">{{ detailRows.length }} baris item</span>
-                    <Tag v-if="activeOrderStatus" :value="activeOrderStatus" :severity="statusSeverity(activeOrderStatus)" />
+                    <StatusBadge v-if="activeOrderStatus" :value="activeOrderStatus" :severity="statusSeverity(activeOrderStatus)" />
                     <span class="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800">Laba Bersih {{ formatNominal(detailTotals.laba) }}</span>
                 </div>
 
@@ -761,7 +762,7 @@ const exportExcel = async () => {
                         <template #empty>Detail tidak ditemukan.</template>
                         <Column v-for="[field, header] in selectedDetailColumns" :key="field" :field="field" :header="header">
                             <template #body="{ data: detailData }">
-                                <Tag v-if="field === 'hpp_status'" :value="hppStatusLabel(detailData.hpp_status)" :severity="hppStatusSeverity(detailData.hpp_status)" />
+                                <StatusBadge v-if="field === 'hpp_status'" :value="hppStatusLabel(detailData.hpp_status)" :severity="hppStatusSeverity(detailData.hpp_status)" />
                                 <template v-else-if="field === 'variation_name'">{{ detailData.variation_name || '—' }}</template>
                                 <template v-else-if="detailMoneyFields.has(field)">{{ formatNominal(detailData[field]) }}</template>
                                 <template v-else-if="field === 'net_quantity'">{{ formatQuantity(detailData.net_quantity) }}</template>
