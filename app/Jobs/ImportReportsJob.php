@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\ReportImportOperation;
-use App\Services\OrderReportImporter;
 use App\Services\IncomeReportImporter;
+use App\Services\OrderReportImporter;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -20,12 +20,15 @@ class ImportReportsJob implements ShouldQueue, ShouldBeUnique
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $timeout = 120;
+
     public int $tries = 1;
+
     public int $uniqueFor = 3600;
 
     public function __construct(
         public readonly int $operationId,
-    ) {}
+    ) {
+    }
 
     public function uniqueId(): string
     {
