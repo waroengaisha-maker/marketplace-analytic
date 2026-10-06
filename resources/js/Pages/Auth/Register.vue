@@ -31,7 +31,17 @@ const confirmationRequirements = computed(() => [
 ])
 
 const passwordRequirementsMet = computed(() =>
+    passwordRequirements.value.length === 5 &&
     passwordRequirements.value.every((requirement) => requirement.valid),
+)
+
+const registrationReady = computed(() =>
+    Boolean(form.name) &&
+    Boolean(form.username) &&
+    Boolean(form.email) &&
+    passwordRequirementsMet.value &&
+    Boolean(form.password_confirmation) &&
+    form.password === form.password_confirmation,
 )
 
 const passwordIsInvalid = computed(() =>
@@ -53,7 +63,7 @@ function submit() {
         return
     }
 
-    if (form.password !== form.password_confirmation) {
+    if (!form.password_confirmation || form.password !== form.password_confirmation) {
         clientError.value = 'Konfirmasi password tidak sama.'
         return
     }
@@ -166,7 +176,12 @@ function sanitizePhone(value: string) {
                             </li>
                         </ul>
                     </div>
-                    <Button type="submit" :label="form.processing ? 'Creating account...' : 'Create account'" :loading="form.processing" />
+                    <Button
+                        type="submit"
+                        :label="form.processing ? 'Creating account...' : 'Create account'"
+                        :loading="form.processing"
+                        :disabled="form.processing || !registrationReady"
+                    />
                 </form>
                 <Divider />
                 <p class="text-center text-sm">Already have an account? <Link href="/login" class="text-primary font-medium">Sign in</Link></p>
