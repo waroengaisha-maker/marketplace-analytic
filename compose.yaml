@@ -91,6 +91,16 @@ services:
         networks:
             - sail
 
+    mailpit:
+        profiles:
+            - mailpit
+        restart: unless-stopped
+        image: 'axllent/mailpit:latest'
+        ports:
+            - '8025:8025'
+        networks:
+            - sail
+
     adminer:
         restart: unless-stopped
         image: 'adminer:6.0.1'
