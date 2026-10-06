@@ -18,6 +18,17 @@ const passwordTouched = ref(false)
 const confirmationTouched = ref(false)
 const submitAttempted = ref(false)
 
+const passwordRequirements = computed(() => [
+    { label: 'At least 12 characters', valid: form.password.length >= 12 },
+    { label: 'Contains uppercase letter', valid: /[A-Z]/.test(form.password) },
+    { label: 'Contains lowercase letter', valid: /[a-z]/.test(form.password) },
+    { label: 'Contains number', valid: /\d/.test(form.password) },
+    { label: 'Contains special character', valid: /[^A-Za-z0-9]/.test(form.password) },
+])
+
+const confirmationRequirements = computed(() => [
+    { label: 'Password matches', valid: Boolean(form.password_confirmation) && form.password_confirmation === form.password },
+])
 
 const passwordIsInvalid = computed(() =>
     Boolean(form.errors.password) ||
@@ -115,6 +126,12 @@ function sanitizePhone(value: string) {
                                 @blur="passwordTouched = true"
                             />
                         </IconField>
+                        <ul class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password requirements">
+                            <li v-for="requirement in passwordRequirements" :key="requirement.label" class="flex items-center gap-2">
+                                <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle'" aria-hidden="true" />
+                                <span>{{ requirement.label }}</span>
+                            </li>
+                        </ul>
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="password_confirmation">Confirm password <span class="required-mark" aria-hidden="true">*</span></label>
@@ -133,6 +150,12 @@ function sanitizePhone(value: string) {
                                 @blur="confirmationTouched = true"
                             />
                         </IconField>
+                        <ul class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password confirmation requirements">
+                            <li v-for="requirement in confirmationRequirements" :key="requirement.label" class="flex items-center gap-2">
+                                <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle'" aria-hidden="true" />
+                                <span>{{ requirement.label }}</span>
+                            </li>
+                        </ul>
                     </div>
                     <Button type="submit" :label="form.processing ? 'Creating account...' : 'Create account'" :loading="form.processing" />
                 </form>
