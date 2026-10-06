@@ -5,7 +5,7 @@ type StatusBadgeSeverity = 'success' | 'secondary' | 'info' | 'warn' | 'danger' 
 
 withDefaults(defineProps<{
     value: string | number
-    severity?: StatusBadgeSeverity | null
+    severity?: StatusBadgeSeverity
     rounded?: boolean
     icon?: string | null
 }>(), {
