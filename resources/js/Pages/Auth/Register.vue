@@ -188,7 +188,7 @@ function sanitizePhone(value: string) {
                     </small>
                 </form>
                 <Divider />
-                <p class="text-center text-sm">Already have an account? <Link href="/login" class="text-primary font-medium">Sign in</Link></p>
+                <p class="text-center text-sm">Already have an account? <Link href="/login" class="register-link font-medium no-underline">Sign in</Link></p>
             </template>
         </Card>
     </main>
@@ -198,5 +198,13 @@ function sanitizePhone(value: string) {
 .required-mark {
     color: var(--p-primary-color);
     margin-left: 0.125rem;
+}
+
+.register-link {
+    color: var(--p-primary-color);
+}
+
+.register-link:hover {
+    color: var(--p-primary-color);
 }
 </style>
