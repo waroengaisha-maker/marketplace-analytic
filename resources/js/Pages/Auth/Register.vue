@@ -244,7 +244,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
 .password-toggle {
     position: absolute !important;
     top: 50% !important;
-    right: 1.25rem !important;
+    right: 0.75rem !important;
     z-index: 9999;
     width: 1.5rem;
     height: 1.5rem;
