@@ -31,3 +31,11 @@ Use it for non-interactive status/category indicators that currently duplicate P
 The component owns presentation only. Status-to-severity mapping remains outside the component.
 
 See `resources/js/Components/STATUS_BADGE_CONTRACT.md` for the detailed contract.
+
+## 2. EmptyState
+
+**Implementation:** `resources/js/Components/EmptyState.vue`
+
+Use it for empty/no-result presentation. The page owns the wording and domain meaning; the component owns layout and semantic theme styling.
+
+See `resources/js/Components/EMPTY_STATE_CONTRACT.md` for the detailed contract.
