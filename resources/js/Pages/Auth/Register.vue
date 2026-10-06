@@ -173,7 +173,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                                 variant="text"
                                 severity="secondary"
                                 rounded
-                                class="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 !p-0 text-color-secondary hover:bg-surface-100"
+                                class="password-toggle !p-0 text-color-secondary hover:bg-surface-100"
                                 :aria-label="passwordMasked ? 'Show password' : 'Hide password'"
                                 :aria-pressed="!passwordMasked"
                                 @mousedown.prevent
@@ -241,6 +241,17 @@ function preventNonNumericPhoneInput(event: InputEvent) {
 </template>
 
 <style scoped>
+.password-toggle {
+    position: absolute !important;
+    top: 50% !important;
+    right: 0.25rem !important;
+    z-index: 2;
+    width: 2.25rem;
+    height: 2.25rem;
+    transform: translateY(-50%);
+    margin: 0 !important;
+}
+
 .required-mark {
     color: var(--p-primary-color);
     margin-left: 0.125rem;
