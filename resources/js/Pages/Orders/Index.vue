@@ -728,7 +728,6 @@ const exportExcel = async () => {
         <div class="flex flex-col gap-3">
             <div v-if="detailLoading" class="flex items-center justify-center gap-3 p-8 text-color-secondary">
                 <LoadingState label="Memuat detail..." />
-                <span class="text-sm">Memuat detail...</span>
             </div>
 
             <template v-else-if="activeDetailsReady && detailVisible">
