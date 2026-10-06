@@ -1,6 +1,7 @@
 export { default as AppDataTable } from './AppDataTable.vue'
 export { default as AppDataTableToolbar } from './AppDataTableToolbar.vue'
 export { useDataTableContract } from './useDataTableContract'
-export type { TableColumnMeta, GlobalFilter } from './useDataTableContract'export { default as StatusBadge } from '../StatusBadge.vue'
+export type { TableColumnMeta, GlobalFilter } from './useDataTableContract'
+export { default as StatusBadge } from '../StatusBadge.vue'
 export { default as EmptyState } from '../EmptyState.vue'
 export { default as DataTableState } from './DataTableState.vue'
