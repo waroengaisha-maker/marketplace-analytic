@@ -12,8 +12,6 @@ import { computed, ref } from 'vue'
 
 const form = useForm({ name: '', username: '', email: '', phone: '', password: '', password_confirmation: '' })
 const clientError = ref('')
-const passwordMask = ref(true)
-const confirmationMask = ref(true)
 const passwordTouched = ref(false)
 const confirmationTouched = ref(false)
 const emailTouched = ref(false)
@@ -89,6 +87,12 @@ function submit() {
 function sanitizePhone(value: string) {
     form.phone = value.replace(/\D/g, '')
 }
+
+function preventNonNumericPhoneInput(event: InputEvent) {
+    if (event.data && /\D/.test(event.data)) {
+        event.preventDefault()
+    }
+}
 </script>
 
 <template>
@@ -136,9 +140,11 @@ function sanitizePhone(value: string) {
                                 v-model="form.phone"
                                 type="tel"
                                 inputmode="numeric"
+                                pattern="[0-9]*"
                                 autocomplete="tel"
                                 class="w-full"
                                 :invalid="Boolean(form.errors.phone)"
+                                @beforeinput="preventNonNumericPhoneInput"
                                 @input="sanitizePhone(($event.target as HTMLInputElement).value)"
                             />
                         </IconField>
@@ -153,8 +159,8 @@ function sanitizePhone(value: string) {
                                 v-model="form.password"
                                 input-class="w-full"
                                 :invalid="passwordIsInvalid"
-                                v-model:mask="passwordMask"
                                 :feedback="false"
+                                toggleMask
                                 autocomplete="new-password"
                                 required
                                 fluid
@@ -177,8 +183,8 @@ function sanitizePhone(value: string) {
                                 v-model="form.password_confirmation"
                                 input-class="w-full"
                                 :invalid="confirmationIsInvalid"
-                                v-model:mask="confirmationMask"
                                 :feedback="false"
+                                toggleMask
                                 autocomplete="new-password"
                                 required
                                 fluid
