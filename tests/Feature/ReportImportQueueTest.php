@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\AccountStatus;
 use App\Jobs\ImportReportsJob;
 use App\Models\ReportImportOperation;
 use App\Models\User;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Tests\TestCase;
+use RuntimeException;
 
 class ReportImportQueueTest extends TestCase
 {
@@ -24,7 +26,7 @@ class ReportImportQueueTest extends TestCase
         Storage::fake('local');
         Queue::fake();
         $user = User::factory()->create([
-            'account_status' => \App\Enums\AccountStatus::Active,
+            'account_status' => AccountStatus::Active,
         ]);
 
         $spreadsheet = new Spreadsheet();
@@ -114,7 +116,7 @@ class ReportImportQueueTest extends TestCase
         $income = $this->mock(IncomeReportImporter::class);
         $orders->shouldReceive('import')->once()->andThrow(new \RuntimeException('private SQL path'));
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(RuntimeException::class);
 
         try {
             (new ImportReportsJob($operation->id))->handle($orders, $income);
