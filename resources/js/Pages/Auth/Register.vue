@@ -250,8 +250,17 @@ function preventNonNumericPhoneInput(event: InputEvent) {
     height: 1.5rem;
     transform: translateY(-50%);
     margin: 0 !important;
-    border-radius: 0.25rem !important;
-    background: var(--p-form-field-background) !important;
+    background: transparent !important;
+}
+
+.password-toggle::before {
+    content: '';
+    position: absolute;
+    inset: 0.25rem;
+    z-index: -1;
+    border-radius: 0.2rem;
+    background: var(--p-form-field-background);
+}
 }
 
 :deep([data-pc-section="maskicon"]),
