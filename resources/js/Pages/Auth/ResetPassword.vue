@@ -81,7 +81,7 @@ function submit() {
         modal
         header="Password berhasil diperbarui"
         :closable="false"
-        :style="{ width: '28rem', maxWidth: 'calc(100vw - 2rem)' }"
+        :style="{ width: '36rem', maxWidth: 'calc(100vw - 2rem)' }"
     >
         <div class="flex flex-col items-center gap-4 py-2 text-center">
             <i class="pi pi-check-circle text-4xl text-primary" aria-hidden="true" />
