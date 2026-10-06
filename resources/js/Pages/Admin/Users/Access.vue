@@ -8,7 +8,7 @@ import Button from 'primevue/button'
 import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
 import Column from 'primevue/column'
-import Tag from 'primevue/tag'
+import StatusBadge from '@/Components/StatusBadge.vue'
 import { AppDataTable, AppDataTableToolbar, useDataTableContract, type TableColumnMeta } from '@/Components/DataTable'
 import { confirmAction } from '../../../utils/confirmAction'
 
@@ -181,7 +181,7 @@ const formatDate = (value: string | null) => value ? new Intl.DateTimeFormat('id
                 <Column v-for="[field, header] in selectedColumns" :key="field" :field="field" :header="header" sortable>
                     <template #body="{ data }">
                         <template v-if="field === 'name'"><div class="font-medium">{{ data.name }}</div><div class="text-xs text-color-secondary">{{ data.email }}</div><div class="text-xs text-color-secondary">@{{ data.username }}</div></template>
-                        <Tag v-else-if="field === 'status'" :value="data.status" :severity="statusSeverity(data.status)" />
+                        <StatusBadge v-else-if="field === 'status'" :value="data.status" :severity="statusSeverity(data.status)" />
                         <Tag v-else-if="field === 'subscription_status'" :value="data.subscription_status" :severity="statusSeverity(data.subscription_status)" />
                         <template v-else-if="field === 'payment_status'">{{ data.payment_status }}</template>
                         <template v-else>{{ formatDate(data.trial_ends_at) }}</template>
