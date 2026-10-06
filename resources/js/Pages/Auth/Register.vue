@@ -7,7 +7,7 @@ import InputText from 'primevue/inputtext'
 import InputPassword from 'primevue/inputpassword'
 import Button from 'primevue/button'
 import Divider from 'primevue/divider'
-import Message from 'primevue/message'
+import FeedbackMessage from '@/Components/FeedbackMessage.vue'
 import { computed, ref } from 'vue'
 
 const form = useForm({ name: '', username: '', email: '', phone: '', password: '', password_confirmation: '' })
@@ -105,7 +105,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
             <template #subtitle>Create your account</template>
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
-                    <Message v-if="clientError" severity="error">{{ clientError }}</Message>
+                    <FeedbackMessage v-if="clientError" severity="error" :message="clientError" />
                                         <div class="flex flex-col gap-2">
                         <label for="name">Name <span class="required-mark" aria-hidden="true">*</span></label>
                         <IconField iconPosition="left">
