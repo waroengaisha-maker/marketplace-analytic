@@ -11,9 +11,9 @@ import InputIcon from 'primevue/inputicon'
 import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import MultiSelect from 'primevue/multiselect'
-import ProgressSpinner from 'primevue/progressspinner'
 import Tag from 'primevue/tag'
 import StatusBadge from '@/Components/StatusBadge.vue'
+import LoadingState from '@/Components/LoadingState.vue'
 import DateRangeFilter from '@/Components/DateRangeFilter.vue'
 import {
     AppDataTable,
@@ -727,7 +727,7 @@ const exportExcel = async () => {
     >
         <div class="flex flex-col gap-3">
             <div v-if="detailLoading" class="flex items-center justify-center gap-3 p-8 text-color-secondary">
-                <ProgressSpinner style="width: 1.5rem; height: 1.5rem" aria-label="Memuat detail" />
+                <LoadingState label="Memuat detail..." />
                 <span class="text-sm">Memuat detail...</span>
             </div>
 
