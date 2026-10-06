@@ -408,7 +408,7 @@ const visibleRows = computed(() => props.rows || [])
                     </Button>
                     <i
                         v-tooltip.left="syncTemplateTooltip"
-                        class="pi pi-question-circle text-base text-slate-400 transition-colors hover:text-slate-600"
+                        class="pi pi-question-circle text-base text-color-secondary transition-colors hover:text-color"
                         aria-hidden="true"
                     />
                 </div>
@@ -422,7 +422,7 @@ const visibleRows = computed(() => props.rows || [])
         <Card>
             <template #content>
                 <div v-if="catalogSyncMessage" class="mb-3 text-sm">{{ catalogSyncMessage }}</div>
-                <div v-if="reallocationMessage" class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm">{{ reallocationMessage }}</div>
+                <div v-if="reallocationMessage" class="mb-3 rounded-lg border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 px-4 py-3 text-sm">{{ reallocationMessage }}</div>
                 <div v-if="saveFeedback.length > 0" class="mb-3 overflow-x-auto rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                     <p v-for="(message, index) in saveFeedback" :key="index" class="whitespace-pre-line">{{ message }}</p>
                 </div>
@@ -430,7 +430,7 @@ const visibleRows = computed(() => props.rows || [])
                     Belum ada template item. Periksa hasil import template item (baris pada template_item_rows) untuk akun ini.
                 </div>
 <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                    <div class="flex flex-wrap items-center gap-2 text-sm text-color-secondary">
                         <span class="rounded-full bg-slate-100 px-2.5 py-1 font-medium">{{ props.pagination.total }} baris</span>
                     </div>
                 </div>
@@ -447,7 +447,7 @@ const visibleRows = computed(() => props.rows || [])
             >
                 <template #filters>
                     <div class="w-full sm:w-56">
-                        <label class="mb-1 block text-xs font-medium uppercase tracking-[0.2em] text-slate-500">Status Match</label>
+                        <label class="mb-1 block text-xs font-medium uppercase tracking-[0.2em] text-color-secondary">Status Match</label>
                         <Select
                             v-model="statusFilter"
                             :options="statusFilterOptions"
@@ -471,7 +471,7 @@ const visibleRows = computed(() => props.rows || [])
                         </Button>
                         <i
                             v-tooltip.left="reallocateTooltip"
-                            class="pi pi-question-circle text-base text-slate-400 transition-colors hover:text-slate-600"
+                            class="pi pi-question-circle text-base text-color-secondary transition-colors hover:text-color"
                             aria-hidden="true"
                         />
                     </div>
@@ -535,14 +535,14 @@ const visibleRows = computed(() => props.rows || [])
                                 class="w-full"
                                 :disabled="!selectedTemplate[slotProps.data.id]"
                             />
-                            <div v-else-if="field === 'hpp'" class="min-w-[120px] font-semibold text-slate-800">
+                            <div v-else-if="field === 'hpp'" class="min-w-[120px] font-semibold text-color">
                                 {{ hppDisplayValue(slotProps.data) }}
                             </div>
                             <textarea
                                 v-else
                                 v-model="note[slotProps.data.id]"
                                 rows="2"
-                                class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-none"
+                                class="w-full rounded-xl border border-surface-300 bg-surface-0 px-3 py-2 text-sm text-color focus:border-primary focus:outline-none"
                                 placeholder="Alasan override manual"
                             />
                         </template>
