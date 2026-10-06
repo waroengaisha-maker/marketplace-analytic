@@ -244,13 +244,14 @@ function preventNonNumericPhoneInput(event: InputEvent) {
 .password-toggle {
     position: absolute !important;
     top: 50% !important;
-    right: 0.25rem !important;
+    right: 0.35rem !important;
     z-index: 9999;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2rem;
+    height: 2rem;
     transform: translateY(-50%);
     margin: 0 !important;
-    background: transparent !important;
+    border-radius: 0.375rem !important;
+    background: var(--p-form-field-background) !important;
 }
 
 :deep([data-pc-section="maskicon"]),
