@@ -87,8 +87,8 @@ class ExampleTest extends TestCase
             'username' => 'registered-user',
             'email' => 'registered@example.com',
             'phone' => '081234567890',
-            'password' => 'password',
-            'password_confirmation' => 'password',
+            'password' => 'Ab1!abcdefghij',
+            'password_confirmation' => 'Ab1!abcdefghij',
         ])->assertRedirect('/');
 
         $this->assertDatabaseHas('users', [
