@@ -27,7 +27,8 @@ class ShopeeSyncJob implements ShouldQueue, ShouldBeUnique
 
     public function __construct(
         public readonly int $operationId,
-    ) {}
+    ) {
+    }
 
     public function uniqueId(): string
     {
