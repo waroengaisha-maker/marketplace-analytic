@@ -155,18 +155,21 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                     <div class="flex flex-col gap-2">
                         <label for="password">Password <span class="required-mark" aria-hidden="true">*</span></label>
                         <div class="relative">
-                            <InputPassword
-                                id="password"
-                                v-model="form.password"
-                                :mask="passwordMasked"
-                                input-class="w-full pr-12"
-                                :invalid="passwordIsInvalid"
-                                :feedback="false"
-                                autocomplete="new-password"
-                                required
-                                fluid
-                                @blur="passwordTouched = true"
-                            />
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-lock" />
+                                <InputPassword
+                                    id="password"
+                                    v-model="form.password"
+                                    :mask="passwordMasked"
+                                    input-class="w-full pr-12"
+                                    :invalid="passwordIsInvalid"
+                                    :feedback="false"
+                                    autocomplete="new-password"
+                                    required
+                                    fluid
+                                    @blur="passwordTouched = true"
+                                />
+                            </IconField>
                             <Button
                                 type="button"
                                 :icon="passwordMasked ? 'pi pi-eye' : 'pi pi-eye-slash'"
@@ -190,18 +193,21 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                     <div class="flex flex-col gap-2">
                         <label for="password_confirmation">Confirm password <span class="required-mark" aria-hidden="true">*</span></label>
                         <div class="relative">
-                            <InputPassword
-                                id="password_confirmation"
-                                v-model="form.password_confirmation"
-                                :mask="confirmationMasked"
-                                input-class="w-full pr-12"
-                                :invalid="confirmationIsInvalid"
-                                :feedback="false"
-                                autocomplete="new-password"
-                                required
-                                fluid
-                                @blur="confirmationTouched = true"
-                            />
+                            <IconField iconPosition="left">
+                                <InputIcon class="pi pi-lock" />
+                                <InputPassword
+                                    id="password_confirmation"
+                                    v-model="form.password_confirmation"
+                                    :mask="confirmationMasked"
+                                    input-class="w-full pr-12"
+                                    :invalid="confirmationIsInvalid"
+                                    :feedback="false"
+                                    autocomplete="new-password"
+                                    required
+                                    fluid
+                                    @blur="confirmationTouched = true"
+                                />
+                            </IconField>
                             <Button
                                 type="button"
                                 :icon="confirmationMasked ? 'pi pi-eye' : 'pi pi-eye-slash'"
