@@ -152,12 +152,12 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="password">Password <span class="required-mark" aria-hidden="true">*</span></label>
-                        <IconField iconPosition="left">
-                            <InputIcon class="pi pi-lock" />
+                        <div class="relative">
+                            <i class="pi pi-lock absolute left-3 top-1/2 z-10 -translate-y-1/2 text-color-secondary" aria-hidden="true" />
                             <InputPassword
                                 id="password"
                                 v-model="form.password"
-                                input-class="w-full"
+                                input-class="w-full pl-10"
                                 :invalid="passwordIsInvalid"
                                 :feedback="false"
                                 toggleMask
@@ -166,7 +166,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                                 fluid
                                 @blur="passwordTouched = true"
                             />
-                        </IconField>
+                        </div>
                         <ul class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password requirements">
                             <li v-for="requirement in passwordRequirements" :key="requirement.label" class="flex items-center gap-2">
                                 <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle'" aria-hidden="true" />
@@ -176,8 +176,8 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="password_confirmation">Confirm password <span class="required-mark" aria-hidden="true">*</span></label>
-                        <IconField iconPosition="left">
-                            <InputIcon class="pi pi-lock" />
+                        <div class="relative">
+                            <i class="pi pi-lock absolute left-3 top-1/2 z-10 -translate-y-1/2 text-color-secondary" aria-hidden="true" />
                             <InputPassword
                                 id="password_confirmation"
                                 v-model="form.password_confirmation"
@@ -190,7 +190,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                                 fluid
                                 @blur="confirmationTouched = true"
                             />
-                        </IconField>
+                        </div>
                         <ul class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password confirmation requirements">
                             <li v-for="requirement in confirmationRequirements" :key="requirement.label" class="flex items-center gap-2">
                                 <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle'" aria-hidden="true" />
