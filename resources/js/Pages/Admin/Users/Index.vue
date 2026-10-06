@@ -8,7 +8,7 @@ import Card from 'primevue/card'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import Column from 'primevue/column'
-import Tag from 'primevue/tag'
+import StatusBadge from '@/Components/StatusBadge.vue'
 import { AppDataTable, AppDataTableToolbar, useDataTableContract, type TableColumnMeta } from '@/Components/DataTable'
 import { confirmAction } from '../../../utils/confirmAction'
 
@@ -154,7 +154,7 @@ const roleSeverity = (role: string) => role === 'super_admin' ? 'danger' : role 
                 <Column v-for="[field, header] in selectedColumns" :key="field" :field="field" :header="header" sortable>
                     <template #body="{ data }">
                         <template v-if="field === 'name'"><div class="font-medium">{{ data.name }}</div><div class="text-xs text-color-secondary">{{ data.email }}</div><div class="text-xs text-color-secondary">@{{ data.username }}</div></template>
-                        <Tag v-else :value="data.role" :severity="roleSeverity(data.role)" />
+                        <StatusBadge v-else :value="data.role" :severity="roleSeverity(data.role)" />
                     </template>
                 </Column>
                 <Column header="Aksi" :exportable="false">
