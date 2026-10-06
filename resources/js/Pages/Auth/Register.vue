@@ -30,9 +30,13 @@ const confirmationRequirements = computed(() => [
     { label: 'Password matches', valid: Boolean(form.password_confirmation) && form.password_confirmation === form.password },
 ])
 
+const passwordRequirementsMet = computed(() =>
+    passwordRequirements.value.every((requirement) => requirement.valid),
+)
+
 const passwordIsInvalid = computed(() =>
     Boolean(form.errors.password) ||
-    (passwordTouched.value || submitAttempted.value) && !form.password,
+    (passwordTouched.value || submitAttempted.value) && !passwordRequirementsMet.value,
 )
 const confirmationIsInvalid = computed(() =>
     Boolean(form.errors.password_confirmation) ||
@@ -43,6 +47,11 @@ const confirmationIsInvalid = computed(() =>
 function submit() {
     clientError.value = ''
     submitAttempted.value = true
+
+    if (!passwordRequirementsMet.value) {
+        clientError.value = 'Password belum memenuhi semua persyaratan.'
+        return
+    }
 
     if (form.password !== form.password_confirmation) {
         clientError.value = 'Konfirmasi password tidak sama.'
