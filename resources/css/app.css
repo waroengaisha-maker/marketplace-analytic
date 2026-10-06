@@ -180,6 +180,10 @@ a {
     font-size: 1.25rem;
 }
 
+.layout-topbar-action span {
+    display: none;
+}
+
 .layout-topbar-action.layout-menu-button {
     margin-right: .5rem;
 }
