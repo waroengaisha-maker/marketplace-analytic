@@ -4,15 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class RegistrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * @dataProvider incompletePasswordProvider
-     */
+    #[DataProvider('incompletePasswordProvider')]
     public function test_registration_rejects_passwords_that_do_not_meet_all_requirements(string $password): void
     {
         $this->post('/register', [
