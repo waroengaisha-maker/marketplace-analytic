@@ -19,7 +19,7 @@ const form = useForm({
     password_confirmation: '',
 })
 const clientError = ref('')
-const resetSuccess = ref(false)
+const resetSuccess = ref(Boolean(page.props.flash?.success))
 const passwordTouched = ref(false)
 const confirmationTouched = ref(false)
 const submitAttempted = ref(false)
