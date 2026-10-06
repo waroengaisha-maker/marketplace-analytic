@@ -173,8 +173,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                                 variant="text"
                                 severity="secondary"
                                 rounded
-                                size="small"
-                                class="absolute right-1 top-1/2 -translate-y-1/2"
+                                class="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 !p-0 text-color-secondary hover:bg-surface-100"
                                 :aria-label="passwordMasked ? 'Show password' : 'Hide password'"
                                 :aria-pressed="!passwordMasked"
                                 @mousedown.prevent
@@ -209,8 +208,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                                 variant="text"
                                 severity="secondary"
                                 rounded
-                                size="small"
-                                class="absolute right-1 top-1/2 -translate-y-1/2"
+                                class="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 !p-0 text-color-secondary hover:bg-surface-100"
                                 :aria-label="confirmationMasked ? 'Show password' : 'Hide password'"
                                 :aria-pressed="!confirmationMasked"
                                 @mousedown.prevent
