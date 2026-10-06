@@ -12,8 +12,7 @@ class ResetPasswordNotification extends Notification
 
     public function __construct(
         private readonly string $token,
-    ) {
-    }
+    ) {}
 
     /**
      * @return array<int, string>
