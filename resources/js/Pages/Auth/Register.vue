@@ -16,6 +16,7 @@ const passwordMask = ref(true)
 const confirmationMask = ref(true)
 const passwordTouched = ref(false)
 const confirmationTouched = ref(false)
+const emailTouched = ref(false)
 const submitAttempted = ref(false)
 
 const passwordRequirements = computed(() => [
@@ -35,13 +36,22 @@ const passwordRequirementsMet = computed(() =>
     passwordRequirements.value.every((requirement) => requirement.valid),
 )
 
+const emailIsValid = computed(() =>
+    /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()),
+)
+
 const registrationReady = computed(() =>
     Boolean(form.name) &&
     Boolean(form.username) &&
-    Boolean(form.email) &&
+    emailIsValid.value &&
     passwordRequirementsMet.value &&
     Boolean(form.password_confirmation) &&
     form.password === form.password_confirmation,
+)
+
+const emailIsInvalid = computed(() =>
+    Boolean(form.errors.email) ||
+    (emailTouched.value || submitAttempted.value) && !emailIsValid.value,
 )
 
 const passwordIsInvalid = computed(() =>
@@ -57,6 +67,11 @@ const confirmationIsInvalid = computed(() =>
 function submit() {
     clientError.value = ''
     submitAttempted.value = true
+
+    if (!emailIsValid.value) {
+        clientError.value = 'Masukkan alamat email yang valid.'
+        return
+    }
 
     if (!passwordRequirementsMet.value) {
         clientError.value = 'Password belum memenuhi semua persyaratan.'
@@ -107,9 +122,10 @@ function sanitizePhone(value: string) {
                         <label for="email">Email <span class="required-mark" aria-hidden="true">*</span></label>
                         <IconField iconPosition="left">
                             <InputIcon class="pi pi-envelope" />
-                            <InputText id="email" v-model="form.email" type="email" autocomplete="email" class="w-full" :invalid="Boolean(form.errors.email) || (submitAttempted && !form.email)" required />
+                            <InputText id="email" v-model="form.email" type="email" autocomplete="email" class="w-full" :invalid="emailIsInvalid" required @blur="emailTouched = true" />
                         </IconField>
                         <small v-if="form.errors.email" class="p-error">{{ form.errors.email }}</small>
+                        <small v-else-if="emailIsInvalid" class="p-error">Masukkan alamat email yang valid.</small>
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="phone">Nomor handphone (opsional)</label>
