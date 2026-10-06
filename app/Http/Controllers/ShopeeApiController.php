@@ -28,7 +28,8 @@ class ShopeeApiController extends Controller
         private readonly ShopeeApiClientFactory $clientFactory,
         private readonly ShopeeOAuthService $oauthService,
         private readonly ShopeeSyncService $syncService,
-    ) {}
+    ) {
+    }
 
     // Production error handling is intentionally sanitized at the controller boundary.
     public function index(ShopeeApiResearchService $service, Request $request)
