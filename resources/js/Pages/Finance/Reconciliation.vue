@@ -11,7 +11,7 @@ import Toolbar from 'primevue/toolbar'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Column from 'primevue/column'
-import Tag from 'primevue/tag'
+import StatusBadge from '@/Components/StatusBadge.vue'
 import Popover from 'primevue/popover'
 import FeedbackMessage from '@/Components/FeedbackMessage.vue'
 import { AppDataTable, useDataTableContract } from '@/Components/DataTable'
@@ -690,7 +690,7 @@ function onFilter() {
                             </div>
                         </template>
                         <template #body="{ data }">
-                            <Tag v-if="field === 'business_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
+                            <StatusBadge v-if="field === 'business_status'" :value="orderCategory(data)" :severity="severity(orderCategory(data))" />
                             <Tag v-else-if="field === 'hpp_status'" :value="hppStatusLabel(rowHppStatus(data))" :severity="hppStatusSeverity(rowHppStatus(data))" />
                             <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
                             <span v-else-if="field === 'hpp'">
