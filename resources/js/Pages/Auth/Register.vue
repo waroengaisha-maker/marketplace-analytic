@@ -208,7 +208,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                                 variant="text"
                                 severity="secondary"
                                 rounded
-                                class="absolute right-1 top-1/2 h-9 w-9 -translate-y-1/2 !p-0 text-color-secondary hover:bg-surface-100"
+                                class="password-toggle !p-0 text-color-secondary hover:bg-surface-100"
                                 :aria-label="confirmationMasked ? 'Show password' : 'Hide password'"
                                 :aria-pressed="!confirmationMasked"
                                 @mousedown.prevent
@@ -250,6 +250,13 @@ function preventNonNumericPhoneInput(event: InputEvent) {
     height: 2.25rem;
     transform: translateY(-50%);
     margin: 0 !important;
+}
+
+:deep([data-pc-section="maskicon"]),
+:deep([data-pc-section="unmaskicon"]),
+:deep(.p-password-toggle-mask-icon),
+:deep(.p-inputpassword-toggle-mask-icon) {
+    display: none !important;
 }
 
 .required-mark {
