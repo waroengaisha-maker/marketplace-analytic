@@ -40,6 +40,15 @@ const emailIsValid = computed(() =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()),
 )
 
+const formReady = computed(() =>
+    Boolean(form.name) &&
+    Boolean(form.username) &&
+    emailIsValid.value &&
+    passwordRequirementsMet.value &&
+    Boolean(form.password_confirmation) &&
+    form.password === form.password_confirmation,
+)
+
 const emailIsInvalid = computed(() =>
     Boolean(form.errors.email) ||
     (emailTouched.value || submitAttempted.value) && !emailIsValid.value,
@@ -221,9 +230,9 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                         type="submit"
                         :label="form.processing ? 'Creating account...' : 'Create account'"
                         :loading="form.processing"
-                        :disabled="form.processing || !form.name || !form.username || !emailIsValid || !passwordRequirementsMet || !form.password_confirmation || form.password !== form.password_confirmation"
+                        :disabled="form.processing || !formReady"
                     />
-                    <small v-if="(!form.name || !form.username || !emailIsValid || !passwordRequirementsMet || !form.password_confirmation || form.password !== form.password_confirmation) && !form.processing" class="flex items-start justify-center gap-2 text-center text-color-secondary">
+                    <small v-if="!formReady && !form.processing" class="flex items-start justify-center gap-2 text-center text-color-secondary">
                         <i class="pi pi-info-circle mt-0.5 shrink-0" aria-hidden="true" />
                         <span>Complete all required fields, fulfill all password requirements, and make sure the passwords match to enable account creation.</span>
                     </small>
