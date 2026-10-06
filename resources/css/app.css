@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-@custom-variant dark (&:where([class*='app-dark'], [class*='app-dark'] *));
+@custom-variant dark (&:where(.app-dark, .app-dark *));
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -37,7 +37,7 @@
     --surface-ground: var(--p-surface-100);
 }
 
-:root[class*='app-dark'] {
+:root.app-dark {
     --surface-ground: var(--p-surface-950);
 }
 
@@ -265,10 +265,6 @@ a {
     background-color: var(--surface-hover);
 }
 
-
-:root:not([class*='app-dark']) .layout-sidebar {
-    background: #fff;
-}
 
 :root:not([class*='app-dark']) .layout-menu .layout-root-menuitem > .layout-menuitem-root-text {
     color: var(--text-color);

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import ToggleSwitch from 'primevue/toggleswitch'
 import { confirmAction } from '../utils/confirmAction'
+import { useTheme } from '../composables/useTheme'
 
 type AuthUser = {
     role?: string
@@ -30,7 +31,6 @@ type NavigationSection = {
 const page = usePage<AppPageProps>()
 const mobileMenuActive = ref(false)
 const staticMenuInactive = ref(false)
-const darkMode = ref(false)
 const accountOpen = ref(false)
 const isNavigating = ref(false)
 const logout = useForm({})
@@ -43,10 +43,7 @@ const removeNavigationFinishListener = router.on('finish', () => {
     isNavigating.value = false
 })
 
-const applyDarkMode = (enabled: boolean) => {
-    document.documentElement.classList.toggle('app-dark', enabled)
-    localStorage.setItem('marketplace-dark-mode', enabled ? 'true' : 'false')
-}
+const { isDarkTheme, toggleDarkMode } = useTheme()
 
 const isDesktop = () => window.innerWidth > 991
 
@@ -176,8 +173,6 @@ const submitLogout = () => {
 }
 
 onMounted(() => {
-    darkMode.value = localStorage.getItem('marketplace-dark-mode') === 'true'
-    applyDarkMode(darkMode.value)
     window.addEventListener('resize', handleResize)
 })
 
@@ -220,10 +215,10 @@ onUnmounted(() => {
                         <button
                             type="button"
                             class="layout-topbar-action"
-                            :aria-label="darkMode ? 'Matikan dark mode' : 'Aktifkan dark mode'"
-                            @click="darkMode = !darkMode; applyDarkMode(darkMode)"
+                            :aria-label="isDarkTheme ? 'Matikan dark mode' : 'Aktifkan dark mode'"
+                            @click="toggleDarkMode"
                         >
-                            <i :class="['pi', darkMode ? 'pi-moon' : 'pi-sun']" aria-hidden="true" />
+                            <i :class="['pi', isDarkTheme ? 'pi-moon' : 'pi-sun']" aria-hidden="true" />
                         </button>
                     </div>
                 </div>

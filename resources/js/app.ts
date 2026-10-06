@@ -7,6 +7,9 @@ import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
 import Tooltip from 'primevue/tooltip'
 import 'primeicons/primeicons.css'
+import { initializeTheme } from './composables/useTheme'
+
+initializeTheme()
 
 createInertiaApp({
     title: (title) => `${title} - Marketplace Analytics`,
@@ -31,7 +34,7 @@ createInertiaApp({
                 theme: {
                     preset: Aura,
                     options: {
-                        darkModeSelector: '.dark',
+                        darkModeSelector: '.app-dark',
                     },
                 },
             })
