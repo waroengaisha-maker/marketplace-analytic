@@ -10,6 +10,7 @@ const page = usePage<{ status?: string }>()
 const form = useForm({ email: '' })
 const emailTouched = ref(false)
 const submitAttempted = ref(false)
+const successMessage = ref('')
 
 const emailIsValid = computed(() =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()),
@@ -22,6 +23,7 @@ const emailIsInvalid = computed(() =>
 
 function submit() {
     submitAttempted.value = true
+    successMessage.value = ''
 
     if (!emailIsValid.value) {
         return
@@ -29,6 +31,9 @@ function submit() {
 
     form.post('/forgot-password', {
         preserveScroll: true,
+        onSuccess: () => {
+            successMessage.value = page.props.status ?? 'Link reset password telah dikirim ke email Anda.'
+        },
     })
 }
 </script>
@@ -44,12 +49,12 @@ function submit() {
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
                     <Message
-                        v-if="page.props.status"
+                        v-if="successMessage"
                         severity="success"
                         variant="simple"
                         icon="pi pi-check-circle"
                     >
-                        {{ page.props.status }}
+                        {{ successMessage }}
                     </Message>
 
                     <Message
