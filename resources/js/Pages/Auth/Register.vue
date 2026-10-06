@@ -133,7 +133,6 @@ function sanitizePhone(value: string) {
                                 @blur="confirmationTouched = true"
                             />
                         </IconField>
-                        <small id="password-confirmation-help" class="text-color-secondary">Harus sama dengan password.</small>
                     </div>
                     <Button type="submit" :label="form.processing ? 'Creating account...' : 'Create account'" :loading="form.processing" />
                 </form>
