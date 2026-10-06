@@ -26,7 +26,7 @@ class PasswordResetTest extends TestCase
         $this->post('/forgot-password', ['email' => $user->email])
             ->assertRedirect();
 
-        Notification::assertSentTo($user, ResetPassword::class);
+        Notification::assertSentTo($user, ResetPasswordNotification::class);
     }
 
     public function test_reset_password_page_receives_token_and_email(): void
