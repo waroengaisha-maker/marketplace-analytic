@@ -173,14 +173,14 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                                 variant="text"
                                 severity="secondary"
                                 rounded
-                                class="password-toggle !p-0 text-color-secondary hover:bg-surface-100"
+                                class="password-toggle !p-0 text-color-secondary"
                                 :aria-label="passwordMasked ? 'Show password' : 'Hide password'"
                                 :aria-pressed="!passwordMasked"
                                 @mousedown.prevent
                                 @click="passwordMasked = !passwordMasked"
                             />
                         </div>
-                        <ul class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password requirements">
+                        <ul v-if="form.password" class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password requirements">
                             <li v-for="requirement in passwordRequirements" :key="requirement.label" class="flex items-center gap-2">
                                 <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle'" aria-hidden="true" />
                                 <span>{{ requirement.label }}</span>
@@ -215,7 +215,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                                 @click="confirmationMasked = !confirmationMasked"
                             />
                         </div>
-                        <ul class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password confirmation requirements">
+                        <ul v-if="form.password_confirmation" class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password confirmation requirements">
                             <li v-for="requirement in confirmationRequirements" :key="requirement.label" class="flex items-center gap-2">
                                 <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle'" aria-hidden="true" />
                                 <span>{{ requirement.label }}</span>
