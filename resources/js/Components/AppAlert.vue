@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import Message from 'primevue/message'
+import FeedbackMessage from './FeedbackMessage.vue'
 
 defineProps<{ type: 'success' | 'error'; message?: string }>()
 </script>
 
 <template>
-    <Message v-if="message" class="mb-4" :severity="type === 'success' ? 'success' : 'error'" :closable="false">
-        {{ message }}
-    </Message>
+    <FeedbackMessage
+        v-if="message"
+        class="mb-4"
+        :severity="type === 'success' ? 'success' : 'error'"
+        :message="message"
+    />
 </template>
