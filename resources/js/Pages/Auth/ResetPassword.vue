@@ -7,6 +7,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import Dialog from 'primevue/dialog'
 import { computed, ref } from 'vue'
 
 const props = defineProps<{ email: string; token: string }>()
@@ -18,6 +19,7 @@ const form = useForm({
     password_confirmation: '',
 })
 const clientError = ref('')
+const resetSuccess = ref(false)
 const passwordTouched = ref(false)
 const confirmationTouched = ref(false)
 const submitAttempted = ref(false)
@@ -62,12 +64,38 @@ function submit() {
         return
     }
 
-    form.post('/reset-password')
+    form.post('/reset-password', {
+        preserveScroll: true,
+        onSuccess: () => {
+            resetSuccess.value = true
+        },
+    })
 }
 </script>
 
 <template>
     <Head title="Reset password" />
+
+    <Dialog
+        v-model:visible="resetSuccess"
+        modal
+        header="Password berhasil diperbarui"
+        :closable="false"
+        :style="{ width: '28rem', maxWidth: 'calc(100vw - 2rem)' }"
+    >
+        <div class="flex flex-col items-center gap-4 py-2 text-center">
+            <i class="pi pi-check-circle text-4xl text-primary" aria-hidden="true" />
+            <p class="m-0 text-color-secondary">
+                Password Anda berhasil diubah. Silakan login menggunakan password baru Anda.
+            </p>
+            <Button
+                label="Go to Login"
+                icon="pi pi-sign-in"
+                class="w-full"
+                @click="router.visit('/login')"
+            />
+        </div>
+    </Dialog>
 
     <main class="flex min-h-screen items-center justify-center bg-surface-50 p-4">
         <Card class="w-full max-w-md">
