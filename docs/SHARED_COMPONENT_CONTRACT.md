@@ -39,3 +39,11 @@ See `resources/js/Components/STATUS_BADGE_CONTRACT.md` for the detailed contract
 Use it for empty/no-result presentation. The page owns the wording and domain meaning; the component owns layout and semantic theme styling.
 
 See `resources/js/Components/EMPTY_STATE_CONTRACT.md` for the detailed contract.
+
+## 3. DataTableState
+
+**Implementation:** `resources/js/Components/DataTable/DataTableState.vue`
+
+Use it for standardized loading, empty, and error presentation around tabular data. `AppDataTable` uses it automatically for its default loading and empty states; page-specific wording may still override the named slots when needed.
+
+See `resources/js/Components/DataTable/DATA_TABLE_STATE_CONTRACT.md` for the detailed contract.

@@ -11,7 +11,7 @@ Setiap halaman list/tabel di aplikasi ini **wajib** memakai komponen `AppDataTab
 - `size="large"`, `scrollable + scroll-height="flex"`
 - wrapper scroll `height: min(70vh, 48rem)` + kartu border rounded
 - `table-style` default `min-width: 108rem` (override via prop `table-style-min-width`)
-- **Overlay loading** — prop `:loading`; komponen otomatis menampilkan spinner overlay saat `loading` true. Gunakan `isLoading` dari `useDataTableContract()` yang mengikuti event Inertia `router.on('start'/'finish')`.
+- **Overlay loading** — prop `:loading`; komponen otomatis menampilkan `DataTableState` state `loading` saat `loading` true. Gunakan `isLoading` dari `useDataTableContract()` yang mengikuti event Inertia `router.on('start'/'finish')`.
 - `exportCSV()` di-expose dari komponen (untuk tombol export).
 - **Multiple selection** didukung penuh — `AppDataTable` mewariskan semua attr ke `DataTable` (termasuk `v-model:selection`, `selection-mode`, `data-key`), dan `useDataTableContract()` sudah menyediakan `selectedRows`. Lihat bagian "Multiple selection" di bawah.
 

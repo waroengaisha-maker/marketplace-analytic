@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import DataTable from 'primevue/datatable'
-import ProgressSpinner from 'primevue/progressspinner'
 import { ref } from 'vue'
+import DataTableState from './DataTableState.vue'
 
 defineOptions({ inheritAttrs: false })
 
@@ -40,16 +40,13 @@ defineExpose({ exportCSV })
         v-bind="$attrs"
     >
         <slot />
-        <template v-if="$slots.empty" #empty>
-            <slot name="empty" />
+        <template #empty>
+            <slot v-if="$slots.empty" name="empty" />
+            <DataTableState v-else state="empty" title="Tidak ada data" />
         </template>
         <template #loading>
-            <slot name="loading">
-                <div class="flex h-full min-h-40 w-full items-center justify-center gap-3 bg-surface-0/60 p-8 text-color-secondary backdrop-blur-[1px]">
-                    <ProgressSpinner style="width: 2rem; height: 2rem" aria-label="Memuat data" />
-                    <span class="text-sm">Memuat data...</span>
-                </div>
-            </slot>
+            <slot v-if="$slots.loading" name="loading" />
+            <DataTableState v-else state="loading" title="Memuat data..." />
         </template>
     </DataTable>
 </template>
