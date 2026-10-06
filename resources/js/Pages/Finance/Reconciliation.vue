@@ -694,7 +694,7 @@ function onFilter() {
                             <StatusBadge v-else-if="field === 'hpp_status'" :value="hppStatusLabel(rowHppStatus(data))" :severity="hppStatusSeverity(rowHppStatus(data))" />
                             <span v-else-if="field === 'order_product_name'">{{ exportValue(data, field) }}</span>
                             <span v-else-if="field === 'hpp'">
-                                <Tag v-if="rowHppStatus(data) !== 'ok'" :value="hppStatusLabel(rowHppStatus(data))" severity="warn" icon="pi pi-exclamation-triangle" />
+                                <StatusBadge v-if="rowHppStatus(data) !== 'ok'" :value="hppStatusLabel(rowHppStatus(data))" severity="warn" icon="pi pi-exclamation-triangle" />
                                 <span v-else>{{ formatNominal(data[field]) }}</span>
                             </span>
                             <span v-else-if="money.includes(field)">{{ formatNominal(data[field]) }}</span>
