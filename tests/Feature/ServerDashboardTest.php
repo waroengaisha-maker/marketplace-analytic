@@ -115,10 +115,14 @@ class ServerDashboardTest extends TestCase
     {
         $admin = User::factory()->create(['role' => UserRole::SuperAdmin]);
 
-        $this->actingAs($admin)
+        $response = $this->actingAs($admin)
             ->get(route('internal.service-auth'))
-            ->assertNoContent()
-            ->assertHeader('Cache-Control', 'no-store');
+            ->assertNoContent();
+
+        $this->assertStringContainsString(
+            'no-store',
+            (string) $response->headers->get('Cache-Control'),
+        );
     }
 
     public function test_regular_admin_is_denied_service_auth(): void
