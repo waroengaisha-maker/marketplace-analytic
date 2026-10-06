@@ -16,6 +16,8 @@ const passwordTouched = ref(false)
 const confirmationTouched = ref(false)
 const emailTouched = ref(false)
 const submitAttempted = ref(false)
+const passwordMasked = ref(true)
+const confirmationMasked = ref(true)
 
 const passwordRequirements = computed(() => [
     { label: 'At least 12 characters', valid: form.password.length >= 12 },
@@ -152,18 +154,33 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="password">Password <span class="required-mark" aria-hidden="true">*</span></label>
-                        <InputPassword
-                            id="password"
-                            v-model="form.password"
-                            input-class="w-full"
-                            :invalid="passwordIsInvalid"
-                            :feedback="false"
-                            toggleMask
-                            autocomplete="new-password"
-                            required
-                            fluid
-                            @blur="passwordTouched = true"
-                        />
+                        <div class="relative">
+                            <InputPassword
+                                id="password"
+                                v-model="form.password"
+                                :mask="passwordMasked"
+                                input-class="w-full pr-12"
+                                :invalid="passwordIsInvalid"
+                                :feedback="false"
+                                autocomplete="new-password"
+                                required
+                                fluid
+                                @blur="passwordTouched = true"
+                            />
+                            <Button
+                                type="button"
+                                :icon="passwordMasked ? 'pi pi-eye' : 'pi pi-eye-slash'"
+                                variant="text"
+                                severity="secondary"
+                                rounded
+                                size="small"
+                                class="absolute right-1 top-1/2 -translate-y-1/2"
+                                :aria-label="passwordMasked ? 'Show password' : 'Hide password'"
+                                :aria-pressed="!passwordMasked"
+                                @mousedown.prevent
+                                @click="passwordMasked = !passwordMasked"
+                            />
+                        </div>
                         <ul class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password requirements">
                             <li v-for="requirement in passwordRequirements" :key="requirement.label" class="flex items-center gap-2">
                                 <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle'" aria-hidden="true" />
@@ -173,18 +190,33 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                     </div>
                     <div class="flex flex-col gap-2">
                         <label for="password_confirmation">Confirm password <span class="required-mark" aria-hidden="true">*</span></label>
-                        <InputPassword
-                            id="password_confirmation"
-                            v-model="form.password_confirmation"
-                            input-class="w-full"
-                            :invalid="confirmationIsInvalid"
-                            :feedback="false"
-                            toggleMask
-                            autocomplete="new-password"
-                            required
-                            fluid
-                            @blur="confirmationTouched = true"
-                        />
+                        <div class="relative">
+                            <InputPassword
+                                id="password_confirmation"
+                                v-model="form.password_confirmation"
+                                :mask="confirmationMasked"
+                                input-class="w-full pr-12"
+                                :invalid="confirmationIsInvalid"
+                                :feedback="false"
+                                autocomplete="new-password"
+                                required
+                                fluid
+                                @blur="confirmationTouched = true"
+                            />
+                            <Button
+                                type="button"
+                                :icon="confirmationMasked ? 'pi pi-eye' : 'pi pi-eye-slash'"
+                                variant="text"
+                                severity="secondary"
+                                rounded
+                                size="small"
+                                class="absolute right-1 top-1/2 -translate-y-1/2"
+                                :aria-label="confirmationMasked ? 'Show password' : 'Hide password'"
+                                :aria-pressed="!confirmationMasked"
+                                @mousedown.prevent
+                                @click="confirmationMasked = !confirmationMasked"
+                            />
+                        </div>
                         <ul class="m-0 p-0 list-none flex flex-col gap-1 text-sm text-color-secondary" aria-label="Password confirmation requirements">
                             <li v-for="requirement in confirmationRequirements" :key="requirement.label" class="flex items-center gap-2">
                                 <i :class="requirement.valid ? 'pi pi-check text-primary' : 'pi pi-circle'" aria-hidden="true" />
