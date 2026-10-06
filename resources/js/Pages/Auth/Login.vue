@@ -5,7 +5,7 @@ import Checkbox from 'primevue/checkbox'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import Message from 'primevue/message'
+import FeedbackMessage from '@/Components/FeedbackMessage.vue'
 import Password from 'primevue/password'
 
 const form = useForm({
@@ -58,15 +58,7 @@ function submit() {
                         <span class="text-muted-color font-medium">Sign in to continue</span>
                     </div>
 
-                    <Message
-                        v-if="form.errors.login"
-                        severity="error"
-                        variant="simple"
-                        icon="pi pi-exclamation-circle"
-                        class="mb-4 justify-center text-center"
-                    >
-                        {{ form.errors.login }}
-                    </Message>
+                    <FeedbackMessage v-if="form.errors.login" severity="error" variant="simple" icon="pi pi-exclamation-circle" class="mb-4 justify-center text-center" :message="form.errors.login" />
 
                     <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email Address</label>
                     <IconField class="w-full mb-8">
