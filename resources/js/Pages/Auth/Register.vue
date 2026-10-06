@@ -40,15 +40,6 @@ const emailIsValid = computed(() =>
     /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()),
 )
 
-const registrationReady = computed(() =>
-    Boolean(form.name) &&
-    Boolean(form.username) &&
-    emailIsValid.value &&
-    passwordRequirementsMet.value &&
-    Boolean(form.password_confirmation) &&
-    form.password === form.password_confirmation,
-)
-
 const emailIsInvalid = computed(() =>
     Boolean(form.errors.email) ||
     (emailTouched.value || submitAttempted.value) && !emailIsValid.value,
@@ -106,9 +97,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
                     <Message v-if="clientError" severity="error">{{ clientError }}</Message>
-                    <Message v-if="form.errors.password" severity="error">{{ form.errors.password }}</Message>
-                    <Message v-if="form.errors.password_confirmation" severity="error">{{ form.errors.password_confirmation }}</Message>
-                    <div class="flex flex-col gap-2">
+                                        <div class="flex flex-col gap-2">
                         <label for="name">Name <span class="required-mark" aria-hidden="true">*</span></label>
                         <IconField iconPosition="left">
                             <InputIcon class="pi pi-user" />
@@ -232,9 +221,9 @@ function preventNonNumericPhoneInput(event: InputEvent) {
                         type="submit"
                         :label="form.processing ? 'Creating account...' : 'Create account'"
                         :loading="form.processing"
-                        :disabled="form.processing || !registrationReady"
+                        :disabled="form.processing || !form.name || !form.username || !emailIsValid || !passwordRequirementsMet || !form.password_confirmation || form.password !== form.password_confirmation"
                     />
-                    <small v-if="!registrationReady && !form.processing" class="flex items-start justify-center gap-2 text-center text-color-secondary">
+                    <small v-if="(!form.name || !form.username || !emailIsValid || !passwordRequirementsMet || !form.password_confirmation || form.password !== form.password_confirmation) && !form.processing" class="flex items-start justify-center gap-2 text-center text-color-secondary">
                         <i class="pi pi-info-circle mt-0.5 shrink-0" aria-hidden="true" />
                         <span>Complete all required fields, fulfill all password requirements, and make sure the passwords match to enable account creation.</span>
                     </small>
@@ -251,7 +240,7 @@ function preventNonNumericPhoneInput(event: InputEvent) {
     position: absolute !important;
     top: 50% !important;
     right: 0.75rem !important;
-    z-index: 9999;
+    z-index: 2;
     width: 1.5rem;
     height: 1.5rem;
     transform: translateY(-50%);
