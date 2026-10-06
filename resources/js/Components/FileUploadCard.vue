@@ -3,7 +3,7 @@ import type { InertiaForm } from '@inertiajs/vue3'
 import Card from 'primevue/card'
 import FileUpload from 'primevue/fileupload'
 import Button from 'primevue/button'
-import Message from 'primevue/message'
+import FeedbackMessage from './FeedbackMessage.vue'
 import { ref } from 'vue'
 
 defineProps<{
@@ -42,7 +42,7 @@ const validateFile = (file: File | null): boolean => {
                 :disabled="form.processing"
                 @select="form[field] = $event.files[0] || null; validateFile(form[field])"
             />
-            <Message v-if="clientError" class="mt-2" severity="error">{{ clientError }}</Message>
+            <FeedbackMessage v-if="clientError" class="mt-2" severity="error" :message="clientError" />
             <small v-if="form.errors[field]" class="p-error block mt-2">{{ form.errors[field] }}</small>
             <Button class="mt-4" type="button" :label="form.processing ? 'Mengimpor...' : submitLabel" :loading="form.processing" :disabled="!form[field] || !!clientError" @click="validateFile(form[field]) && $emit('submit')" />
         </template>
