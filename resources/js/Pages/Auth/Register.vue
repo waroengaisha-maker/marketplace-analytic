@@ -261,7 +261,6 @@ function preventNonNumericPhoneInput(event: InputEvent) {
     border-radius: 0.2rem;
     background: var(--p-form-field-background);
 }
-}
 
 :deep([data-pc-section="maskicon"]),
 :deep([data-pc-section="unmaskicon"]),
