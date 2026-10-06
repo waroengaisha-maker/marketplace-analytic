@@ -3,9 +3,9 @@
 namespace Tests\Feature;
 
 use App\Enums\AccountStatus;
+use App\Jobs\ShopeeSyncJob;
 use App\Models\ShopeeApiConnection;
 use App\Models\User;
-use App\Jobs\ShopeeSyncJob;
 use App\Services\ReportLineIdentity;
 use App\Services\ShopeeApiClientFactory;
 use App\Services\ShopeeOAuthService;

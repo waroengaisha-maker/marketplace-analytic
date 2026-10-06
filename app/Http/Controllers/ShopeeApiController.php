@@ -15,7 +15,6 @@ use App\Services\ShopeePromotionService;
 use App\Services\ShopeeResponseNormalizer;
 use App\Services\ShopeeShadowValidationService;
 use App\Services\ShopeeSyncService;
-use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,8 +27,7 @@ class ShopeeApiController extends Controller
         private readonly ShopeeApiClientFactory $clientFactory,
         private readonly ShopeeOAuthService $oauthService,
         private readonly ShopeeSyncService $syncService,
-    ) {
-    }
+    ) {}
 
     // Production error handling is intentionally sanitized at the controller boundary.
     public function index(ShopeeApiResearchService $service, Request $request)

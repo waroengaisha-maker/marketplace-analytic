@@ -8,14 +8,14 @@
 		Access-Control-Allow-Credentials "true"
 	}
 
-	reverse_proxy @vite host.docker.internal:5173
+	reverse_proxy @vite laravel.test:5173
 
 	@websocket {
 		header Connection *Upgrade*
 		header Upgrade websocket
 	}
 
-	reverse_proxy @websocket host.docker.internal:5173
+	reverse_proxy @websocket laravel.test:5173
 
 	# Cloudflare Tunnel connects to Caddy over HTTP, while the public app is HTTPS.
 	# Preserve the original scheme for Laravel redirects and URL generation.

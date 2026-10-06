@@ -4,11 +4,11 @@ namespace Tests\Feature;
 
 use App\Enums\AccountStatus;
 use App\Jobs\ShopeeSyncJob;
-use App\Models\ShopeeSyncOperation;
 use App\Models\AccountAuditLog;
 use App\Models\MasterProduct;
 use App\Models\ShopeeApiConnection;
 use App\Models\ShopeeProductMapping;
+use App\Models\ShopeeSyncOperation;
 use App\Models\User;
 use App\Services\MasterProductCatalogService;
 use App\Services\ReportLineIdentity;
@@ -614,7 +614,7 @@ class ShopeeApiHardeningTest extends TestCase
         $operationId = $response['operation_id'];
         (new ShopeeSyncJob($operationId))->handle(
             app(ShopeeSyncService::class),
-            app(\App\Services\ShopeeSyncAuditService::class),
+            app(ShopeeSyncAuditService::class),
         );
         $status = $this->actingAs($user)
             ->getJson(route('integrations.shopee-api.sync-status', $operationId))

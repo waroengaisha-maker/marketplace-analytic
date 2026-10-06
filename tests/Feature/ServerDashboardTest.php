@@ -94,6 +94,7 @@ class ServerDashboardTest extends TestCase
                 ->where('status.available', false)
             );
     }
+
     public function test_super_admin_can_view_services_hub(): void
     {
         $admin = User::factory()->create(['role' => UserRole::SuperAdmin]);
@@ -150,7 +151,6 @@ class ServerDashboardTest extends TestCase
             ->assertForbidden();
     }
 
-
     public function test_super_admin_can_read_service_status(): void
     {
         Http::fake(['http://service-manager:8080/status' => Http::response([
@@ -198,5 +198,4 @@ class ServerDashboardTest extends TestCase
             ->post(route('admin.services.action', ['service' => 'unknown', 'action' => 'restart']))
             ->assertNotFound();
     }
-
 }

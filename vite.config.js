@@ -7,48 +7,48 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
 
     return {
-    plugins: [
-        laravel({
-            input: [
-                'resources/css/app.css',
-                'resources/js/app.ts',
-            ],
-            refresh: true,
-        }),
-        vue(),
-        tailwindcss(),
-    ],
-
-    server: {
-        host: '0.0.0.0',
-        port: 5173,
-        strictPort: true,
-        cors: {
-            origin: env.VITE_PUBLIC_URL ? [env.VITE_PUBLIC_URL, 'http://localhost:8080', 'http://localhost', 'http://127.0.0.1:8080', 'http://127.0.0.1'] : ['http://localhost:8080', 'http://localhost', 'http://127.0.0.1:8080', 'http://127.0.0.1'],
-            methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-            credentials: true,
-        },
-        ...(env.VITE_PUBLIC_URL
-            ? (() => {
-                const publicUrl = new URL(env.VITE_PUBLIC_URL);
-
-                return {
-                    origin: env.VITE_PUBLIC_URL,
-                    allowedHosts: [publicUrl.hostname, 'host.docker.internal'],
-                    hmr: {
-                        protocol: publicUrl.protocol === 'https:' ? 'wss' : 'ws',
-                        host: publicUrl.hostname,
-                        clientPort: publicUrl.protocol === 'https:' ? 443 : publicUrl.port || 80,
-                    },
-                };
-            })()
-            : {
-                allowedHosts: ['host.docker.internal'],
-                hmr: {
-                    host: 'localhost',
-                    port: 5173,
-                },
+        plugins: [
+            laravel({
+                input: [
+                    'resources/css/app.css',
+                    'resources/js/app.ts',
+                ],
+                refresh: true,
             }),
-    },
+            vue(),
+            tailwindcss(),
+        ],
+
+        server: {
+            host: '0.0.0.0',
+            port: 5173,
+            strictPort: true,
+            cors: {
+                origin: env.VITE_PUBLIC_URL ? [env.VITE_PUBLIC_URL, 'http://localhost:8080', 'http://localhost', 'http://127.0.0.1:8080', 'http://127.0.0.1'] : ['http://localhost:8080', 'http://localhost', 'http://127.0.0.1:8080', 'http://127.0.0.1'],
+                methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+                credentials: true,
+            },
+            ...(env.VITE_PUBLIC_URL
+                ? (() => {
+                    const publicUrl = new URL(env.VITE_PUBLIC_URL);
+
+                    return {
+                        origin: env.VITE_PUBLIC_URL,
+                        allowedHosts: [publicUrl.hostname, 'host.docker.internal', 'laravel.test'],
+                        hmr: {
+                            protocol: publicUrl.protocol === 'https:' ? 'wss' : 'ws',
+                            host: publicUrl.hostname,
+                            clientPort: publicUrl.protocol === 'https:' ? 443 : publicUrl.port || 80,
+                        },
+                    };
+                })()
+                : {
+                    allowedHosts: ['host.docker.internal', 'laravel.test'],
+                    hmr: {
+                        host: 'localhost',
+                        port: 5173,
+                    },
+                }),
+        },
     };
 });

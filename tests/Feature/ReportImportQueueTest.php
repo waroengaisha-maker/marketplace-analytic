@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use Tests\TestCase;
 use RuntimeException;
+use Tests\TestCase;
 
 class ReportImportQueueTest extends TestCase
 {
@@ -29,7 +29,7 @@ class ReportImportQueueTest extends TestCase
             'account_status' => AccountStatus::Active,
         ]);
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('orders');
         $sheet->fromArray([
@@ -60,10 +60,10 @@ class ReportImportQueueTest extends TestCase
     public function test_operation_status_is_tenant_scoped(): void
     {
         $user = User::factory()->create([
-            'account_status' => \App\Enums\AccountStatus::Active,
+            'account_status' => AccountStatus::Active,
         ]);
         $other = User::factory()->create([
-            'account_status' => \App\Enums\AccountStatus::Active,
+            'account_status' => AccountStatus::Active,
         ]);
         $operation = ReportImportOperation::query()->create([
             'user_id' => $other->id,
@@ -114,7 +114,7 @@ class ReportImportQueueTest extends TestCase
 
         $orders = $this->mock(OrderReportImporter::class);
         $income = $this->mock(IncomeReportImporter::class);
-        $orders->shouldReceive('import')->once()->andThrow(new \RuntimeException('private SQL path'));
+        $orders->shouldReceive('import')->once()->andThrow(new RuntimeException('private SQL path'));
 
         $this->expectException(RuntimeException::class);
 
