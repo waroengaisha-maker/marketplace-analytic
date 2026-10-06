@@ -563,21 +563,21 @@ onUnmounted(() => {
                                             :value="conn.connected ? 'Shop connected' : 'Shop not linked'"
                                             :severity="conn.connected ? 'success' : 'secondary'"
                                         />
-                                        <span v-if="conn?.shop_name" class="text-sm text-slate-600">
+                                        <span v-if="conn?.shop_name" class="text-sm text-color-secondary">
                                             Shop: <span class="font-semibold">{{ conn.shop_name }}</span>
                                         </span>
-                                        <span class="text-sm text-slate-600">
+                                        <span class="text-sm text-color-secondary">
                                             Environment: <span class="font-mono">{{ conn?.environment ?? configStatus?.environment ?? '—' }}</span>
                                         </span>
-                                        <span class="text-sm text-slate-600">
+                                        <span class="text-sm text-color-secondary">
                                             Region: <span class="font-mono">{{ conn?.region ?? configStatus?.region ?? '—' }}</span>
                                         </span>
-                                        <span class="text-sm text-slate-600">
+                                        <span class="text-sm text-color-secondary">
                                             Host: <span class="font-mono">{{ configStatus?.host ?? '—' }}</span>
                                         </span>
                                     </div>
 
-                                    <div v-if="conn" class="flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                                    <div v-if="conn" class="flex flex-wrap items-center gap-3 text-sm text-color-secondary">
                                         <span>
                                             Last sync: <span class="font-mono">{{ conn.last_sync_at ?? 'never' }}</span>
                                         </span>
@@ -640,19 +640,19 @@ onUnmounted(() => {
                                 <div class="flex flex-col gap-4">
                                     <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Partner ID</label>
+                                            <label class="text-xs font-medium text-color-secondary">Partner ID</label>
                                             <InputText v-model="connectParams.partner_id" placeholder="Shopee Open Platform partner_id" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Partner Key</label>
+                                            <label class="text-xs font-medium text-color-secondary">Partner Key</label>
                                             <InputText v-model="connectParams.partner_key" type="password" placeholder="partner_key" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Environment</label>
+                                            <label class="text-xs font-medium text-color-secondary">Environment</label>
                                             <Select v-model="connectParams.environment" :options="[{ label: 'Production', value: 'production' }, { label: 'Sandbox', value: 'sandbox' }]" option-label="label" option-value="value" class="w-full" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Region</label>
+                                            <label class="text-xs font-medium text-color-secondary">Region</label>
                                             <InputText v-model="connectParams.region" placeholder="e.g. global, my, id" />
                                         </div>
                                     </div>
@@ -669,7 +669,7 @@ onUnmounted(() => {
                                         >
                                             Open Shopee authorization (new tab) 
                                         </a>
-                                        <p class="text-xs text-slate-500">
+                                        <p class="text-xs text-color-secondary">
                                             After authorizing, Shopee redirects back and the shop is linked automatically.
                                         </p>
                                     </div>
@@ -685,15 +685,15 @@ onUnmounted(() => {
                                 <div class="flex flex-col gap-4">
                                     <div class="grid grid-cols-3 gap-3">
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Page size (orders)</label>
+                                            <label class="text-xs font-medium text-color-secondary">Page size (orders)</label>
                                             <InputText v-model="syncParams.page_size" inputmode="numeric" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">From</label>
+                                            <label class="text-xs font-medium text-color-secondary">From</label>
                                             <InputText v-model="syncParams.date_from" type="date" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">To</label>
+                                            <label class="text-xs font-medium text-color-secondary">To</label>
                                             <InputText v-model="syncParams.date_to" type="date" />
                                         </div>
                                     </div>
@@ -719,13 +719,13 @@ onUnmounted(() => {
                                         <span v-if="syncIncomeResult.error">— {{ syncIncomeResult.error }}</span>
                                     </Message>
                                     <div v-if="syncOrdersResult?.normalized?.length" class="flex flex-col gap-2">
-                                        <p class="text-sm text-slate-500">Staged orders (normalized preview):</p>
+                                        <p class="text-sm text-color-secondary">Staged orders (normalized preview):</p>
                                         <DataTable :value="(syncOrdersResult.normalized as NormalizedRow[])" striped-rows scrollable scroll-height="16rem" class="text-sm">
                                             <Column v-for="col in tableColumns((syncOrdersResult.normalized as NormalizedRow[]))" :key="col" :field="col" :header="col" />
                                         </DataTable>
                                     </div>
                                     <div v-if="syncIncomeResult?.normalized?.length" class="flex flex-col gap-2">
-                                        <p class="text-sm text-slate-500">Staged income (normalized preview):</p>
+                                        <p class="text-sm text-color-secondary">Staged income (normalized preview):</p>
                                         <DataTable :value="(syncIncomeResult.normalized as NormalizedRow[])" striped-rows scrollable scroll-height="16rem" class="text-sm">
                                             <Column v-for="col in tableColumns((syncIncomeResult.normalized as NormalizedRow[]))" :key="col" :field="col" :header="col" />
                                         </DataTable>
@@ -742,7 +742,7 @@ onUnmounted(() => {
                                 <div class="flex flex-col gap-4">
                                     <div class="flex flex-wrap items-center gap-3">
                                         <div class="flex items-center gap-2">
-                                            <label class="text-xs font-medium text-slate-500">Escrow limit</label>
+                                            <label class="text-xs font-medium text-color-secondary">Escrow limit</label>
                                             <InputText v-model="escrowLimit" inputmode="numeric" class="w-24" />
                                         </div>
                                         <Button label="Sync Escrow Details" icon="pi pi-download" size="small" severity="secondary" :loading="lab.busy" :disabled="lab.busy" @click="runSyncEscrow" />
@@ -758,7 +758,7 @@ onUnmounted(() => {
                                         <span v-if="syncEscrowResult.error">— {{ syncEscrowResult.error }}</span>
                                         <span v-if="syncEscrowResult.rate_limited">(rate limited)</span>
                                     </Message>
-                                    <div class="flex flex-col gap-3 border-t border-slate-200 pt-4">
+                                    <div class="flex flex-col gap-3 border-t border-surface-200 pt-4">
                                         <Message v-if="conn?.staging_stale" severity="warn" :closable="false">
                                             Staged data is stale
                                             <template v-if="conn.last_sync_status === 'error' || conn.last_sync_status === 'rate_limited'">
@@ -768,7 +768,7 @@ onUnmounted(() => {
                                         </Message>
                                         <div class="flex flex-wrap items-center gap-3">
                                         <Checkbox v-model="promoteDryRun" :binary="true" input-id="promote-sg" />
-                                        <label for="promote-sg" class="text-sm text-slate-600">Dry-run preview (writes nothing)</label>
+                                        <label for="promote-sg" class="text-sm text-color-secondary">Dry-run preview (writes nothing)</label>
                                         <Button
                                             label="Promote Staged Data to Production"
                                             icon="pi pi-database"
@@ -801,18 +801,18 @@ onUnmounted(() => {
                                     </Message>
                                     <div v-if="validateResult" class="flex flex-col gap-4">
                                         <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                                            <div v-for="view in (['orders', 'lines', 'income'] as const)" :key="view" class="flex flex-col gap-2 rounded-lg border border-slate-200 p-3">
-                                                <p class="text-sm font-semibold capitalize text-slate-600">{{ view }} summary</p>
+                                            <div v-for="view in (['orders', 'lines', 'income'] as const)" :key="view" class="flex flex-col gap-2 rounded-lg border border-surface-200 p-3">
+                                                <p class="text-sm font-semibold capitalize text-color-secondary">{{ view }} summary</p>
                                                 <div class="flex flex-wrap gap-1.5">
                                                     <Tag v-for="(count, status) in validateResult.summary[view]" :key="status" :value="`${labelForStatus(status as ValidationRow['status'])}: ${count}`" :severity="status === 'matched' ? 'success' : status === 'mismatched' ? 'warn' : 'danger'" />
                                                 </div>
-                                                <p class="text-xs text-slate-500">
+                                                <p class="text-xs text-color-secondary">
                                                     API {{ validateResult.sources.api[view] ?? 0 }} · Excel {{ validateResult.sources.excel[view] ?? 0 }}
                                                 </p>
                                             </div>
                                         </div>
                                         <div v-for="view in (['orders', 'lines', 'income'] as const)" :key="view" class="flex flex-col gap-2">
-                                            <p class="text-sm font-semibold text-slate-600 capitalize">{{ view }} ({{ validateResult[view].length }})</p>
+                                            <p class="text-sm font-semibold text-color-secondary capitalize">{{ view }} ({{ validateResult[view].length }})</p>
                                             <DataTable :value="validateResult[view]" striped-rows scrollable :scroll-height="view === 'lines' ? '20rem' : '12rem'" class="text-sm">
                                                 <Column field="label" header="Reference" />
                                                 <Column header="Status">
@@ -837,12 +837,12 @@ onUnmounted(() => {
                                                 </template>
                                                 <Column header="Differences">
                                                     <template #body="{ data }">
-                                                        <span v-if="data.status === 'matched'" class="text-xs text-slate-400">—</span>
+                                                        <span v-if="data.status === 'matched'" class="text-xs text-color-secondary">—</span>
                                                         <ul v-else class="flex flex-col gap-0.5 text-xs">
                                                             <li v-for="diff in data.differences" :key="diff.field">
-                                                                {{ diff.field }}: <span class="font-mono text-amber-700">{{ diff.api }}</span> vs <span class="font-mono text-slate-600">{{ diff.excel }}</span>
+                                                                {{ diff.field }}: <span class="font-mono text-amber-700">{{ diff.api }}</span> vs <span class="font-mono text-color-secondary">{{ diff.excel }}</span>
                                                             </li>
-                                                            <li v-if="!data.differences?.length" class="text-slate-400">no field diff</li>
+                                                            <li v-if="!data.differences?.length" class="text-color-secondary">no field diff</li>
                                                         </ul>
                                                     </template>
                                                 </Column>
@@ -861,26 +861,26 @@ onUnmounted(() => {
                                 <div class="flex flex-col gap-4">
                                     <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Status</label>
+                                            <label class="text-xs font-medium text-color-secondary">Status</label>
                                             <Select v-model="orderParams.order_status" :options="orderStatusOptions" option-label="label" option-value="value" class="w-full" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Page size</label>
+                                            <label class="text-xs font-medium text-color-secondary">Page size</label>
                                             <InputText v-model="orderParams.page_size" inputmode="numeric" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Created from</label>
+                                            <label class="text-xs font-medium text-color-secondary">Created from</label>
                                             <InputText v-model="orderParams.date_from" type="date" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Created to</label>
+                                            <label class="text-xs font-medium text-color-secondary">Created to</label>
                                             <InputText v-model="orderParams.date_to" type="date" />
                                         </div>
                                     </div>
                                     <div>
                                         <Button label="Fetch Sample Orders" icon="pi pi-download" size="small" :loading="lab.busy" :disabled="lab.busy" @click="fetchOrders" />
                                     </div>
-                                    <p v-if="ordersResult" class="text-sm text-slate-500">
+                                    <p v-if="ordersResult" class="text-sm text-color-secondary">
                                         {{ ordersResult.order_count ?? 0 }} order(s) returned. Rows are normalized to the
                                         <span class="font-mono">marketplace_orders</span> column names for comparison only — not persisted.
                                     </p>
@@ -900,12 +900,12 @@ onUnmounted(() => {
                                 <div class="flex flex-col gap-4">
                                     <div class="flex flex-wrap items-end gap-3">
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Order serial number</label>
+                                            <label class="text-xs font-medium text-color-secondary">Order serial number</label>
                                             <InputText v-model="orderSn" placeholder="e.g. 220404NF3CFFNY" />
                                         </div>
                                         <Button label="Fetch Order + Escrow" icon="pi pi-search" size="small" :loading="lab.busy" :disabled="lab.busy" @click="fetchDetail" />
                                     </div>
-                                    <p v-if="detailResult" class="text-sm text-slate-500">
+                                    <p v-if="detailResult" class="text-sm text-color-secondary">
                                         Detail + escrow for <span class="font-mono">{{ detailResult.order_number }}</span>. This performs
                                         two API calls: <span class="font-mono">get_order_detail</span> and
                                         <span class="font-mono">get_escrow_detail</span>. Escrow amount and buyer total are shown for
@@ -933,20 +933,20 @@ onUnmounted(() => {
                                 <div class="flex flex-col gap-4">
                                     <div class="flex flex-wrap items-end gap-3">
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">Status</label>
+                                            <label class="text-xs font-medium text-color-secondary">Status</label>
                                             <Select v-model="incomeParams.income_status" :options="incomeStatusOptions" option-label="label" option-value="value" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">From</label>
+                                            <label class="text-xs font-medium text-color-secondary">From</label>
                                             <InputText v-model="incomeParams.date_from" type="date" />
                                         </div>
                                         <div class="flex flex-col gap-1">
-                                            <label class="text-xs font-medium text-slate-500">To</label>
+                                            <label class="text-xs font-medium text-color-secondary">To</label>
                                             <InputText v-model="incomeParams.date_to" type="date" />
                                         </div>
                                         <Button label="Fetch Income Detail" icon="pi pi-download" size="small" :loading="lab.busy" :disabled="lab.busy" @click="fetchIncome" />
                                     </div>
-                                    <p v-if="incomeResult" class="text-sm text-slate-500">
+                                    <p v-if="incomeResult" class="text-sm text-color-secondary">
                                         Rows are normalized to the <span class="font-mono">marketplace_income</span> column names for
                                         comparison only — not persisted.
                                     </p>
@@ -1054,7 +1054,7 @@ onUnmounted(() => {
                                     <Column field="summary" header="Summary" />
                                     <Column field="caveats" header="Caveats" />
                                 </DataTable>
-                                <p class="text-sm text-slate-500">
+                                <p class="text-sm text-color-secondary">
                                     Conclusion: the Shopee Open API can replace both Excel imports. Order data is pulled via a list-then-detail fan-out,
                                     while income data maps almost 1:1 to Seller Center Income Details. The main gaps are the masked delivery-address fields
                                     (sensitive-data approval) and the absence of <span class="font-mono">voucher_code</span>/<span class="font-mono">product_id</span>
@@ -1088,7 +1088,7 @@ onUnmounted(() => {
                             <h2 class="text-xl font-semibold">Recommended Architecture</h2>
                         </template>
                         <template #content>
-                            <ol class="flex list-decimal flex-col gap-3 pl-6 text-sm text-slate-600">
+                            <ol class="flex list-decimal flex-col gap-3 pl-6 text-sm text-color-secondary">
                                 <li v-for="step in props.architecture" :key="step">{{ step }}</li>
                             </ol>
                         </template>
