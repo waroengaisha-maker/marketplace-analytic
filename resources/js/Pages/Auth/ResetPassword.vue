@@ -6,7 +6,7 @@ import InputPassword from 'primevue/inputpassword'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Button from 'primevue/button'
-import Message from 'primevue/message'
+import FeedbackMessage from '@/Components/FeedbackMessage.vue'
 import Dialog from 'primevue/dialog'
 import { computed, ref } from 'vue'
 
@@ -107,14 +107,7 @@ function submit() {
 
             <template #content>
                 <form class="flex flex-col gap-5" @submit.prevent="submit">
-                    <Message
-                        v-if="page.props.errors?.email || page.props.errors?.token"
-                        severity="error"
-                        variant="simple"
-                        icon="pi pi-exclamation-circle"
-                    >
-                        {{ page.props.errors?.email || page.props.errors?.token }}
-                    </Message>
+                    <FeedbackMessage v-if="page.props.errors?.email || page.props.errors?.token" severity="error" variant="simple" icon="pi pi-exclamation-circle" :message="page.props.errors?.email || page.props.errors?.token" />
 
                     <Message
                         v-if="clientError"
