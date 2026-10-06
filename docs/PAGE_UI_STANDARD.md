@@ -109,3 +109,10 @@ Jika sebuah page membutuhkan variasi visual, variasi harus mempunyai alasan UX y
 > **Simple by default.**
 
 Page header harus memberikan konteks yang cukup dalam beberapa detik tanpa mengambil perhatian dari content utama.
+## Authentication Pages
+
+Authentication pages are a standalone UI scope and do not use the authenticated application shell. Their dedicated interaction and validation contract is documented in:
+
+`docs/AUTH_FORM_UI_STANDARD.md`
+
+The Auth UI standard takes precedence for authentication-specific form behavior while this document remains the general page-layout reference.
