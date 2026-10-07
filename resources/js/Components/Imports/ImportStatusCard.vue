@@ -162,17 +162,19 @@ const statusMessage = computed(() => {
             class="flex flex-col gap-7"
         >
             <div class="import-timeline">
-                <div
-                    class="import-timeline__rail"
-                    :class="{
-                        'import-timeline__rail--uploading': isUploading,
-                        'import-timeline__rail--uploaded': isUploaded && !isProcessing,
-                        'import-timeline__rail--processing': false,
-                        'import-timeline__rail--processed': isProcessed,
-                    }"
-                    aria-hidden="true"
-                >
-                    <span class="import-timeline__track"></span>
+                <div class="import-timeline__rail" aria-hidden="true">
+                    <span
+                        class="import-timeline__track import-timeline__track--left"
+                        :class="{
+                            'import-timeline__track--active': isProcessing || isProcessed,
+                        }"
+                    ></span>
+                    <span
+                        class="import-timeline__track import-timeline__track--right"
+                        :class="{
+                            'import-timeline__track--active': isProcessed,
+                        }"
+                    ></span>
                 </div>
 
                 <div
@@ -307,14 +309,23 @@ const statusMessage = computed(() => {
 
 .import-timeline__track {
     position: absolute;
-    inset: 0;
+    top: 0;
+    height: 2px;
     border-radius: 9999px;
     background: var(--p-surface-300);
 }
 
-.import-timeline__rail--uploaded .import-timeline__track,
-.import-timeline__rail--processing .import-timeline__track,
-.import-timeline__rail--processed .import-timeline__track {
+.import-timeline__track--left {
+    right: 50%;
+    left: 0;
+}
+
+.import-timeline__track--right {
+    right: 0;
+    left: 50%;
+}
+
+.import-timeline__track--active {
     background: var(--p-green-500);
 }
 
