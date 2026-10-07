@@ -25,6 +25,7 @@ const orderFileInput = ref<HTMLInputElement | null>(null)
 const incomeFileInput = ref<HTMLInputElement | null>(null)
 const importStatus = ref<ImportOperation | null>(page.props.activeOperation ?? null)
 const trackedOperationId = ref<number | null>(page.props.flash?.import_operation_id ?? page.props.activeOperation?.id ?? null)
+const optimisticOperationId = 0
 
 const selectedCount = computed(() => Number(!!form.order_report) + Number(!!form.income_report))
 const submitLabel = computed(() => {
@@ -68,7 +69,21 @@ function submit() {
     if (!form.order_report && !form.income_report) return
     if (!orderValid || !incomeValid) return
 
-    form.post('/imports/upload', { forceFormData: true })
+    importStatus.value = {
+        id: optimisticOperationId,
+        status: 'queued',
+        orders: 0,
+        income: 0,
+    }
+    trackedOperationId.value = null
+
+    form.post('/imports/upload', {
+        forceFormData: true,
+        onError: () => {
+            importStatus.value = null
+            trackedOperationId.value = null
+        },
+    })
 }
 
 async function loadImportStatus(id: number) {
@@ -104,28 +119,27 @@ function resetImportStatus() {
 }
 
 watch(
-    () => page.props.activeOperation,
-    (operation) => {
+    () => [page.props.activeOperation, page.props.flash?.import_operation_id] as const,
+    ([operation, flashOperationId]) => {
         if (operation) {
             trackedOperationId.value = operation.id
             importStatus.value = operation
             return
         }
 
-        if (!page.props.flash?.import_operation_id) {
+        if (flashOperationId) {
+            trackedOperationId.value = flashOperationId
+            void loadImportStatus(flashOperationId)
+            return
+        }
+
+        if (importStatus.value?.id !== optimisticOperationId) {
             trackedOperationId.value = null
             importStatus.value = null
         }
     },
     { immediate: true },
 )
-
-const flashOperationId = page.props.flash?.import_operation_id
-
-if (flashOperationId) {
-    trackedOperationId.value = flashOperationId
-    void loadImportStatus(flashOperationId)
-}
 </script>
 
 <template>
