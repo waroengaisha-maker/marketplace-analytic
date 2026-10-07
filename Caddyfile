@@ -10,12 +10,20 @@
 
 	reverse_proxy @vite laravel.test:5173
 
-	@websocket {
+	# Laravel Reverb WebSocket
+	@reverb {
+		path /app/*
+	}
+
+	reverse_proxy @reverb reverb:8080
+
+	# Vite HMR WebSocket
+	@viteWebsocket {
 		header Connection *Upgrade*
 		header Upgrade websocket
 	}
 
-	reverse_proxy @websocket laravel.test:5173
+	reverse_proxy @viteWebsocket laravel.test:5173
 
 	# Cloudflare Tunnel connects to Caddy over HTTP, while the public app is HTTPS.
 	# Preserve the original scheme for Laravel redirects and URL generation.
