@@ -56,7 +56,7 @@ function syncTimelinePhase(operation: ImportOperation) {
                 showFirstTransfer.value = false
                 phaseTimer = null
             }, 900)
-        }, 600)
+        }, 0)
         return
     }
 
@@ -73,7 +73,7 @@ function syncTimelinePhase(operation: ImportOperation) {
             showSecondTransfer.value = false
             phaseTimer = null
         }, 900)
-    }, 600)
+    }, 0)
 }
 
 watch(
