@@ -150,7 +150,7 @@ if (flashOperationId) {
                 <div class="flex flex-col gap-5">
                     <div class="grid gap-4 md:grid-cols-2">
                         <div class="flex min-w-0 flex-col gap-2">
-                            <span class="font-medium">Laporan Order</span>
+                            <span class="font-medium">Laporan Order <span class="text-sm font-normal text-color-secondary">(opsional)</span></span>
                             <div class="flex flex-wrap items-center gap-3">
                                 <div class="relative inline-flex">
                                     <input
@@ -186,7 +186,7 @@ if (flashOperationId) {
                         </div>
 
                         <div class="flex min-w-0 flex-col gap-2">
-                            <span class="font-medium">Laporan Income</span>
+                            <span class="font-medium">Laporan Income <span class="text-sm font-normal text-color-secondary">(opsional)</span></span>
                             <div class="flex flex-wrap items-center gap-3">
                                 <div class="relative inline-flex">
                                     <input
@@ -232,7 +232,7 @@ if (flashOperationId) {
                             @click="submit"
                         />
                         <small class="text-color-secondary">
-                            {{ selectedCount === 2 ? 'Order dan Income akan diproses dalam satu operation.' : 'Pilih laporan yang ingin diimpor.' }}
+                            {{ selectedCount === 2 ? 'Order dan Income akan diproses dalam satu operation.' : 'Pilih minimal satu laporan yang ingin diimpor. Laporan lainnya boleh dikosongkan.' }}
                         </small>
                     </div>
                 </div>
