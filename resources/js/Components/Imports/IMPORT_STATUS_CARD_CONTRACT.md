@@ -8,15 +8,15 @@
 
 - Render the semantic import state: queued, processing, completed, or failed.
 - Present a two-milestone horizontal upload timeline:
-  - `Uploading` → pulsing step and pulsing connector.
-  - `Uploaded` → solid completed step and solid connector.
-  - `Processing` → pulsing step while processing is active.
-  - `Successful` / `Failed` → solid terminal step.
+  - `Uploading` → pulsing point, inactive connector, and `Uploading...` message.
+  - `Uploaded` → solid point, solid connector, a one-shot moving handoff animation, and `Uploaded` message.
+  - `Processing` → pulsing point, solid connector, and `Processing...` message.
+  - `Successful` / `Failed` → solid terminal point and `Finished` message.
 - Reflect real-time operation updates passed by the parent component.
 - Show imported order/income totals only after completion.
 - Show the backend-provided failure message when an operation fails.
 - Keep the Dialog non-dismissable while the operation is queued or processing.
-- Allow closing only after a terminal state: completed or failed.
+- Allow closing only after a terminal state: completed or failed, using the `Close` button.
 - Emit `dismiss` only for terminal states.
 
 ## Non-responsibilities
