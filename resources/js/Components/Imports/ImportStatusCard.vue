@@ -166,8 +166,8 @@ const statusMessage = computed(() => {
                     class="import-timeline__rail"
                     :class="{
                         'import-timeline__rail--uploading': isUploading,
-                        'import-timeline__rail--uploaded': isUploaded,
-                        'import-timeline__rail--processing': isProcessing,
+                        'import-timeline__rail--uploaded': isUploaded && !isProcessing,
+                        'import-timeline__rail--processing': false,
                         'import-timeline__rail--processed': isProcessed,
                     }"
                     aria-hidden="true"
@@ -243,7 +243,7 @@ const statusMessage = computed(() => {
             </div>
 
             <div
-                v-if="props.operation.status === 'completed'"
+                v-if="isTimelineFinished"
                 class="import-summary"
             >
                 <div class="import-summary__item">
