@@ -61,6 +61,15 @@ const timelineSteps = computed<TimelineStep[]>(() => {
     ]
 })
 
+const statusMessage = computed(() => {
+    switch (props.operation.status) {
+        case 'completed': return 'Upload selesai'
+        case 'failed': return 'Upload gagal'
+        case 'processing': return 'File sedang diproses'
+        default: return 'Mengunggah file'
+    }
+})
+
 const progressWidth = computed(() => {
     switch (props.operation.status) {
         case 'processing':
@@ -84,7 +93,6 @@ const progressWidth = computed(() => {
         :close-on-escape="false"
         :draggable="false"
         :style="{ width: 'min(720px, calc(100vw - 2rem))' }"
-        header="File Upload"
         aria-label="File Upload"
         @hide="handleDialogHide"
     >
@@ -115,7 +123,7 @@ const progressWidth = computed(() => {
                             :class="{
                                 'import-timeline__marker--achieved': step.achieved,
                                 'import-timeline__marker--failed': step.failed,
-                                'import-timeline__marker--active': props.operation.status === 'processing' && step.key === 'processing',
+                                'import-timeline__marker--active': (props.operation.id === 0 && step.key === 'upload') || (props.operation.status === 'processing' && step.key === 'processing'),
                             }"
                             aria-hidden="true"
                         >
@@ -131,6 +139,14 @@ const progressWidth = computed(() => {
                         </span>
                     </div>
                 </div>
+            </div>
+
+            <div class="flex items-center justify-center gap-2 text-center">
+                <i
+                    :class="props.operation.status === 'completed' ? 'pi pi-check-circle text-green-500' : props.operation.status === 'failed' ? 'pi pi-exclamation-circle text-red-500' : 'pi pi-spin pi-spinner text-primary'"
+                    aria-hidden="true"
+                ></i>
+                <span class="text-sm font-medium text-color">{{ statusMessage }}</span>
             </div>
 
             <div
@@ -172,7 +188,7 @@ const progressWidth = computed(() => {
             <Button
                 v-if="isFinished(props.operation.status)"
                 type="button"
-                :label="props.operation.status === 'completed' ? 'Selesai' : 'Tutup'"
+                label="Tutup"
                 :icon="props.operation.status === 'completed' ? 'pi pi-check' : 'pi pi-times'"
                 :severity="props.operation.status === 'completed' ? 'success' : 'secondary'"
                 @click="emit('dismiss')"
