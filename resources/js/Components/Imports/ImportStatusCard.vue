@@ -239,62 +239,6 @@ const timelineSteps = computed<TimelineStep[]>(() => {
     </Dialog>
 </template>
 
-                    <template #content="{ item }">
-                        <div class="min-w-0 px-2 text-center">
-                            <p
-                                class="text-sm font-semibold"
-                                :class="item.state === 'pending' ? 'text-color-secondary' : 'text-color'"
-                            >
-                                {{ item.label }}
-                            </p>
-                            <p class="mt-1 text-xs text-color-secondary">
-                                {{ item.description }}
-                            </p>
-                        </div>
-                    </template>
-                    </Timeline>
-                </div>
-
-                <div
-                    v-if="props.operation.status === 'queued' || props.operation.status === 'processing'"
-                    class="mt-4 flex items-center gap-2 text-xs text-color-secondary"
-                    aria-live="polite"
-                >
-                    <span
-                        class="h-1.5 w-1.5 rounded-full bg-primary"
-                        :class="props.operation.status === 'processing' ? 'animate-pulse' : ''"
-                        aria-hidden="true"
-                    ></span>
-                    <span>
-                        {{ props.operation.status === 'queued' ? 'Menunggu worker...' : 'Sedang berjalan • pembaruan otomatis aktif' }}
-                    </span>
-                </div>
-
-                <div
-                    v-if="props.operation.status === 'completed'"
-                    class="mt-5 grid grid-cols-2 gap-3 sm:max-w-md"
-                >
-                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-800">
-                        <p class="text-xs font-medium uppercase tracking-wide text-color-secondary">Order</p>
-                        <p class="mt-1 text-xl font-semibold text-color">{{ props.operation.orders }}</p>
-                    </div>
-                    <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-800">
-                        <p class="text-xs font-medium uppercase tracking-wide text-color-secondary">Income</p>
-                        <p class="mt-1 text-xl font-semibold text-color">{{ props.operation.income }}</p>
-                    </div>
-                </div>
-
-                <p
-                    v-if="props.operation.status === 'failed' && props.operation.error"
-                    class="mt-4 text-sm text-color-secondary"
-                >
-                    {{ props.operation.error }}
-                </p>
-            </div>
-        </div>
-    </section>
-</template>
-
 <style scoped>
 .import-timeline :deep(.p-timeline-event) {
     min-width: 0;
