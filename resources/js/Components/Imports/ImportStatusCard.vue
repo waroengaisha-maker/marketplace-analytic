@@ -25,7 +25,7 @@ const emit = defineEmits<{
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 const TRANSFER_DURATION = 900
 const PROCESSING_MIN_DURATION = 600
-const FINISH_REVEAL_DELAY = 500
+const FINISH_REVEAL_DELAY = 1000
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
@@ -206,7 +206,8 @@ const timelineSteps = computed(() => [
     },
 ])
 
-const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Please wait...')
+const isSummaryRevealed = computed(() => isTimelineFinished.value && summaryVisible.value)
+const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Please wait...')
 </script>
 
 <template>
@@ -291,7 +292,7 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
             <div class="flex items-center justify-center gap-2 text-center">
                 <i
                     :class="
-                        isTimelineFinished
+                        isSummaryRevealed
                             ? isCompleted
                                 ? 'pi pi-check-circle text-green-500'
                                 : 'pi pi-times-circle text-red-500'
@@ -367,7 +368,7 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
 
         <template #footer>
             <Skeleton
-                v-if="!isTimelineFinished"
+                v-if="!isSummaryRevealed"
                 width="5.5rem"
                 height="2.5rem"
                 border-radius="0.5rem"
