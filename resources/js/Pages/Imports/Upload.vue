@@ -121,8 +121,9 @@ if (flashOperationId) {
 </script>
 
 <template>
-    <Head title="Upload Files" />
-    <div class="flex w-full min-w-0 flex-col gap-6">
+    <div>
+        <Head title="Upload Files" />
+        <div class="flex w-full min-w-0 flex-col gap-6">
         <PageHeader
             section="Imports"
             title="Upload Laporan"
@@ -228,5 +229,6 @@ if (flashOperationId) {
                 </div>
             </template>
         </Card>
+        </div>
     </div>
 </template>
