@@ -42,7 +42,7 @@ Route::get('/account/subscription', function (Request $request) {
 })->middleware('auth')->name('account.subscription');
 
 Route::middleware(['auth', 'account.active'])->group(function (): void {
-    Route::get('/imports/upload', fn () => Inertia::render('Imports/Upload'))->name('imports.upload');
+    Route::get('/imports/upload', [UploadReportsController::class, 'index'])->name('imports.upload');
     Route::post('/imports/upload', [UploadReportsController::class, 'store'])
         ->middleware('throttle:report-upload')
         ->name('imports.upload.store');
