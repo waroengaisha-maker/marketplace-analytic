@@ -148,17 +148,12 @@ watch(
         <PageHeader
             section="Imports"
             title="Upload Laporan"
-            description="Pilih satu atau beberapa laporan, lalu impor sekaligus dalam satu proses."
         />
-        <AppAlert type="success" :message="page.props.flash?.success" />
         <AppAlert type="error" :message="page.props.flash?.error" />
         <ImportStatusCard v-if="importStatus" :operation="importStatus" @dismiss="resetImportStatus" />
 
         <Card>
-            <template #title>Import Laporan</template>
-            <template #subtitle>
-                Pilih laporan Order, Income, atau keduanya. Satu tombol akan menjalankan satu proses import.
-            </template>
+            <template #title>Pilih file laporan</template>
 
             <template #content>
                 <div class="flex flex-col gap-5">
@@ -245,9 +240,6 @@ watch(
                             :disabled="selectedCount === 0 || !!clientErrors.order_report || !!clientErrors.income_report"
                             @click="submit"
                         />
-                        <small class="text-color-secondary">
-                            {{ selectedCount === 2 ? 'Order dan Income akan diproses dalam satu operation.' : 'Pilih minimal satu laporan yang ingin diimpor. Laporan lainnya boleh dikosongkan.' }}
-                        </small>
                     </div>
                 </div>
             </template>
