@@ -53,7 +53,7 @@ const statusIcon = {
 
 const statusDescription = {
     queued: 'File berhasil diterima dan sedang menunggu worker untuk diproses.',
-    processing: 'Laporan sedang dibaca dan diproses. Anda dapat tetap berada di halaman ini.',
+    processing: 'Laporan sedang diproses. Status timeline diperbarui secara real-time.',
     completed: 'Seluruh proses import selesai dan hasilnya sudah tersedia di sistem.',
     failed: 'Proses import tidak dapat diselesaikan.',
 } satisfies Record<ImportStatus, string>
@@ -140,12 +140,15 @@ const timelineSteps = computed<TimelineStep[]>(() => {
                     />
                 </div>
 
-                <Timeline
-                    :value="timelineSteps"
-                    layout="horizontal"
-                    align="top"
-                    class="mt-6"
+                <div
+                    class="import-timeline mt-6"
+                    :class="`import-timeline--${props.operation.status}`"
                 >
+                    <Timeline
+                        :value="timelineSteps"
+                        layout="horizontal"
+                        align="top"
+                    >
                     <template #marker="{ item }">
                         <span
                             class="flex h-9 w-9 items-center justify-center rounded-full border-2 bg-[var(--p-card-background)] text-sm"
@@ -174,17 +177,22 @@ const timelineSteps = computed<TimelineStep[]>(() => {
                             </p>
                         </div>
                     </template>
-                </Timeline>
+                    </Timeline>
+                </div>
 
                 <div
-                    v-if="props.operation.status === 'processing'"
-                    class="mt-5 h-1 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700"
-                    role="progressbar"
-                    aria-label="Import sedang diproses"
-                    aria-valuemin="0"
-                    aria-valuemax="100"
+                    v-if="props.operation.status === 'queued' || props.operation.status === 'processing'"
+                    class="mt-4 flex items-center gap-2 text-xs text-color-secondary"
+                    aria-live="polite"
                 >
-                    <div class="h-full w-1/2 animate-pulse rounded-full bg-primary"></div>
+                    <span
+                        class="h-1.5 w-1.5 rounded-full bg-primary"
+                        :class="props.operation.status === 'processing' ? 'animate-pulse' : ''"
+                        aria-hidden="true"
+                    ></span>
+                    <span>
+                        {{ props.operation.status === 'queued' ? 'Menunggu worker...' : 'Sedang berjalan • pembaruan otomatis aktif' }}
+                    </span>
                 </div>
 
                 <div
@@ -211,3 +219,90 @@ const timelineSteps = computed<TimelineStep[]>(() => {
         </div>
     </section>
 </template>
+
+<style scoped>
+.import-timeline :deep(.p-timeline-event) {
+    min-width: 0;
+    flex: 1;
+}
+
+.import-timeline :deep(.p-timeline-event-content) {
+    min-width: 0;
+}
+
+.import-timeline :deep(.p-timeline-event-connector) {
+    background: var(--p-surface-300);
+    transition: background-color 300ms ease;
+}
+
+.import-timeline__marker {
+    position: relative;
+    z-index: 1;
+    transition: transform 300ms ease, background-color 300ms ease, color 300ms ease;
+}
+
+.import-timeline__marker--completed {
+    background: var(--p-primary-color);
+    color: var(--p-primary-contrast-color);
+}
+
+.import-timeline__marker--active {
+    color: var(--p-primary-color);
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--p-primary-color) 10%, transparent);
+    animation: import-timeline-pulse 1.8s ease-in-out infinite;
+}
+
+.import-timeline__marker--failed {
+    color: var(--p-red-500);
+    background: color-mix(in srgb, var(--p-red-500) 10%, var(--p-card-background));
+}
+
+.import-timeline__marker--pending {
+    color: var(--p-text-muted-color);
+}
+
+.import-timeline--queued :deep(.p-timeline-event:nth-child(1) .p-timeline-event-connector) {
+    background: linear-gradient(90deg, var(--p-primary-color) 0%, var(--p-primary-color) 50%, var(--p-surface-300) 50%, var(--p-surface-300) 100%);
+    background-size: 200% 100%;
+    animation: import-timeline-flow 1.6s linear infinite;
+}
+
+.import-timeline--processing :deep(.p-timeline-event:nth-child(1) .p-timeline-event-connector) {
+    background: var(--p-primary-color);
+}
+
+.import-timeline--processing :deep(.p-timeline-event:nth-child(2) .p-timeline-event-connector) {
+    background: linear-gradient(90deg, var(--p-primary-color) 0%, color-mix(in srgb, var(--p-primary-color) 35%, var(--p-surface-300)) 50%, var(--p-surface-300) 100%);
+    background-size: 200% 100%;
+    animation: import-timeline-flow 1.6s linear infinite;
+}
+
+.import-timeline--completed :deep(.p-timeline-event-connector) {
+    background: var(--p-primary-color);
+}
+
+.import-timeline--failed :deep(.p-timeline-event:nth-child(1) .p-timeline-event-connector) {
+    background: var(--p-primary-color);
+}
+
+.import-timeline--failed :deep(.p-timeline-event:nth-child(2) .p-timeline-event-connector) {
+    background: var(--p-red-500);
+}
+
+@keyframes import-timeline-pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+
+@keyframes import-timeline-flow {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .import-timeline__marker--active,
+    .import-timeline :deep(.p-timeline-event-connector) {
+        animation: none;
+    }
+}
+</style>
