@@ -26,13 +26,14 @@ const isFinished = (status: ImportStatus) => status === 'completed' || status ==
 const TRANSFER_DURATION = 900
 const PROCESSING_MIN_DURATION = 600
 const FINISH_REVEAL_DELAY = 1000
-const POINT_B_FILL_DURATION = 350
+const POINT_B_RING_DURATION = 500
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
 const timelinePhase = ref<TimelinePhase>('uploading')
 const showTransfer = ref(false)
 const summaryVisible = ref(false)
+const pointBRingActive = ref(false)
 let phaseTimer: ReturnType<typeof setTimeout> | null = null
 let processingTimer: ReturnType<typeof setTimeout> | null = null
 let summaryTimer: ReturnType<typeof setTimeout> | null = null
@@ -57,6 +58,7 @@ function clearTimers() {
 
 function finishTransfer() {
     showTransfer.value = false
+    pointBRingActive.value = true
     phaseTimer = null
     timelinePhase.value = 'processing'
 
@@ -98,6 +100,7 @@ function startTransfer(operationId: number) {
 
     transferOperationId = operationId
     summaryVisible.value = false
+    pointBRingActive.value = false
     clearTimers()
     timelinePhase.value = 'uploaded'
 
@@ -114,6 +117,7 @@ function syncTimelinePhase(operation: ImportOperation) {
         transferOperationId = null
         showTransfer.value = false
         summaryVisible.value = false
+        pointBRingActive.value = false
         timelinePhase.value = 'uploading'
         return
     }
@@ -260,7 +264,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                 'import-timeline__marker--active': step.active,
                                 'import-timeline__marker--achieved': step.achieved,
                                 'import-timeline__marker--failed': step.failed,
-                                    'import-timeline__marker--fill': step.key === 'processing' && isTimelineFinished,
+                                    'import-timeline__marker--ring': step.key === 'processing' && pointBRingActive && !isTimelineFinished,
                             }"
                             aria-hidden="true"
                         >
@@ -501,10 +505,6 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     color: white;
 }
 
-.import-timeline__marker--fill {
-    animation: import-point-b-fill 350ms ease-out both;
-}
-
 .import-timeline__marker--active {
     border-color: var(--p-primary-color);
     color: var(--p-primary-color);
@@ -625,19 +625,24 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     }
 }
 
-@keyframes import-point-b-fill {
+.import-timeline__marker--ring {
+    border-color: var(--p-green-500);
+    border-top-color: transparent;
+    animation: import-point-b-ring 500ms linear forwards;
+}
+
+@keyframes import-point-b-ring {
     from {
-        background: var(--p-card-background);
-        color: var(--p-green-500);
-        transform: scale(0.9);
-        box-shadow: 0 0 0 0 color-mix(in srgb, var(--p-green-500) 25%, transparent);
+        transform: rotate(-90deg);
+        border-top-color: transparent;
+        border-right-color: var(--p-green-500);
+        border-bottom-color: var(--p-surface-400);
+        border-left-color: var(--p-surface-400);
     }
 
     to {
-        background: var(--p-green-500);
-        color: white;
-        transform: scale(1);
-        box-shadow: 0 0 0 5px color-mix(in srgb, var(--p-green-500) 0%, transparent);
+        transform: rotate(270deg);
+        border-color: var(--p-green-500);
     }
 }
 
