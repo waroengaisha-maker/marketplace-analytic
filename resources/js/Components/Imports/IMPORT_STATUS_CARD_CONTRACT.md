@@ -8,7 +8,9 @@
 
 - Render the semantic import state: queued, processing, completed, or failed.
 - Use shared `StatusBadge` semantics for the current state.
-- Show an indeterminate PrimeVue progress indicator while processing.
+- Visualize the current state with a horizontal PrimeVue Timeline.
+- Animate the active timeline state while an operation is queued or processing.
+- Reflect real-time operation updates passed by the parent component.
 - Show imported order/income totals only after completion.
 - Show the backend-provided failure message when an operation fails.
 - Emit `dismiss` only for terminal states.
@@ -21,6 +23,6 @@
 
 ## Usage
 
-The parent page owns polling and passes the latest operation through the `operation` prop.
+The parent page owns real-time updates and passes the latest operation through the `operation` prop.
 
 The component must not present a percentage unless the backend exposes a real progress metric.
