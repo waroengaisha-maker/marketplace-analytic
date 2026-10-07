@@ -274,6 +274,9 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
                             class="import-timeline__label"
                             :class="{
                                 'import-timeline__label--muted': !step.active && !step.achieved && !step.failed,
+                                'import-timeline__label--active': step.active,
+                                'import-timeline__label--achieved': step.achieved,
+                                'import-timeline__label--failed': step.failed,
                             }"
                         >
                             {{ step.label }}
@@ -503,6 +506,19 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
     color: var(--p-text-muted-color);
 }
 
+.import-timeline__label--active {
+    color: var(--p-primary-color);
+    animation: import-label-pulse 1.6s ease-in-out infinite;
+}
+
+.import-timeline__label--achieved {
+    color: var(--p-green-500);
+}
+
+.import-timeline__label--failed {
+    color: var(--p-red-500);
+}
+
 .import-summary {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -602,6 +618,16 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
     }
 }
 
+@keyframes import-label-pulse {
+    0%, 100% {
+        opacity: 0.72;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
 @keyframes import-transfer-travel {
     from {
         left: 0;
@@ -641,6 +667,7 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
 
 @media (prefers-reduced-motion: reduce) {
     .import-timeline__marker,
+    .import-timeline__label,
     .import-timeline__track,
     .import-timeline__transfer-dot {
         transition: none;
