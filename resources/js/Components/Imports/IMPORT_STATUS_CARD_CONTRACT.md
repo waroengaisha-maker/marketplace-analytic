@@ -7,11 +7,12 @@
 ## Responsibilities
 
 - Render the semantic import state: queued, processing, completed, or failed.
-- Present a two-milestone horizontal upload timeline:
-  - `Uploading` → pulsing point, inactive connector, and `Uploading...` message.
-  - `Uploaded` → solid point, solid connector, a one-shot moving handoff animation, and `Uploaded` message.
-  - `Processing` → pulsing point, solid connector, and `Processing...` message.
-  - `Successful` / `Failed` → solid terminal point and `Finished` message.
+- Present a three-step horizontal upload timeline:
+  - `Uploading` → first point pulsing, connector inactive, and `Uploading...` message.
+  - `Uploaded` → first point solid, first connector plays a moving-dot handoff animation, and `Uploaded` message.
+  - `Processing` → second point pulsing, connectors solid, the previous moving dot disappears, and `Processing...` message.
+  - `Processed` → second point solid, second connector plays a moving-dot handoff animation, and `Processed` message.
+  - `Successful` / `Failed` → third point solid and `Finished` message.
 - Reflect real-time operation updates passed by the parent component.
 - Show imported order/income totals only after completion.
 - Show the backend-provided failure message when an operation fails.
