@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\ImportStatusUpdated;
 use App\Models\ReportImportOperation;
 use App\Services\IncomeReportImporter;
 use App\Services\OrderReportImporter;
@@ -43,6 +44,8 @@ class ImportReportsJob implements ShouldBeUnique, ShouldQueue
         }
 
         $operation->update(['status' => 'processing', 'error_message' => null]);
+        $operation->refresh();
+        ImportStatusUpdated::dispatch($operation);
 
         try {
             $result = DB::transaction(function () use ($operation, $orders, $income): array {
@@ -61,12 +64,16 @@ class ImportReportsJob implements ShouldBeUnique, ShouldQueue
                 'orders' => $result['orders'],
                 'income' => $result['income'],
             ]);
+            $operation->refresh();
+            ImportStatusUpdated::dispatch($operation);
         } catch (Throwable $exception) {
             report($exception);
             $operation->update([
                 'status' => 'failed',
                 'error_message' => 'Laporan gagal diproses. Silakan coba lagi atau hubungi administrator.',
             ]);
+            $operation->refresh();
+            ImportStatusUpdated::dispatch($operation);
             throw $exception;
         } finally {
             $paths = array_filter([$operation->order_path, $operation->income_path]);
