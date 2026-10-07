@@ -2,6 +2,7 @@ import '../css/app.css'
 import { createApp, h, type DefineComponent } from 'vue'
 import { createInertiaApp } from '@inertiajs/vue3'
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers'
+import { configureEcho } from '@laravel/echo-vue'
 import AppLayout from './Layouts/AppLayout.vue'
 import PrimeVue from 'primevue/config'
 import Aura from '@primeuix/themes/aura'
@@ -10,6 +11,10 @@ import 'primeicons/primeicons.css'
 import { initializeTheme } from './composables/useTheme'
 
 initializeTheme()
+
+configureEcho({
+    broadcaster: 'reverb',
+})
 
 createInertiaApp({
     title: (title) => `${title} - Marketplace Analytics`,
