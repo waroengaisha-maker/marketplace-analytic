@@ -32,6 +32,7 @@ type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'fa
 const timelinePhase = ref<TimelinePhase>('uploading')
 const showTransfer = ref(false)
 const summaryVisible = ref(false)
+const pointAFillActive = ref(false)
 const pointBFillActive = ref(false)
 let phaseTimer: ReturnType<typeof setTimeout> | null = null
 let processingTimer: ReturnType<typeof setTimeout> | null = null
@@ -58,6 +59,7 @@ function clearTimers() {
 
 function finishTransfer() {
     showTransfer.value = false
+    pointAFillActive.value = false
     pointBFillActive.value = false
     phaseTimer = null
     timelinePhase.value = 'processing'
@@ -100,6 +102,7 @@ function startTransfer(operationId: number) {
 
     transferOperationId = operationId
     summaryVisible.value = false
+    pointAFillActive.value = false
     pointBFillActive.value = false
     clearTimers()
     timelinePhase.value = 'uploaded'
@@ -117,6 +120,7 @@ function syncTimelinePhase(operation: ImportOperation) {
         transferOperationId = null
         showTransfer.value = false
         summaryVisible.value = false
+        pointAFillActive.value = false
         pointBFillActive.value = false
         timelinePhase.value = 'uploading'
         return
@@ -266,7 +270,8 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                 'import-timeline__marker--active': step.active,
                                 'import-timeline__marker--achieved': step.achieved,
                                 'import-timeline__marker--failed': step.failed,
-                                    'import-timeline__marker--fill-success': step.key === 'processing' && pointBFillActive && isCompleted,
+                                    'import-timeline__marker--fill-upload': step.key === 'upload' && pointAFillActive,
+                                'import-timeline__marker--fill-success': step.key === 'processing' && pointBFillActive && isCompleted,
                                 'import-timeline__marker--fill-failed': step.key === 'processing' && pointBFillActive && isFailed,
                             }"
                             aria-hidden="true"
@@ -555,11 +560,13 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     color: var(--p-red-500);
 }
 
+.import-timeline__marker--fill-upload,
 .import-timeline__marker--fill-success,
 .import-timeline__marker--fill-failed {
     color: white;
 }
 
+.import-timeline__marker--fill-upload::before,
 .import-timeline__marker--fill-success::before,
 .import-timeline__marker--fill-failed::before {
     position: absolute;
@@ -571,6 +578,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     animation: import-point-b-fill 350ms ease-out forwards;
 }
 
+.import-timeline__marker--fill-upload::before,
 .import-timeline__marker--fill-success::before {
     background: var(--p-green-500);
 }
