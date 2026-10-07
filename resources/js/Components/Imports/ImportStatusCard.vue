@@ -30,6 +30,8 @@ const isProcessing = computed(() =>
     (props.operation.status === 'queued' || props.operation.status === 'processing'),
 )
 
+const isUploaded = computed(() => props.operation.id !== 0)
+
 const isCompleted = computed(() => props.operation.status === 'completed')
 
 const isFailed = computed(() => props.operation.status === 'failed')
@@ -55,16 +57,19 @@ const processLabel = computed(() => {
 })
 
 const statusMessage = computed(() => {
-    switch (props.operation.status) {
-        case 'completed':
-            return 'Upload selesai'
-        case 'failed':
-            return 'Upload gagal'
-        case 'processing':
-            return 'File sedang diproses'
-        default:
-            return isUploading.value ? 'Mengunggah file' : 'File sedang diproses'
+    if (isUploading.value) {
+        return 'Uploading...'
     }
+
+    if (isCompleted.value || isFailed.value) {
+        return 'Finished'
+    }
+
+    if (isUploaded.value) {
+        return 'Uploaded'
+    }
+
+    return 'Processing...'
 })
 </script>
 
@@ -91,11 +96,20 @@ const statusMessage = computed(() => {
                     class="import-timeline__rail"
                     :class="{
                         'import-timeline__rail--uploading': isUploading,
-                        'import-timeline__rail--uploaded': !isUploading,
+                        'import-timeline__rail--uploaded': isUploaded,
+                        'import-timeline__rail--transfer': isUploaded,
                     }"
                     aria-hidden="true"
                 >
                     <span class="import-timeline__track"></span>
+                </div>
+
+                <div
+                    v-if="isUploaded"
+                    class="import-timeline__transfer"
+                    aria-hidden="true"
+                >
+                    <span class="import-timeline__transfer-dot"></span>
                 </div>
 
                 <div class="import-timeline__steps">
@@ -191,7 +205,7 @@ const statusMessage = computed(() => {
             <Button
                 v-if="isFinished(props.operation.status)"
                 type="button"
-                label="Tutup"
+                label="Close"
                 :icon="props.operation.status === 'completed' ? 'pi pi-check' : 'pi pi-times'"
                 :severity="props.operation.status === 'completed' ? 'success' : 'secondary'"
                 @click="emit('dismiss')"
@@ -227,16 +241,33 @@ const statusMessage = computed(() => {
     background: var(--p-green-500);
 }
 
+.import-timeline__transfer {
+    position: absolute;
+    top: 1.25rem;
+    right: calc(25% + 1.25rem);
+    left: calc(25% + 1.25rem);
+    z-index: 2;
+    height: 2px;
+    pointer-events: none;
+}
+
+.import-timeline__transfer-dot {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 9999px;
+    background: white;
+    box-shadow: 0 0 0 2px var(--p-green-500), 0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
+    transform: translate(-50%, -50%);
+    animation: import-transfer-travel 900ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+
+
 .import-timeline__rail--uploading .import-timeline__track {
-    background: linear-gradient(
-        90deg,
-        var(--p-surface-300) 0%,
-        var(--p-primary-color) 35%,
-        var(--p-primary-color) 65%,
-        var(--p-surface-300) 100%
-    );
-    background-size: 200% 100%;
-    animation: import-upload-line-pulse 1.4s ease-in-out infinite;
+    background: var(--p-surface-300);
 }
 
 .import-timeline__steps {
@@ -350,7 +381,8 @@ const statusMessage = computed(() => {
 }
 
 @media (max-width: 480px) {
-    .import-timeline__rail {
+    .import-timeline__rail,
+    .import-timeline__transfer {
         right: calc(25% + 0.75rem);
         left: calc(25% + 0.75rem);
     }
@@ -383,26 +415,20 @@ const statusMessage = computed(() => {
     }
 }
 
-@keyframes import-upload-line-pulse {
-    0% {
-        background-position: 100% 0;
-        opacity: 0.65;
+@keyframes import-transfer-travel {
+    from {
+        left: 0;
     }
 
-    50% {
-        background-position: 0% 0;
-        opacity: 1;
-    }
-
-    100% {
-        background-position: -100% 0;
-        opacity: 0.65;
+    to {
+        left: 100%;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
     .import-timeline__marker,
-    .import-timeline__track {
+    .import-timeline__track,
+    .import-timeline__transfer-dot {
         transition: none;
         animation: none;
     }
