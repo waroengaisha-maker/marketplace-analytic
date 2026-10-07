@@ -123,6 +123,13 @@ const cards = [
     ['Tidak Valid', 'valid_without_tracking_sales', 'valid_without_tracking', 'secondary'],
 ] as const
 const activeDashboardTab = ref('summary')
+const cardSeverity = (severity: string) => ({
+    success: 'border-l-4 border-l-green-500',
+    warn: 'border-l-4 border-l-orange-500',
+    danger: 'border-l-4 border-l-red-500',
+    info: 'border-l-4 border-l-primary',
+    secondary: 'border-l-4 border-l-surface-400',
+}[severity] ?? 'border-l-4 border-l-surface-400')
 const summaryCards = cards.filter(([, value]) => ['gross_sales', 'settled_sales', 'pending_sales', 'net_sales', 'cancelled_sales', 'valid_without_tracking_sales'].includes(value))
 const financialCards = cards.filter(([, value]) => ['total_fee', 'total_tax', 'gross_profit', 'total_hpp', 'net_profit', 'net_margin'].includes(value))
 const hppQualityTags = computed(() => {
@@ -190,7 +197,7 @@ const hppQualityTags = computed(() => {
             <TabPanels>
                 <TabPanel value="summary">
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <Card v-for="([label, value, count]) in summaryCards" :key="value" class="[&_.p-card-body]:p-3">
+                        <Card v-for="([label, value, count, severity]) in summaryCards" :key="value" class="[&_.p-card-body]:p-3" :class="cardSeverity(severity)">
                             <template #content>
                                 <p class="text-xs font-semibold text-color-secondary">{{ label }}</p>
                                 <p class="mt-1 text-lg font-bold">{{ formatNominal(page.props.stats[value]) }}</p>
@@ -201,7 +208,7 @@ const hppQualityTags = computed(() => {
                 </TabPanel>
                 <TabPanel value="financial">
                     <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                        <Card v-for="([label, value, count]) in financialCards" :key="value" class="[&_.p-card-body]:p-3">
+                        <Card v-for="([label, value, count, severity]) in financialCards" :key="value" class="[&_.p-card-body]:p-3" :class="cardSeverity(severity)">
                             <template #content>
                                 <p class="text-xs font-semibold text-color-secondary">{{ label }}</p>
                                 <p class="mt-1 text-lg font-bold">{{ value === 'net_margin' ? `${Number(page.props.stats[value]).toFixed(2)}%` : formatNominal(page.props.stats[value]) }}</p>
