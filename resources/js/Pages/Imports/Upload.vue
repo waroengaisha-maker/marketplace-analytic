@@ -11,7 +11,7 @@ type ImportStatus = 'queued' | 'processing' | 'completed' | 'failed'
 type ImportOperation = { id: number; status: ImportStatus; orders: number; income: number; error?: string | null }
 type Flash = { success?: string; error?: string; import_operation_id?: number }
 type PageProps = {
-    auth?: { user?: { id?: number } | null }
+    auth: { user: { id: number } }
     flash?: Flash
     activeOperation?: ImportOperation | null
 }
@@ -43,10 +43,10 @@ async function loadImportStatus() {
     }
 }
 
-const userId = page.props.auth?.user?.id
+const userId = page.props.auth.user.id
 
 useEcho(
-    userId ? `imports.${userId}` : null,
+    `imports.${userId}`,
     '.ImportStatusUpdated',
     (event: ImportOperation) => {
         if (event.id === operationId()) {
