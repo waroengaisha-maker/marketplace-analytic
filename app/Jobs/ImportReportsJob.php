@@ -4,8 +4,7 @@ namespace App\Jobs;
 
 use App\Events\ImportStatusUpdated;
 use App\Models\ReportImportOperation;
-use App\Services\IncomeReportImporter;
-use App\Services\OrderReportImporter;
+use Illuminate\Broadcasting\BroadcastException;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -35,8 +34,10 @@ class ImportReportsJob implements ShouldBeUnique, ShouldQueue
         return (string) $this->operationId;
     }
 
-    public function handle(OrderReportImporter $orders, IncomeReportImporter $income): void
-    {
+    public function handle(
+        \App\Services\OrderReportImporter $orders,
+        \App\Services\IncomeReportImporter $income,
+    ): void {
         $operation = ReportImportOperation::query()->findOrFail($this->operationId);
 
         if ($operation->status === 'completed') {
@@ -45,7 +46,7 @@ class ImportReportsJob implements ShouldBeUnique, ShouldQueue
 
         $operation->update(['status' => 'processing', 'error_message' => null]);
         $operation->refresh();
-        ImportStatusUpdated::dispatch($operation);
+        $this->broadcastStatus($operation);
 
         try {
             $result = DB::transaction(function () use ($operation, $orders, $income): array {
@@ -65,25 +66,64 @@ class ImportReportsJob implements ShouldBeUnique, ShouldQueue
                 'income' => $result['income'],
             ]);
             $operation->refresh();
-            ImportStatusUpdated::dispatch($operation);
+            $this->broadcastStatus($operation);
         } catch (Throwable $exception) {
             report($exception);
+
             $operation->update([
                 'status' => 'failed',
                 'error_message' => 'Laporan gagal diproses. Silakan coba lagi atau hubungi administrator.',
             ]);
             $operation->refresh();
-            ImportStatusUpdated::dispatch($operation);
+            $this->broadcastStatus($operation);
+
             throw $exception;
         } finally {
-            $paths = array_filter([$operation->order_path, $operation->income_path]);
-            if ($paths !== []) {
-                try {
-                    Storage::disk('local')->delete(array_values($paths));
-                } catch (Throwable $exception) {
-                    report($exception);
-                }
-            }
+            $this->deleteFiles($operation);
+        }
+    }
+
+    public function failed(Throwable $exception): void
+    {
+        $operation = ReportImportOperation::query()->find($this->operationId);
+
+        if ($operation === null || $operation->status === 'completed') {
+            return;
+        }
+
+        report($exception);
+
+        $operation->update([
+            'status' => 'failed',
+            'error_message' => 'Laporan gagal diproses. Silakan coba lagi atau hubungi administrator.',
+        ]);
+        $operation->refresh();
+
+        $this->broadcastStatus($operation);
+        $this->deleteFiles($operation);
+    }
+
+    private function broadcastStatus(ReportImportOperation $operation): void
+    {
+        try {
+            ImportStatusUpdated::dispatch($operation);
+        } catch (BroadcastException $exception) {
+            report($exception);
+        }
+    }
+
+    private function deleteFiles(ReportImportOperation $operation): void
+    {
+        $paths = array_filter([$operation->order_path, $operation->income_path]);
+
+        if ($paths === []) {
+            return;
+        }
+
+        try {
+            Storage::disk('local')->delete(array_values($paths));
+        } catch (Throwable $exception) {
+            report($exception);
         }
     }
 }
