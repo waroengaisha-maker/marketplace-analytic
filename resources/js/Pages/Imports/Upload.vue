@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import PageHeader from '@/Components/PageHeader.vue'
+import { useEcho } from '@laravel/echo-vue'
 import { Head, useForm, usePage } from '@inertiajs/vue3'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { ref } from 'vue'
 import AppAlert from '../../Components/AppAlert.vue'
 import FileUploadCard from '../../Components/FileUploadCard.vue'
 import ImportStatusCard from '../../Components/Imports/ImportStatusCard.vue'
@@ -9,51 +10,52 @@ import ImportStatusCard from '../../Components/Imports/ImportStatusCard.vue'
 type ImportStatus = 'queued' | 'processing' | 'completed' | 'failed'
 type ImportOperation = { id: number; status: ImportStatus; orders: number; income: number; error?: string | null }
 type Flash = { success?: string; error?: string; import_operation_id?: number }
-type PageProps = { flash?: Flash; activeOperation?: ImportOperation | null }
+type PageProps = {
+    auth?: { user?: { id?: number } | null }
+    flash?: Flash
+    activeOperation?: ImportOperation | null
+}
 
 const page = usePage<PageProps>()
 const orderForm = useForm<{ order_report: File | null }>({ order_report: null })
 const incomeForm = useForm<{ income_report: File | null }>({ income_report: null })
-const importStatus = ref<ImportOperation | null>(null)
-let pollTimer: ReturnType<typeof setInterval> | undefined
-let pollInFlight = false
+const importStatus = ref<ImportOperation | null>(page.props.activeOperation ?? null)
 
-const operationId = () => page.props.flash?.import_operation_id ?? page.props.activeOperation?.id
+function operationId() {
+    return page.props.flash?.import_operation_id ?? page.props.activeOperation?.id ?? importStatus.value?.id
+}
 
-async function pollImportStatus() {
+async function loadImportStatus() {
     const id = operationId()
-    if (!id || pollInFlight) return
-    pollInFlight = true
+    if (!id) return
+
     try {
         const response = await fetch(`/imports/upload/${id}/status`, {
             headers: { Accept: 'application/json' },
             credentials: 'same-origin',
         })
+
         if (!response.ok) return
+
         importStatus.value = await response.json() as ImportOperation
-        if (importStatus.value.status === 'completed' || importStatus.value.status === 'failed') stopPolling()
     } catch {
-        // Temporary polling failures must not be presented as import failures.
-    } finally {
-        pollInFlight = false
+        // Initial snapshot failures must not be presented as import failures.
     }
 }
 
-function stopPolling() {
-    if (pollTimer) clearInterval(pollTimer)
-    pollTimer = undefined
-}
+const userId = page.props.auth?.user?.id
 
-function startPolling() {
-    const id = operationId()
-    if (!id) return
-    importStatus.value = page.props.activeOperation?.id === id ? page.props.activeOperation : null
-    void pollImportStatus()
-    pollTimer = setInterval(() => void pollImportStatus(), 2000)
-}
+useEcho(
+    userId ? `imports.${userId}` : null,
+    '.ImportStatusUpdated',
+    (event: ImportOperation) => {
+        if (event.id === operationId()) {
+            importStatus.value = event
+        }
+    },
+)
 
 function resetImportStatus() {
-    stopPolling()
     importStatus.value = null
 }
 
@@ -65,8 +67,7 @@ function submitIncome() {
     incomeForm.post('/imports/upload', { forceFormData: true })
 }
 
-onMounted(startPolling)
-onBeforeUnmount(stopPolling)
+void loadImportStatus()
 </script>
 
 <template>
