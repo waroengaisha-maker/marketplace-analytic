@@ -21,6 +21,8 @@ const form = useForm<{ order_report: File | null; income_report: File | null }>(
     income_report: null,
 })
 const clientErrors = ref<Record<ReportField, string>>({ order_report: '', income_report: '' })
+const orderFileInput = ref<HTMLInputElement | null>(null)
+const incomeFileInput = ref<HTMLInputElement | null>(null)
 const importStatus = ref<ImportOperation | null>(page.props.activeOperation ?? null)
 const trackedOperationId = ref<number | null>(page.props.flash?.import_operation_id ?? page.props.activeOperation?.id ?? null)
 
@@ -43,6 +45,11 @@ function validateFile(field: ReportField, file: File | null): boolean {
                 : ''
 
     return !clientErrors.value[field]
+}
+
+function openFilePicker(field: ReportField) {
+    const input = field === 'order_report' ? orderFileInput.value : incomeFileInput.value
+    input?.click()
 }
 
 function handleFileChange(field: ReportField, event: Event) {
@@ -148,8 +155,9 @@ if (flashOperationId) {
                                 <div class="relative inline-flex">
                                     <input
                                         id="order-report"
+                                        ref="orderFileInput"
                                         type="file"
-                                        class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                                        class="sr-only"
                                         accept=".xlsx,.xls"
                                         :disabled="form.processing"
                                         @change="handleFileChange('order_report', $event)"
@@ -159,8 +167,8 @@ if (flashOperationId) {
                                         icon="pi pi-file-excel"
                                         label="Pilih file"
                                         :disabled="form.processing"
-                                        tabindex="-1"
-                                        aria-hidden="true"
+                                        aria-controls="order-report"
+                                        @click="openFilePicker('order_report')"
                                     />
                                 </div>
                                 <span v-if="form.order_report" class="min-w-0 max-w-full truncate text-sm text-color-secondary">
@@ -183,8 +191,9 @@ if (flashOperationId) {
                                 <div class="relative inline-flex">
                                     <input
                                         id="income-report"
+                                        ref="incomeFileInput"
                                         type="file"
-                                        class="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0 disabled:cursor-not-allowed"
+                                        class="sr-only"
                                         accept=".xlsx,.xls"
                                         :disabled="form.processing"
                                         @change="handleFileChange('income_report', $event)"
@@ -194,8 +203,8 @@ if (flashOperationId) {
                                         icon="pi pi-file-excel"
                                         label="Pilih file"
                                         :disabled="form.processing"
-                                        tabindex="-1"
-                                        aria-hidden="true"
+                                        aria-controls="income-report"
+                                        @click="openFilePicker('income_report')"
                                     />
                                 </div>
                                 <span v-if="form.income_report" class="min-w-0 max-w-full truncate text-sm text-color-secondary">
