@@ -13,13 +13,6 @@ type ImportOperation = {
     error?: string | null
 }
 
-type TimelineStep = {
-    key: 'upload' | 'processing' | 'completed'
-    label: string
-    achieved: boolean
-    failed: boolean
-}
-
 const props = defineProps<{
     operation: ImportOperation
 }>()
@@ -30,56 +23,47 @@ const emit = defineEmits<{
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 
+const isUploading = computed(() => props.operation.id === 0)
+
+const isProcessing = computed(() =>
+    props.operation.id !== 0 &&
+    (props.operation.status === 'queued' || props.operation.status === 'processing'),
+)
+
+const isCompleted = computed(() => props.operation.status === 'completed')
+
+const isFailed = computed(() => props.operation.status === 'failed')
+
 function handleDialogHide() {
     if (isFinished(props.operation.status)) {
         emit('dismiss')
     }
 }
 
-const timelineSteps = computed<TimelineStep[]>(() => {
-    const status = props.operation.status
+const uploadLabel = computed(() => isUploading.value ? 'Uploading' : 'Uploaded')
 
-    return [
-        {
-            key: 'upload',
-            label: 'Upload',
-            achieved: props.operation.id !== 0,
-            failed: false,
-        },
-        {
-            key: 'processing',
-            label: 'Proses',
-            achieved: status === 'completed',
-            failed: status === 'failed',
-        },
-        {
-            key: 'completed',
-            label: 'Selesai',
-            achieved: status === 'completed',
-            failed: false,
-        },
-    ]
+const processLabel = computed(() => {
+    if (isCompleted.value) {
+        return 'Successful'
+    }
+
+    if (isFailed.value) {
+        return 'Failed'
+    }
+
+    return 'Processing'
 })
 
 const statusMessage = computed(() => {
     switch (props.operation.status) {
-        case 'completed': return 'Upload selesai'
-        case 'failed': return 'Upload gagal'
-        case 'processing': return 'File sedang diproses'
-        default: return 'Mengunggah file'
-    }
-})
-
-const progressWidth = computed(() => {
-    switch (props.operation.status) {
-        case 'processing':
-            return '50%'
         case 'completed':
-            return '100%'
+            return 'Upload selesai'
         case 'failed':
-            return '50%'
+            return 'Upload gagal'
+        case 'processing':
+            return 'File sedang diproses'
         default:
-            return '0%'
+            return isUploading.value ? 'Mengunggah file' : 'File sedang diproses'
     }
 })
 </script>
@@ -105,45 +89,64 @@ const progressWidth = computed(() => {
             <div class="import-timeline">
                 <div
                     class="import-timeline__rail"
-                    :style="{ '--import-progress': progressWidth }"
+                    :class="{
+                        'import-timeline__rail--uploading': isUploading,
+                        'import-timeline__rail--uploaded': !isUploading,
+                    }"
                     aria-hidden="true"
                 >
                     <span class="import-timeline__track"></span>
-                    <span class="import-timeline__progress"></span>
                 </div>
 
                 <div class="import-timeline__steps">
-                    <div
-                        v-for="step in timelineSteps"
-                        :key="step.key"
-                        class="import-timeline__step"
-                    >
+                    <div class="import-timeline__step">
                         <span
                             class="import-timeline__marker"
                             :class="{
-                                'import-timeline__marker--achieved': step.achieved,
-                                'import-timeline__marker--failed': step.failed,
-                                'import-timeline__marker--active': (props.operation.id === 0 && step.key === 'upload') || (props.operation.status === 'processing' && step.key === 'processing'),
+                                'import-timeline__marker--active': isUploading,
+                                'import-timeline__marker--achieved': !isUploading,
                             }"
                             aria-hidden="true"
                         >
-                            <i :class="step.failed ? 'pi pi-exclamation' : step.achieved ? 'pi pi-check' : 'pi pi-times'"></i>
+                            <i :class="isUploading ? 'pi pi-upload' : 'pi pi-check'"></i>
                         </span>
+                        <span class="import-timeline__label">{{ uploadLabel }}</span>
+                    </div>
+
+                    <div class="import-timeline__step">
                         <span
-                            class="import-timeline__label"
+                            class="import-timeline__marker"
                             :class="{
-                                'import-timeline__label--muted': !step.achieved && !step.failed,
+                                'import-timeline__marker--active': isProcessing,
+                                'import-timeline__marker--achieved': isCompleted,
+                                'import-timeline__marker--failed': isFailed,
                             }"
+                            aria-hidden="true"
                         >
-                            {{ step.label }}
+                            <i
+                                :class="
+                                    isFailed
+                                        ? 'pi pi-times'
+                                        : isCompleted
+                                            ? 'pi pi-check'
+                                            : 'pi pi-cog'
+                                "
+                            ></i>
                         </span>
+                        <span class="import-timeline__label">{{ processLabel }}</span>
                     </div>
                 </div>
             </div>
 
             <div class="flex items-center justify-center gap-2 text-center">
                 <i
-                    :class="props.operation.status === 'completed' ? 'pi pi-check-circle text-green-500' : props.operation.status === 'failed' ? 'pi pi-exclamation-circle text-red-500' : 'pi pi-spin pi-spinner text-primary'"
+                    :class="
+                        isCompleted
+                            ? 'pi pi-check-circle text-green-500'
+                            : isFailed
+                                ? 'pi pi-exclamation-circle text-red-500'
+                                : 'pi pi-spin pi-spinner text-primary'
+                    "
                     aria-hidden="true"
                 ></i>
                 <span class="text-sm font-medium text-color">{{ statusMessage }}</span>
@@ -207,44 +210,39 @@ const progressWidth = computed(() => {
 .import-timeline__rail {
     position: absolute;
     top: 1.25rem;
-    right: calc(16.666667% + 0.5rem);
-    left: calc(16.666667% + 0.5rem);
+    right: calc(25% + 1.25rem);
+    left: calc(25% + 1.25rem);
     height: 2px;
 }
 
-.import-timeline__track,
-.import-timeline__progress {
+.import-timeline__track {
     position: absolute;
     inset: 0;
+    overflow: hidden;
     border-radius: 9999px;
-}
-
-.import-timeline__track {
     background: var(--p-surface-300);
 }
 
-.import-timeline__progress {
-    width: var(--import-progress);
-    overflow: hidden;
+.import-timeline__rail--uploaded .import-timeline__track {
     background: var(--p-green-500);
-    transition: width 700ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.import-timeline__progress::after {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    left: -35%;
-    width: 35%;
-    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 55%), transparent);
-    content: '';
-    animation: import-progress-shimmer 1.4s ease-in-out infinite;
+.import-timeline__rail--uploading .import-timeline__track {
+    background: linear-gradient(
+        90deg,
+        var(--p-surface-300) 0%,
+        var(--p-primary-color) 35%,
+        var(--p-primary-color) 65%,
+        var(--p-surface-300) 100%
+    );
+    background-size: 200% 100%;
+    animation: import-upload-line-pulse 1.4s ease-in-out infinite;
 }
 
 .import-timeline__steps {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
 }
 
@@ -280,8 +278,8 @@ const progressWidth = computed(() => {
 
 .import-timeline__marker--failed {
     border-color: var(--p-red-500);
-    background: color-mix(in srgb, var(--p-red-500) 8%, var(--p-card-background));
-    color: var(--p-red-500);
+    background: var(--p-red-500);
+    color: white;
 }
 
 .import-timeline__marker--active {
@@ -296,10 +294,6 @@ const progressWidth = computed(() => {
     font-weight: 600;
     line-height: 1.25;
     text-align: center;
-}
-
-.import-timeline__label--muted {
-    color: var(--p-text-muted-color);
 }
 
 .import-summary {
@@ -357,8 +351,8 @@ const progressWidth = computed(() => {
 
 @media (max-width: 480px) {
     .import-timeline__rail {
-        right: calc(16.666667% + 0.25rem);
-        left: calc(16.666667% + 0.25rem);
+        right: calc(25% + 0.75rem);
+        left: calc(25% + 0.75rem);
     }
 
     .import-summary {
@@ -380,23 +374,36 @@ const progressWidth = computed(() => {
 }
 
 @keyframes import-step-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--p-primary-color) 0%, transparent); }
-    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--p-primary-color) 12%, transparent); }
+    0%, 100% {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--p-primary-color) 0%, transparent);
+    }
+
+    50% {
+        box-shadow: 0 0 0 6px color-mix(in srgb, var(--p-primary-color) 12%, transparent);
+    }
 }
 
-@keyframes import-progress-shimmer {
-    from { transform: translateX(0); }
-    to { transform: translateX(390%); }
+@keyframes import-upload-line-pulse {
+    0% {
+        background-position: 100% 0;
+        opacity: 0.65;
+    }
+
+    50% {
+        background-position: 0% 0;
+        opacity: 1;
+    }
+
+    100% {
+        background-position: -100% 0;
+        opacity: 0.65;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .import-timeline__progress,
-    .import-timeline__marker {
+    .import-timeline__marker,
+    .import-timeline__track {
         transition: none;
-        animation: none;
-    }
-
-    .import-timeline__progress::after {
         animation: none;
     }
 }
