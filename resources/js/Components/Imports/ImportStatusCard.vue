@@ -123,7 +123,25 @@ function syncTimelinePhase(operation: ImportOperation) {
         return
     }
 
-    if (showTransfer.value || timelinePhase.value === 'processing') {
+    if (showTransfer.value) {
+        return
+    }
+
+    if (timelinePhase.value === 'processing') {
+        if (isFinished(operation.status) && !processingTimer) {
+            processingTimer = setTimeout(() => {
+                processingTimer = null
+
+                if (props.operation.status === 'completed') {
+                    timelinePhase.value = 'completed'
+                } else if (props.operation.status === 'failed') {
+                    timelinePhase.value = 'failed'
+                }
+
+                scheduleSummary()
+            }, PROCESSING_MIN_DURATION)
+        }
+
         return
     }
 
