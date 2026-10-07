@@ -17,9 +17,6 @@ return [
                 'scheme' => env('REVERB_SCHEME', 'https'),
                 'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
             ],
-            'client_options' => [
-                'verify' => false,
-            ],
         ],
 
         'pusher' => [
