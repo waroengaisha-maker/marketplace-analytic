@@ -7,9 +7,11 @@
 ## Responsibilities
 
 - Render the semantic import state: queued, processing, completed, or failed.
-- Use shared `StatusBadge` semantics for the current state.
-- Visualize the current state with a horizontal PrimeVue Timeline.
-- Animate the active timeline state while an operation is queued or processing.
+- Present a two-milestone horizontal upload timeline:
+  - `Uploading` → pulsing step and pulsing connector.
+  - `Uploaded` → solid completed step and solid connector.
+  - `Processing` → pulsing step while processing is active.
+  - `Successful` / `Failed` → solid terminal step.
 - Reflect real-time operation updates passed by the parent component.
 - Show imported order/income totals only after completion.
 - Show the backend-provided failure message when an operation fails.
