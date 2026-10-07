@@ -20,15 +20,13 @@ const page = usePage<PageProps>()
 const orderForm = useForm<{ order_report: File | null }>({ order_report: null })
 const incomeForm = useForm<{ income_report: File | null }>({ income_report: null })
 const importStatus = ref<ImportOperation | null>(page.props.activeOperation ?? null)
+const trackedOperationId = ref<number | null>(
+    page.props.flash?.import_operation_id
+    ?? page.props.activeOperation?.id
+    ?? null,
+)
 
-function operationId() {
-    return page.props.flash?.import_operation_id ?? page.props.activeOperation?.id ?? importStatus.value?.id
-}
-
-async function loadImportStatus() {
-    const id = operationId()
-    if (!id) return
-
+async function loadImportStatus(id: number) {
     try {
         const response = await fetch(`/imports/upload/${id}/status`, {
             headers: { Accept: 'application/json' },
@@ -49,7 +47,7 @@ useEcho(
     `imports.${userId}`,
     '.ImportStatusUpdated',
     (event: ImportOperation) => {
-        if (event.id === operationId()) {
+        if (event.id === trackedOperationId.value) {
             importStatus.value = event
         }
     },
@@ -57,6 +55,7 @@ useEcho(
 
 function resetImportStatus() {
     importStatus.value = null
+    trackedOperationId.value = null
 }
 
 function submitOrder() {
@@ -70,12 +69,26 @@ function submitIncome() {
 watch(
     () => page.props.activeOperation,
     (operation) => {
-        importStatus.value = operation ?? null
+        if (operation) {
+            trackedOperationId.value = operation.id
+            importStatus.value = operation
+            return
+        }
+
+        if (!page.props.flash?.import_operation_id) {
+            trackedOperationId.value = null
+            importStatus.value = null
+        }
     },
     { immediate: true },
 )
 
-void loadImportStatus()
+const flashOperationId = page.props.flash?.import_operation_id
+
+if (flashOperationId) {
+    trackedOperationId.value = flashOperationId
+    void loadImportStatus(flashOperationId)
+}
 </script>
 
 <template>
