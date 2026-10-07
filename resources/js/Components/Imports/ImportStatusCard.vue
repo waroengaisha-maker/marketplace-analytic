@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import Skeleton from 'primevue/skeleton'
 
 type ImportStatus = 'queued' | 'processing' | 'completed' | 'failed'
 
@@ -267,6 +268,30 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
                 <span class="text-sm font-medium text-color">{{ statusMessage }}</span>
             </div>
 
+            <div
+                v-if="!summaryVisible"
+                class="import-summary import-summary--skeleton"
+                aria-hidden="true"
+            >
+                <div class="import-summary__item">
+                    <Skeleton shape="circle" size="2.75rem" />
+                    <div class="import-summary__skeleton-content">
+                        <Skeleton width="4rem" height="0.7rem" />
+                        <Skeleton width="3rem" height="1.35rem" />
+                    </div>
+                </div>
+
+                <div class="import-summary__divider" aria-hidden="true"></div>
+
+                <div class="import-summary__item">
+                    <Skeleton shape="circle" size="2.75rem" />
+                    <div class="import-summary__skeleton-content">
+                        <Skeleton width="4rem" height="0.7rem" />
+                        <Skeleton width="3rem" height="1.35rem" />
+                    </div>
+                </div>
+            </div>
+
             <Transition name="import-summary">
                 <div
                     v-if="summaryVisible && isTimelineFinished"
@@ -343,19 +368,24 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
     transition: background-color 300ms ease;
 }
 
+.import-timeline__track::after {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0;
+    border-radius: inherit;
+    background: var(--p-green-500);
+    content: '';
+}
+
 .import-timeline__track--active {
     background: var(--p-green-500);
 }
 
 .import-timeline__track--moving {
-    background: linear-gradient(
-        to right,
-        var(--p-surface-300) 0%,
-        var(--p-surface-300) 50%,
-        var(--p-green-500) 50%,
-        var(--p-green-500) 100%
-    );
-    background-size: 200% 100%;
+    background: var(--p-surface-300);
+}
+
+.import-timeline__track--moving::after {
     animation: import-transfer-line 900ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
@@ -498,6 +528,17 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
     background: var(--p-surface-300);
 }
 
+.import-summary--skeleton {
+    min-height: 5.25rem;
+}
+
+.import-summary__skeleton-content {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
 @media (max-width: 480px) {
     .import-timeline__rail,
     .import-timeline__transfer {
@@ -545,32 +586,29 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
 
 @keyframes import-transfer-line {
     from {
-        background-position: 100% 0;
+        width: 0;
     }
 
     to {
-        background-position: 0 0;
+        width: 100%;
     }
 }
 
 .import-summary-enter-active,
 .import-summary-leave-active {
-    overflow: hidden;
-    transition: opacity 350ms ease, transform 350ms ease, max-height 450ms ease;
+    transition: opacity 300ms ease, transform 300ms ease;
 }
 
 .import-summary-enter-from,
 .import-summary-leave-to {
-    max-height: 0;
     opacity: 0;
-    transform: translateY(-8px) scaleY(0.96);
+    transform: translateY(4px);
 }
 
 .import-summary-enter-to,
 .import-summary-leave-from {
-    max-height: 160px;
     opacity: 1;
-    transform: translateY(0) scaleY(1);
+    transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {
