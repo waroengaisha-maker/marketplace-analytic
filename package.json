@@ -20,6 +20,9 @@
         "@laravel/multiplex": "^0.4.1"
     },
     "dependencies": {
+        "@laravel/echo-vue": "^2.0.0",
+        "laravel-echo": "^2.0.0",
+        "pusher-js": "^8.4.0",
         "@primeuix/themes": "^3.0.0",
         "@vitejs/plugin-vue": "^6.0.8",
         "primeicons": "^8.0.0",
