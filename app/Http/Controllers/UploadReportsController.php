@@ -14,6 +14,8 @@ use Throwable;
 
 class UploadReportsController extends Controller
 {
+    private const STALE_PROCESSING_MINUTES = 5;
+
     public function index(Request $request): Response
     {
         $activeOperation = ReportImportOperation::query()
@@ -21,6 +23,18 @@ class UploadReportsController extends Controller
             ->whereIn('status', ['queued', 'processing'])
             ->latest('id')
             ->first();
+
+        if (
+            $activeOperation?->status === 'processing'
+            && $activeOperation->updated_at?->lt(now()->subMinutes(self::STALE_PROCESSING_MINUTES))
+        ) {
+            $activeOperation->update([
+                'status' => 'failed',
+                'error_message' => 'Proses import berhenti dan tidak dapat dilanjutkan. Silakan upload kembali laporan.',
+            ]);
+
+            $activeOperation = null;
+        }
 
         return Inertia::render('Imports/Upload', [
             'activeOperation' => $activeOperation?->only([
