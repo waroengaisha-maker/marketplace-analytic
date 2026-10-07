@@ -172,25 +172,16 @@ if (flashOperationId) {
                         <div class="flex min-w-0 flex-col gap-2">
                             <span class="font-medium">Laporan Income</span>
                             <div class="flex flex-wrap items-center gap-3">
-                                <div class="relative inline-flex">
-                                    <input
-                                        id="income-report"
-                                        ref="incomeFileInput"
-                                        type="file"
-                                        class="sr-only"
-                                        accept=".xlsx,.xls"
-                                        :disabled="form.processing"
-                                        @change="handleFileChange('income_report', $event)"
-                                    />
-                                    <Button
-                                        type="button"
-                                        icon="pi pi-file-excel"
-                                        label="Pilih file"
-                                        :disabled="form.processing"
-                                        aria-controls="income-report"
-                                        @click="openFilePicker('income_report')"
-                                    />
-                                </div>
+                                <FileUpload
+                                    mode="basic"
+                                    name="income_report"
+                                    accept=".xlsx,.xls"
+                                    :max-file-size="50 * 1024 * 1024"
+                                    choose-label="Pilih file"
+                                    choose-icon="pi pi-file-excel"
+                                    :disabled="form.processing"
+                                    @select="handleFileSelect('income_report', $event)"
+                                />
                                 <span v-if="form.income_report" class="min-w-0 max-w-full truncate text-sm text-color-secondary">
                                     {{ form.income_report.name }}
                                 </span>
