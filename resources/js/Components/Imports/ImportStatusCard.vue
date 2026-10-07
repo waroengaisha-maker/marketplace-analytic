@@ -22,19 +22,28 @@ const emit = defineEmits<{
 }>()
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
+const TRANSFER_DELAY = 350
 const TRANSFER_DURATION = 900
+const SUMMARY_DELAY = 450
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
 const timelinePhase = ref<TimelinePhase>('uploading')
 const showTransfer = ref(false)
+const summaryVisible = ref(false)
 let phaseTimer: ReturnType<typeof setTimeout> | null = null
+let summaryTimer: ReturnType<typeof setTimeout> | null = null
 let transferOperationId: number | null = null
 
-function clearPhaseTimer() {
+function clearTimers() {
     if (phaseTimer) {
         clearTimeout(phaseTimer)
         phaseTimer = null
+    }
+
+    if (summaryTimer) {
+        clearTimeout(summaryTimer)
+        summaryTimer = null
     }
 }
 
@@ -44,15 +53,28 @@ function finishTransfer() {
 
     if (props.operation.status === 'completed') {
         timelinePhase.value = 'completed'
+        scheduleSummary()
         return
     }
 
     if (props.operation.status === 'failed') {
         timelinePhase.value = 'failed'
+        scheduleSummary()
         return
     }
 
     timelinePhase.value = 'processing'
+}
+
+function scheduleSummary() {
+    if (summaryVisible.value || summaryTimer) {
+        return
+    }
+
+    summaryTimer = setTimeout(() => {
+        summaryVisible.value = true
+        summaryTimer = null
+    }, SUMMARY_DELAY)
 }
 
 function startTransfer(operationId: number) {
@@ -61,19 +83,25 @@ function startTransfer(operationId: number) {
     }
 
     transferOperationId = operationId
-    showTransfer.value = true
-    clearPhaseTimer()
+    summaryVisible.value = false
+    clearTimers()
+    timelinePhase.value = 'uploaded'
 
     phaseTimer = setTimeout(() => {
-        finishTransfer()
-    }, TRANSFER_DURATION)
+        showTransfer.value = true
+
+        phaseTimer = setTimeout(() => {
+            finishTransfer()
+        }, TRANSFER_DURATION)
+    }, TRANSFER_DELAY)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
     if (operation.id === 0) {
-        clearPhaseTimer()
+        clearTimers()
         transferOperationId = null
         showTransfer.value = false
+        summaryVisible.value = false
         timelinePhase.value = 'uploading'
         return
     }
@@ -90,11 +118,13 @@ function syncTimelinePhase(operation: ImportOperation) {
 
     if (operation.status === 'completed') {
         timelinePhase.value = 'completed'
+        scheduleSummary()
         return
     }
 
     if (operation.status === 'failed') {
         timelinePhase.value = 'failed'
+        scheduleSummary()
         return
     }
 
@@ -106,7 +136,7 @@ watch(
     () => syncTimelinePhase(props.operation),
     { immediate: true },
 )
-onBeforeUnmount(clearPhaseTimer)
+onBeforeUnmount(clearTimers)
 
 const isUploading = computed(() => timelinePhase.value === 'uploading')
 const isUploaded = computed(() => timelinePhase.value !== 'uploading')
@@ -144,25 +174,7 @@ const timelineSteps = computed(() => [
     },
 ])
 
-const statusMessage = computed(() => {
-    if (isUploading.value) {
-        return 'Uploading...'
-    }
-
-    if (timelinePhase.value === 'uploaded') {
-        return 'Uploaded'
-    }
-
-    if (isProcessing.value) {
-        return 'Processing...'
-    }
-
-    if (isCompleted.value) {
-        return 'Successful'
-    }
-
-    return 'Failed'
-})
+const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Please wait...')
 </script>
 
 <template>
@@ -189,6 +201,7 @@ const statusMessage = computed(() => {
                         class="import-timeline__track"
                         :class="{
                             'import-timeline__track--active': isProcessing || isTimelineFinished,
+                            'import-timeline__track--moving': showTransfer,
                         }"
                     ></span>
                 </div>
@@ -254,10 +267,11 @@ const statusMessage = computed(() => {
                 <span class="text-sm font-medium text-color">{{ statusMessage }}</span>
             </div>
 
-            <div
-                v-if="isTimelineFinished"
-                class="import-summary"
-            >
+            <Transition name="import-summary">
+                <div
+                    v-if="summaryVisible && isTimelineFinished"
+                    class="import-summary"
+                >
                 <div class="import-summary__item">
                     <span class="import-summary__icon" aria-hidden="true">
                         <i class="pi pi-shopping-bag"></i>
@@ -279,14 +293,16 @@ const statusMessage = computed(() => {
                         <p class="import-summary__value">{{ props.operation.income }}</p>
                     </div>
                 </div>
-            </div>
+            </Transition>
 
-            <div
-                v-if="isTimelineFinished && props.operation.status === 'failed' && props.operation.error"
+            <Transition name="import-summary">
+                <div
+                    v-if="summaryVisible && isTimelineFinished && props.operation.status === 'failed' && props.operation.error"
                 class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300"
             >
-                {{ props.operation.error }}
-            </div>
+                    {{ props.operation.error }}
+                </div>
+            </Transition>
         </div>
 
         <template #footer>
@@ -328,6 +344,18 @@ const statusMessage = computed(() => {
 
 .import-timeline__track--active {
     background: var(--p-green-500);
+}
+
+.import-timeline__track--moving {
+    background: linear-gradient(
+        to right,
+        var(--p-surface-300) 0%,
+        var(--p-surface-300) 50%,
+        var(--p-green-500) 50%,
+        var(--p-green-500) 100%
+    );
+    background-size: 200% 100%;
+    animation: import-transfer-line 900ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .import-timeline__transfer {
@@ -512,6 +540,36 @@ const statusMessage = computed(() => {
     to {
         left: 100%;
     }
+}
+
+@keyframes import-transfer-line {
+    from {
+        background-position: 100% 0;
+    }
+
+    to {
+        background-position: 0 0;
+    }
+}
+
+.import-summary-enter-active,
+.import-summary-leave-active {
+    overflow: hidden;
+    transition: opacity 350ms ease, transform 350ms ease, max-height 450ms ease;
+}
+
+.import-summary-enter-from,
+.import-summary-leave-to {
+    max-height: 0;
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.96);
+}
+
+.import-summary-enter-to,
+.import-summary-leave-from {
+    max-height: 160px;
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
 }
 
 @media (prefers-reduced-motion: reduce) {
