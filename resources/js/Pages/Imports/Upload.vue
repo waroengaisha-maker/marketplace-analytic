@@ -30,9 +30,9 @@ const optimisticOperationId = 0
 const selectedCount = computed(() => Number(!!form.order_report) + Number(!!form.income_report))
 const submitLabel = computed(() => {
     if (form.processing) return 'Mengimpor...'
-    if (selectedCount.value === 2) return 'Upload & Import Semua'
-    if (form.order_report) return 'Upload & Import Order'
-    if (form.income_report) return 'Upload & Import Income'
+    if (selectedCount.value === 2) return 'Upload Semua'
+    if (form.order_report) return 'Upload Order'
+    if (form.income_report) return 'Upload Income'
     return 'Pilih laporan untuk diimpor'
 })
 
