@@ -25,6 +25,7 @@ const emit = defineEmits<{
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 const TRANSFER_DELAY = 350
 const TRANSFER_DURATION = 900
+const PROCESSING_MIN_DURATION = 600
 const SUMMARY_DELAY = 450
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
@@ -33,6 +34,7 @@ const timelinePhase = ref<TimelinePhase>('uploading')
 const showTransfer = ref(false)
 const summaryVisible = ref(false)
 let phaseTimer: ReturnType<typeof setTimeout> | null = null
+let processingTimer: ReturnType<typeof setTimeout> | null = null
 let summaryTimer: ReturnType<typeof setTimeout> | null = null
 let transferOperationId: number | null = null
 
@@ -40,6 +42,11 @@ function clearTimers() {
     if (phaseTimer) {
         clearTimeout(phaseTimer)
         phaseTimer = null
+    }
+
+    if (processingTimer) {
+        clearTimeout(processingTimer)
+        processingTimer = null
     }
 
     if (summaryTimer) {
@@ -51,20 +58,23 @@ function clearTimers() {
 function finishTransfer() {
     showTransfer.value = false
     phaseTimer = null
-
-    if (props.operation.status === 'completed') {
-        timelinePhase.value = 'completed'
-        scheduleSummary()
-        return
-    }
-
-    if (props.operation.status === 'failed') {
-        timelinePhase.value = 'failed'
-        scheduleSummary()
-        return
-    }
-
     timelinePhase.value = 'processing'
+
+    if (!isFinished(props.operation.status)) {
+        return
+    }
+
+    processingTimer = setTimeout(() => {
+        processingTimer = null
+
+        if (props.operation.status === 'completed') {
+            timelinePhase.value = 'completed'
+        } else if (props.operation.status === 'failed') {
+            timelinePhase.value = 'failed'
+        }
+
+        scheduleSummary()
+    }, PROCESSING_MIN_DURATION)
 }
 
 function scheduleSummary() {
@@ -113,7 +123,7 @@ function syncTimelinePhase(operation: ImportOperation) {
         return
     }
 
-    if (showTransfer.value) {
+    if (showTransfer.value || timelinePhase.value === 'processing') {
         return
     }
 
