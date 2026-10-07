@@ -272,25 +272,26 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
                     v-if="summaryVisible && isTimelineFinished"
                     class="import-summary"
                 >
-                <div class="import-summary__item">
-                    <span class="import-summary__icon" aria-hidden="true">
-                        <i class="pi pi-shopping-bag"></i>
-                    </span>
-                    <div>
-                        <p class="import-summary__label">Order</p>
-                        <p class="import-summary__value">{{ props.operation.orders }}</p>
+                    <div class="import-summary__item">
+                        <span class="import-summary__icon" aria-hidden="true">
+                            <i class="pi pi-shopping-bag"></i>
+                        </span>
+                        <div>
+                            <p class="import-summary__label">Order</p>
+                            <p class="import-summary__value">{{ props.operation.orders }}</p>
+                        </div>
                     </div>
-                </div>
 
-                <div class="import-summary__divider" aria-hidden="true"></div>
+                    <div class="import-summary__divider" aria-hidden="true"></div>
 
-                <div class="import-summary__item">
-                    <span class="import-summary__icon" aria-hidden="true">
-                        <i class="pi pi-wallet"></i>
-                    </span>
-                    <div>
-                        <p class="import-summary__label">Income</p>
-                        <p class="import-summary__value">{{ props.operation.income }}</p>
+                    <div class="import-summary__item">
+                        <span class="import-summary__icon" aria-hidden="true">
+                            <i class="pi pi-wallet"></i>
+                        </span>
+                        <div>
+                            <p class="import-summary__label">Income</p>
+                            <p class="import-summary__value">{{ props.operation.income }}</p>
+                        </div>
                     </div>
                 </div>
             </Transition>
@@ -298,8 +299,8 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
             <Transition name="import-summary">
                 <div
                     v-if="summaryVisible && isTimelineFinished && props.operation.status === 'failed' && props.operation.error"
-                class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300"
-            >
+                    class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300"
+                >
                     {{ props.operation.error }}
                 </div>
             </Transition>
