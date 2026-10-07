@@ -24,16 +24,15 @@ const emit = defineEmits<{
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 
 const isUploading = computed(() => props.operation.id === 0)
-
+const isUploaded = computed(() => props.operation.id !== 0)
 const isProcessing = computed(() =>
     props.operation.id !== 0 &&
     (props.operation.status === 'queued' || props.operation.status === 'processing'),
 )
-
-const isUploaded = computed(() => props.operation.id !== 0)
-
+const isProcessed = computed(() =>
+    props.operation.status === 'completed' || props.operation.status === 'failed',
+)
 const isCompleted = computed(() => props.operation.status === 'completed')
-
 const isFailed = computed(() => props.operation.status === 'failed')
 
 function handleDialogHide() {
@@ -42,34 +41,44 @@ function handleDialogHide() {
     }
 }
 
-const uploadLabel = computed(() => isUploading.value ? 'Uploading' : 'Uploaded')
-
-const processLabel = computed(() => {
-    if (isCompleted.value) {
-        return 'Successful'
-    }
-
-    if (isFailed.value) {
-        return 'Failed'
-    }
-
-    return 'Processing'
-})
+const timelineSteps = computed(() => [
+    {
+        key: 'upload',
+        label: isUploading.value ? 'Uploading' : 'Uploaded',
+        active: isUploading.value,
+        achieved: isUploaded.value,
+        failed: false,
+    },
+    {
+        key: 'processing',
+        label: isProcessing.value ? 'Processing' : isProcessed.value ? 'Processed' : 'Processing',
+        active: isProcessing.value,
+        achieved: isProcessed.value,
+        failed: false,
+    },
+    {
+        key: 'finished',
+        label: isFinished(props.operation.status) ? 'Finished' : 'Pending',
+        active: false,
+        achieved: isCompleted.value,
+        failed: isFailed.value,
+    },
+])
 
 const statusMessage = computed(() => {
     if (isUploading.value) {
         return 'Uploading...'
     }
 
-    if (isCompleted.value || isFailed.value) {
-        return 'Finished'
+    if (isProcessing.value) {
+        return 'Processing...'
     }
 
-    if (isUploaded.value) {
-        return 'Uploaded'
+    if (isProcessed.value) {
+        return 'Processed'
     }
 
-    return 'Processing...'
+    return 'Finished'
 })
 </script>
 
@@ -97,7 +106,8 @@ const statusMessage = computed(() => {
                     :class="{
                         'import-timeline__rail--uploading': isUploading,
                         'import-timeline__rail--uploaded': isUploaded,
-                        'import-timeline__rail--transfer': isUploaded,
+                        'import-timeline__rail--processing': isProcessing,
+                        'import-timeline__rail--processed': isProcessed,
                     }"
                     aria-hidden="true"
                 >
@@ -105,49 +115,56 @@ const statusMessage = computed(() => {
                 </div>
 
                 <div
-                    v-if="isUploaded"
-                    class="import-timeline__transfer"
+                    v-if="isUploaded && !isProcessing"
+                    class="import-timeline__transfer import-timeline__transfer--first"
+                    aria-hidden="true"
+                >
+                    <span class="import-timeline__transfer-dot"></span>
+                </div>
+
+                <div
+                    v-if="isProcessed"
+                    class="import-timeline__transfer import-timeline__transfer--second"
                     aria-hidden="true"
                 >
                     <span class="import-timeline__transfer-dot"></span>
                 </div>
 
                 <div class="import-timeline__steps">
-                    <div class="import-timeline__step">
+                    <div
+                        v-for="step in timelineSteps"
+                        :key="step.key"
+                        class="import-timeline__step"
+                    >
                         <span
                             class="import-timeline__marker"
                             :class="{
-                                'import-timeline__marker--active': isUploading,
-                                'import-timeline__marker--achieved': !isUploading,
-                            }"
-                            aria-hidden="true"
-                        >
-                            <i :class="isUploading ? 'pi pi-upload' : 'pi pi-check'"></i>
-                        </span>
-                        <span class="import-timeline__label">{{ uploadLabel }}</span>
-                    </div>
-
-                    <div class="import-timeline__step">
-                        <span
-                            class="import-timeline__marker"
-                            :class="{
-                                'import-timeline__marker--active': isProcessing,
-                                'import-timeline__marker--achieved': isCompleted,
-                                'import-timeline__marker--failed': isFailed,
+                                'import-timeline__marker--active': step.active,
+                                'import-timeline__marker--achieved': step.achieved,
+                                'import-timeline__marker--failed': step.failed,
                             }"
                             aria-hidden="true"
                         >
                             <i
                                 :class="
-                                    isFailed
+                                    step.failed
                                         ? 'pi pi-times'
-                                        : isCompleted
+                                        : step.achieved
                                             ? 'pi pi-check'
-                                            : 'pi pi-cog'
+                                            : step.active
+                                                ? 'pi pi-cog'
+                                                : 'pi pi-circle'
                                 "
                             ></i>
                         </span>
-                        <span class="import-timeline__label">{{ processLabel }}</span>
+                        <span
+                            class="import-timeline__label"
+                            :class="{
+                                'import-timeline__label--muted': !step.active && !step.achieved && !step.failed,
+                            }"
+                        >
+                            {{ step.label }}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -155,11 +172,9 @@ const statusMessage = computed(() => {
             <div class="flex items-center justify-center gap-2 text-center">
                 <i
                     :class="
-                        isCompleted
+                        isFinished(props.operation.status)
                             ? 'pi pi-check-circle text-green-500'
-                            : isFailed
-                                ? 'pi pi-exclamation-circle text-red-500'
-                                : 'pi pi-spin pi-spinner text-primary'
+                            : 'pi pi-spin pi-spinner text-primary'
                     "
                     aria-hidden="true"
                 ></i>
@@ -224,31 +239,40 @@ const statusMessage = computed(() => {
 .import-timeline__rail {
     position: absolute;
     top: 1.25rem;
-    right: calc(25% + 1.25rem);
-    left: calc(25% + 1.25rem);
+    right: calc(16.666667% + 1.25rem);
+    left: calc(16.666667% + 1.25rem);
     height: 2px;
 }
 
 .import-timeline__track {
     position: absolute;
     inset: 0;
-    overflow: hidden;
     border-radius: 9999px;
     background: var(--p-surface-300);
 }
 
-.import-timeline__rail--uploaded .import-timeline__track {
+.import-timeline__rail--uploaded .import-timeline__track,
+.import-timeline__rail--processing .import-timeline__track,
+.import-timeline__rail--processed .import-timeline__track {
     background: var(--p-green-500);
 }
 
 .import-timeline__transfer {
     position: absolute;
     top: 1.25rem;
-    right: calc(25% + 1.25rem);
-    left: calc(25% + 1.25rem);
     z-index: 2;
     height: 2px;
     pointer-events: none;
+}
+
+.import-timeline__transfer--first {
+    right: calc(50% + 1.25rem);
+    left: calc(16.666667% + 1.25rem);
+}
+
+.import-timeline__transfer--second {
+    right: calc(16.666667% + 1.25rem);
+    left: calc(50% + 1.25rem);
 }
 
 .import-timeline__transfer-dot {
@@ -259,21 +283,17 @@ const statusMessage = computed(() => {
     height: 0.45rem;
     border-radius: 9999px;
     background: white;
-    box-shadow: 0 0 0 2px var(--p-green-500), 0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
+    box-shadow:
+        0 0 0 2px var(--p-green-500),
+        0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
     transform: translate(-50%, -50%);
     animation: import-transfer-travel 900ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-
-
-.import-timeline__rail--uploading .import-timeline__track {
-    background: var(--p-surface-300);
 }
 
 .import-timeline__steps {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0;
 }
 
@@ -325,6 +345,10 @@ const statusMessage = computed(() => {
     font-weight: 600;
     line-height: 1.25;
     text-align: center;
+}
+
+.import-timeline__label--muted {
+    color: var(--p-text-muted-color);
 }
 
 .import-summary {
@@ -381,10 +405,19 @@ const statusMessage = computed(() => {
 }
 
 @media (max-width: 480px) {
-    .import-timeline__rail,
-    .import-timeline__transfer {
-        right: calc(25% + 0.75rem);
-        left: calc(25% + 0.75rem);
+    .import-timeline__rail {
+        right: calc(16.666667% + 0.75rem);
+        left: calc(16.666667% + 0.75rem);
+    }
+
+    .import-timeline__transfer--first {
+        right: calc(50% + 0.75rem);
+        left: calc(16.666667% + 0.75rem);
+    }
+
+    .import-timeline__transfer--second {
+        right: calc(16.666667% + 0.75rem);
+        left: calc(50% + 0.75rem);
     }
 
     .import-summary {
