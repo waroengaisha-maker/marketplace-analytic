@@ -464,7 +464,7 @@ const exportExcel = async () => {
                             >
                                 <template #body="{ data }">
                                     <template v-if="field === 'buyer_username'">
-                                        <span class="font-semibold text-slate-800">{{ data.buyer_username }}</span>
+                                        <span class="font-semibold text-color">{{ data.buyer_username }}</span>
                                     </template>
                                     <template v-else-if="moneyFields.has(field)">{{ formatNominal(data[field]) }}</template>
                                     <template v-else>{{ formatQuantity(data[field]) }}</template>
@@ -505,9 +505,9 @@ const exportExcel = async () => {
             </div>
 
             <template v-else-if="activeDetailsReady && detailVisible">
-                <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                    <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{{ activeBuyer }}</span>
-                    <span class="rounded-full bg-slate-100 px-3 py-1">{{ historyRows.length }} baris item</span>
+                <div class="flex flex-wrap items-center gap-2 text-sm text-color-secondary">
+                    <span class="rounded-full bg-surface-100 px-3 py-1 font-semibold text-color">{{ activeBuyer }}</span>
+                    <span class="rounded-full bg-surface-100 px-3 py-1">{{ historyRows.length }} baris item</span>
                     <span class="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800">Laba Bersih {{ formatNominal(historyTotals.laba) }}</span>
                 </div>
 
@@ -519,12 +519,12 @@ const exportExcel = async () => {
                     :columns-label="`Kolom histori (${selectedHistoryColumns.length})`"
                 >
                     <template #start>
-                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
-                            <span><span class="text-slate-400">Total Belanja:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.subtotal) }}</strong></span>
-                            <span><span class="text-slate-400">Total Biaya:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.total_fee) }}</strong></span>
-                            <span><span class="text-slate-400">Total Pajak:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.tax) }}</strong></span>
-                            <span><span class="text-slate-400">Total Penghasilan:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.penghasilan) }}</strong></span>
-                            <span><span class="text-slate-400">HPP:</span> <strong class="text-slate-800">{{ formatNominal(historyTotals.hpp) }}</strong></span>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-color-secondary">
+                            <span><span class="text-color-secondary">Total Belanja:</span> <strong class="text-color">{{ formatNominal(historyTotals.subtotal) }}</strong></span>
+                            <span><span class="text-color-secondary">Total Biaya:</span> <strong class="text-color">{{ formatNominal(historyTotals.total_fee) }}</strong></span>
+                            <span><span class="text-color-secondary">Total Pajak:</span> <strong class="text-color">{{ formatNominal(historyTotals.tax) }}</strong></span>
+                            <span><span class="text-color-secondary">Total Penghasilan:</span> <strong class="text-color">{{ formatNominal(historyTotals.penghasilan) }}</strong></span>
+                            <span><span class="text-color-secondary">HPP:</span> <strong class="text-color">{{ formatNominal(historyTotals.hpp) }}</strong></span>
                         </div>
                     </template>
                 </AppDataTableToolbar>
@@ -537,13 +537,13 @@ const exportExcel = async () => {
                         <Column v-for="[field, header] in selectedHistoryColumns" :key="field" :field="field" :header="header" sortable>
                             <template #body="{ data: historyData }">
                                 <template v-if="field === 'order_number'">
-                                    <span class="font-semibold text-slate-800">{{ historyData.order_number }}</span>
+                                    <span class="font-semibold text-color">{{ historyData.order_number }}</span>
                                 </template>
                                 <template v-else-if="field === 'order_created_at'">{{ formatDate(historyData.order_created_at) }}</template>
                                 <StatusBadge v-else-if="field === 'business_status'" :value="historyData.business_status" :severity="statusSeverity(historyData.business_status)" />
                                 <template v-else-if="field === 'order_status'">{{ historyData.order_status || '—' }}</template>
                                 <template v-else-if="field === 'product_name'">
-                                    <span class="font-medium text-slate-700">{{ historyData.product_name }}</span>
+                                    <span class="font-medium text-color">{{ historyData.product_name }}</span>
                                 </template>
                                 <template v-else-if="field === 'variation_name'">{{ historyData.variation_name || '—' }}</template>
                                 <template v-else-if="historyMoneyFields.has(field)">{{ formatNominal(historyData[field]) }}</template>
