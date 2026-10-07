@@ -54,7 +54,7 @@ const isFinished = (status: ImportStatus) => status === 'completed' || status ==
 
 <template>
     <section
-        class="rounded-xl border border-surface-200 bg-[var(--p-card-background)] p-5 shadow-sm"
+        class="rounded-xl bg-[var(--p-card-background)] p-5 shadow-sm"
         role="status"
         aria-live="polite"
         aria-atomic="true"
