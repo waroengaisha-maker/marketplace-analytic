@@ -27,7 +27,6 @@ const TRANSFER_DURATION = 900
 const PROCESSING_MIN_DURATION = 600
 const FINISH_REVEAL_DELAY = 1000
 const POINT_B_RING_DURATION = 500
-const POINT_B_FILL_DURATION = 350
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
@@ -537,7 +536,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     border-radius: inherit;
     content: '';
     transform-origin: left center;
-    animation: import-point-b-fill ${POINT_B_FILL_DURATION}ms ease-out forwards;
+    animation: import-point-b-fill 350ms ease-out forwards;
 }
 
 .import-timeline__marker--fill-success::before {
