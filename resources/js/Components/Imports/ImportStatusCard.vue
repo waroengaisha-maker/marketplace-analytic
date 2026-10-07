@@ -26,17 +26,21 @@ const isFinished = (status: ImportStatus) => status === 'completed' || status ==
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'processed' | 'finished'
 
 const timelinePhase = ref<TimelinePhase>('uploading')
-let finishTimer: ReturnType<typeof setTimeout> | null = null
+const showFirstTransfer = ref(false)
+const showSecondTransfer = ref(false)
+let phaseTimer: ReturnType<typeof setTimeout> | null = null
 
-function clearFinishTimer() {
-    if (finishTimer) {
-        clearTimeout(finishTimer)
-        finishTimer = null
+function clearPhaseTimer() {
+    if (phaseTimer) {
+        clearTimeout(phaseTimer)
+        phaseTimer = null
     }
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
-    clearFinishTimer()
+    clearPhaseTimer()
+    showFirstTransfer.value = false
+    showSecondTransfer.value = false
 
     if (operation.id === 0) {
         timelinePhase.value = 'uploading'
@@ -45,6 +49,14 @@ function syncTimelinePhase(operation: ImportOperation) {
 
     if (operation.status === 'queued') {
         timelinePhase.value = 'uploaded'
+        phaseTimer = setTimeout(() => {
+            showFirstTransfer.value = true
+            phaseTimer = setTimeout(() => {
+                timelinePhase.value = 'processing'
+                showFirstTransfer.value = false
+                phaseTimer = null
+            }, 900)
+        }, 600)
         return
     }
 
@@ -54,20 +66,29 @@ function syncTimelinePhase(operation: ImportOperation) {
     }
 
     timelinePhase.value = 'processed'
-    finishTimer = setTimeout(() => {
-        timelinePhase.value = 'finished'
-        finishTimer = null
-    }, 900)
+    phaseTimer = setTimeout(() => {
+        showSecondTransfer.value = true
+        phaseTimer = setTimeout(() => {
+            timelinePhase.value = 'finished'
+            showSecondTransfer.value = false
+            phaseTimer = null
+        }, 900)
+    }, 600)
 }
 
-watch(() => [props.operation.id, props.operation.status], () => syncTimelinePhase(props.operation), { immediate: true })
-onBeforeUnmount(clearFinishTimer)
+watch(
+    () => [props.operation.id, props.operation.status],
+    () => syncTimelinePhase(props.operation),
+    { immediate: true },
+)
+onBeforeUnmount(clearPhaseTimer)
 
 const isUploading = computed(() => timelinePhase.value === 'uploading')
 const isUploaded = computed(() => ['uploaded', 'processing', 'processed', 'finished'].includes(timelinePhase.value))
 const isProcessing = computed(() => timelinePhase.value === 'processing')
 const isProcessed = computed(() => ['processed', 'finished'].includes(timelinePhase.value))
 const isTimelineFinished = computed(() => timelinePhase.value === 'finished')
+
 const isCompleted = computed(() => props.operation.status === 'completed')
 const isFailed = computed(() => props.operation.status === 'failed')
 
@@ -104,6 +125,10 @@ const timelineSteps = computed(() => [
 const statusMessage = computed(() => {
     if (isUploading.value) {
         return 'Uploading...'
+    }
+
+    if (timelinePhase.value === 'uploaded') {
+        return 'Uploaded'
     }
 
     if (isProcessing.value) {
@@ -151,7 +176,7 @@ const statusMessage = computed(() => {
                 </div>
 
                 <div
-                    v-if="timelinePhase === 'uploaded'"
+                    v-if="showFirstTransfer"
                     class="import-timeline__transfer import-timeline__transfer--first"
                     aria-hidden="true"
                 >
@@ -159,7 +184,7 @@ const statusMessage = computed(() => {
                 </div>
 
                 <div
-                    v-if="timelinePhase === 'processed'"
+                    v-if="showSecondTransfer"
                     class="import-timeline__transfer import-timeline__transfer--second"
                     aria-hidden="true"
                 >
