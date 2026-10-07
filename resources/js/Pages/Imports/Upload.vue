@@ -2,7 +2,7 @@
 import PageHeader from '@/Components/PageHeader.vue'
 import { useEcho } from '@laravel/echo-vue'
 import { Head, useForm, usePage } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import AppAlert from '../../Components/AppAlert.vue'
 import FileUploadCard from '../../Components/FileUploadCard.vue'
 import ImportStatusCard from '../../Components/Imports/ImportStatusCard.vue'
@@ -66,6 +66,14 @@ function submitOrder() {
 function submitIncome() {
     incomeForm.post('/imports/upload', { forceFormData: true })
 }
+
+watch(
+    () => page.props.activeOperation,
+    (operation) => {
+        importStatus.value = operation ?? null
+    },
+    { immediate: true },
+)
 
 void loadImportStatus()
 </script>
