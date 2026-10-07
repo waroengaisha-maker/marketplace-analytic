@@ -4,7 +4,6 @@ import { useEcho } from '@laravel/echo-vue'
 import { Head, useForm, usePage } from '@inertiajs/vue3'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
-import FileUpload from 'primevue/fileupload'
 import { computed, ref, watch } from 'vue'
 import AppAlert from '../../Components/AppAlert.vue'
 import FeedbackMessage from '../../Components/FeedbackMessage.vue'
@@ -145,16 +144,24 @@ if (flashOperationId) {
                         <div class="flex min-w-0 flex-col gap-2">
                             <span class="font-medium">Laporan Order</span>
                             <div class="flex flex-wrap items-center gap-3">
-                                <FileUpload
-                                    mode="basic"
+                                <input
+                                    id="order-report"
                                     name="order_report"
+                                    type="file"
+                                    class="sr-only"
                                     accept=".xlsx,.xls"
-                                    :max-file-size="50 * 1024 * 1024"
-                                    choose-label="Pilih file"
-                                    choose-icon="pi pi-file-excel"
                                     :disabled="form.processing"
-                                    @select="handleFileSelect('order_report', $event)"
+                                    @change="handleFileSelect('order_report', { files: Array.from(($event.target as HTMLInputElement).files ?? []) })"
                                 />
+                                <label
+                                    for="order-report"
+                                    class="p-button p-component"
+                                    :class="{ 'pointer-events-none opacity-60': form.processing }"
+                                    :aria-disabled="form.processing"
+                                >
+                                    <span class="p-button-icon p-button-icon-left pi pi-file-excel" aria-hidden="true" />
+                                    <span class="p-button-label">Pilih file</span>
+                                </label>
                                 <span v-if="form.order_report" class="min-w-0 max-w-full truncate text-sm text-color-secondary">
                                     {{ form.order_report.name }}
                                 </span>
@@ -172,16 +179,24 @@ if (flashOperationId) {
                         <div class="flex min-w-0 flex-col gap-2">
                             <span class="font-medium">Laporan Income</span>
                             <div class="flex flex-wrap items-center gap-3">
-                                <FileUpload
-                                    mode="basic"
+                                <input
+                                    id="income-report"
                                     name="income_report"
+                                    type="file"
+                                    class="sr-only"
                                     accept=".xlsx,.xls"
-                                    :max-file-size="50 * 1024 * 1024"
-                                    choose-label="Pilih file"
-                                    choose-icon="pi pi-file-excel"
                                     :disabled="form.processing"
-                                    @select="handleFileSelect('income_report', $event)"
+                                    @change="handleFileSelect('income_report', { files: Array.from(($event.target as HTMLInputElement).files ?? []) })"
                                 />
+                                <label
+                                    for="income-report"
+                                    class="p-button p-component"
+                                    :class="{ 'pointer-events-none opacity-60': form.processing }"
+                                    :aria-disabled="form.processing"
+                                >
+                                    <span class="p-button-icon p-button-icon-left pi pi-file-excel" aria-hidden="true" />
+                                    <span class="p-button-label">Pilih file</span>
+                                </label>
                                 <span v-if="form.income_report" class="min-w-0 max-w-full truncate text-sm text-color-secondary">
                                     {{ form.income_report.name }}
                                 </span>
