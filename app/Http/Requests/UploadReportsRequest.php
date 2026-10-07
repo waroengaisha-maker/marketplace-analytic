@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\ValidationException;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -17,9 +18,18 @@ class UploadReportsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'order_report' => ['required_without:income_report', 'file', 'mimes:xlsx,xls', 'max:51200'],
-            'income_report' => ['required_without:order_report', 'file', 'mimes:xlsx,xls', 'max:51200'],
+            'order_report' => ['nullable', 'file', 'mimes:xlsx,xls', 'max:51200'],
+            'income_report' => ['nullable', 'file', 'mimes:xlsx,xls', 'max:51200'],
         ];
+    }
+
+    protected function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            if (! $this->hasFile('order_report') && ! $this->hasFile('income_report')) {
+                $validator->errors()->add('order_report', 'Pilih minimal satu laporan untuk diimpor.');
+            }
+        });
     }
 
     protected function passedValidation(): void
