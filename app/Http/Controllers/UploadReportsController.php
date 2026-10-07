@@ -8,10 +8,30 @@ use App\Services\UploadReportsService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 use Throwable;
 
 class UploadReportsController extends Controller
 {
+    public function index(Request $request): Response
+    {
+        $activeOperation = ReportImportOperation::query()
+            ->where('user_id', $request->user()->id)
+            ->whereIn('status', ['queued', 'processing'])
+            ->latest('id')
+            ->first();
+
+        return Inertia::render('Imports/Upload', [
+            'activeOperation' => $activeOperation?->only([
+                'id',
+                'status',
+                'orders',
+                'income',
+            ]),
+        ]);
+    }
+
     public function store(UploadReportsRequest $request, UploadReportsService $service): RedirectResponse
     {
         try {
