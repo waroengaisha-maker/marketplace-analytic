@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 import Timeline from 'primevue/timeline'
 import StatusBadge from '@/Components/StatusBadge.vue'
 
@@ -60,6 +61,12 @@ const statusDescription = {
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 
+function handleDialogHide() {
+    if (isFinished(props.operation.status)) {
+        emit('dismiss')
+    }
+}
+
 const timelineSteps = computed<TimelineStep[]>(() => {
     const status = props.operation.status
 
@@ -94,61 +101,57 @@ const timelineSteps = computed<TimelineStep[]>(() => {
 </script>
 
 <template>
-    <section
-        class="rounded-xl bg-[var(--p-card-background)] p-5 shadow-sm"
-        role="status"
-        aria-live="polite"
-        aria-atomic="true"
+    <Dialog
+        :visible="true"
+        modal
+        :closable="isFinished(props.operation.status)"
+        :dismissable-mask="false"
+        :close-on-escape="false"
+        :draggable="false"
+        :style="{ width: 'min(720px, calc(100vw - 2rem))' }"
+        :header="statusLabel[props.operation.status]"
+        :aria-label="`Status import: ${statusLabel[props.operation.status]}`"
+        @hide="handleDialogHide"
     >
-        <div class="flex items-start gap-4">
-            <div
-                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
-                aria-hidden="true"
-            >
-                <i :class="[statusIcon[props.operation.status], 'text-lg']"></i>
-            </div>
-
-            <div class="min-w-0 flex-1">
-                <div class="flex items-start justify-between gap-4">
-                    <div class="min-w-0">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <h2 class="text-base font-semibold text-color">
-                                {{ statusLabel[props.operation.status] }}
-                            </h2>
-                            <StatusBadge
-                                :value="statusLabel[props.operation.status]"
-                                :severity="statusSeverity[props.operation.status]"
-                                rounded
-                                :icon="statusIcon[props.operation.status]"
-                            />
-                        </div>
-
-                        <p class="mt-1 text-sm text-color-secondary">
-                            {{ statusDescription[props.operation.status] }}
-                        </p>
-                    </div>
-
-                    <Button
-                        v-if="isFinished(props.operation.status)"
-                        type="button"
-                        label="Tutup"
-                        icon="pi pi-times"
-                        severity="secondary"
-                        size="small"
-                        class="shrink-0"
-                        @click="emit('dismiss')"
-                    />
+        <div
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            class="flex flex-col gap-5"
+        >
+            <div class="flex items-start gap-4">
+                <div
+                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary"
+                    aria-hidden="true"
+                >
+                    <i :class="[statusIcon[props.operation.status], 'text-lg']"></i>
                 </div>
 
-                <div
-                    class="import-timeline mt-6"
-                    :class="`import-timeline--${props.operation.status}`"
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <StatusBadge
+                            :value="statusLabel[props.operation.status]"
+                            :severity="statusSeverity[props.operation.status]"
+                            rounded
+                            :icon="statusIcon[props.operation.status]"
+                        />
+                    </div>
+
+                    <p class="mt-2 text-sm text-color-secondary">
+                        {{ statusDescription[props.operation.status] }}
+                    </p>
+                </div>
+            </div>
+
+            <div
+                class="import-timeline"
+                :class="`import-timeline--${props.operation.status}`"
+            >
+                <Timeline
+                    :value="timelineSteps"
+                    layout="horizontal"
+                    align="top"
                 >
-                    <Timeline
-                        :value="timelineSteps"
-                        layout="horizontal"
-                        align="top"
-                    >
                     <template #marker="{ item }">
                         <span
                             class="flex h-9 w-9 items-center justify-center rounded-full border-2 bg-[var(--p-card-background)] text-sm"
@@ -163,6 +166,78 @@ const timelineSteps = computed<TimelineStep[]>(() => {
                             <i :class="item.icon"></i>
                         </span>
                     </template>
+
+                    <template #content="{ item }">
+                        <div class="min-w-0 px-2 text-center">
+                            <p
+                                class="text-sm font-semibold"
+                                :class="item.state === 'pending' ? 'text-color-secondary' : 'text-color'"
+                            >
+                                {{ item.label }}
+                            </p>
+                            <p class="mt-1 text-xs text-color-secondary">
+                                {{ item.description }}
+                            </p>
+                        </div>
+                    </template>
+                </Timeline>
+            </div>
+
+            <div
+                v-if="props.operation.status === 'queued' || props.operation.status === 'processing'"
+                class="flex items-center gap-2 text-xs text-color-secondary"
+                aria-live="polite"
+            >
+                <span
+                    class="h-1.5 w-1.5 rounded-full bg-primary"
+                    :class="props.operation.status === 'processing' ? 'animate-pulse' : ''"
+                    aria-hidden="true"
+                ></span>
+                <span>
+                    {{ props.operation.status === 'queued' ? 'Menunggu worker...' : 'Sedang berjalan • pembaruan otomatis aktif' }}
+                </span>
+            </div>
+
+            <div
+                v-if="props.operation.status === 'completed'"
+                class="grid grid-cols-2 gap-3 sm:max-w-md"
+            >
+                <div class="rounded-lg bg-surface-50 px-4 py-3 dark:bg-surface-800">
+                    <p class="text-xs font-medium uppercase tracking-wide text-color-secondary">Order</p>
+                    <p class="mt-1 text-xl font-semibold text-color">{{ props.operation.orders }}</p>
+                </div>
+                <div class="rounded-lg bg-surface-50 px-4 py-3 dark:bg-surface-800">
+                    <p class="text-xs font-medium uppercase tracking-wide text-color-secondary">Income</p>
+                    <p class="mt-1 text-xl font-semibold text-color">{{ props.operation.income }}</p>
+                </div>
+            </div>
+
+            <p
+                v-if="props.operation.status === 'failed' && props.operation.error"
+                class="text-sm text-color-secondary"
+            >
+                {{ props.operation.error }}
+            </p>
+        </div>
+
+        <template #footer>
+            <Button
+                v-if="isFinished(props.operation.status)"
+                type="button"
+                :label="props.operation.status === 'completed' ? 'Selesai' : 'Tutup'"
+                :icon="props.operation.status === 'completed' ? 'pi pi-check' : 'pi pi-times'"
+                :severity="props.operation.status === 'completed' ? 'success' : 'secondary'"
+                @click="emit('dismiss')"
+            />
+            <span
+                v-else
+                class="text-xs text-color-secondary"
+            >
+                Proses akan tetap terbuka sampai selesai.
+            </span>
+        </template>
+    </Dialog>
+</template>
 
                     <template #content="{ item }">
                         <div class="min-w-0 px-2 text-center">
