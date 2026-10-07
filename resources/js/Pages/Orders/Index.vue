@@ -687,7 +687,7 @@ const exportExcel = async () => {
                             >
                                 <template #body="{ data }">
                                     <template v-if="field === 'order_number'">
-                                        <span class="font-semibold text-slate-800">{{ data.order_number }}</span>
+                                        <span class="font-semibold text-color">{{ data.order_number }}</span>
                                     </template>
                                     <template v-else-if="field === 'order_created_at'">{{ formatDate(data.order_created_at) }}</template>
                                     <template v-else-if="field === 'buyer_username'">{{ data.buyer_username || '—' }}</template>
@@ -731,9 +731,9 @@ const exportExcel = async () => {
             </div>
 
             <template v-else-if="activeDetailsReady && detailVisible">
-                <div class="flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                    <span class="rounded-full bg-slate-100 px-3 py-1 font-semibold text-slate-700">{{ activeOrderNumber }}</span>
-                    <span class="rounded-full bg-slate-100 px-3 py-1">{{ detailRows.length }} baris item</span>
+                <div class="flex flex-wrap items-center gap-2 text-sm text-color-secondary">
+                    <span class="rounded-full bg-surface-100 px-3 py-1 font-semibold text-color">{{ activeOrderNumber }}</span>
+                    <span class="rounded-full bg-surface-100 px-3 py-1">{{ detailRows.length }} baris item</span>
                     <StatusBadge v-if="activeOrderStatus" :value="activeOrderStatus" :severity="statusSeverity(activeOrderStatus)" />
                     <span class="rounded-full bg-emerald-100 px-3 py-1 font-medium text-emerald-800">Laba Bersih {{ formatNominal(detailTotals.laba) }}</span>
                 </div>
@@ -746,10 +746,10 @@ const exportExcel = async () => {
                     :columns-label="`Kolom detail (${selectedDetailColumns.length})`"
                 >
                     <template #start>
-                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600">
-                            <span><span class="text-slate-400">Penghasilan:</span> <strong class="text-slate-800">{{ formatNominal(detailTotals.penghasilan) }}</strong></span>
-                            <span><span class="text-slate-400">HPP:</span> <strong class="text-slate-800">{{ formatNominal(detailTotals.hpp) }}</strong></span>
-                            <span><span class="text-slate-400">Total Biaya:</span> <strong class="text-slate-800">{{ formatNominal(detailTotals.total_fee) }}</strong></span>
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-color-secondary">
+                            <span><span class="text-color-secondary">Penghasilan:</span> <strong class="text-color">{{ formatNominal(detailTotals.penghasilan) }}</strong></span>
+                            <span><span class="text-color-secondary">HPP:</span> <strong class="text-color">{{ formatNominal(detailTotals.hpp) }}</strong></span>
+                            <span><span class="text-color-secondary">Total Biaya:</span> <strong class="text-color">{{ formatNominal(detailTotals.total_fee) }}</strong></span>
                         </div>
                     </template>
                 </AppDataTableToolbar>
