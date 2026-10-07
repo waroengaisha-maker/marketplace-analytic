@@ -26,7 +26,7 @@ const isFinished = (status: ImportStatus) => status === 'completed' || status ==
 const TRANSFER_DELAY = 350
 const TRANSFER_DURATION = 900
 const PROCESSING_MIN_DURATION = 600
-const FINISH_REVEAL_DELAY = 700
+const FINISH_REVEAL_DELAY = 500
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
@@ -73,8 +73,10 @@ function finishTransfer() {
             timelinePhase.value = 'failed'
         }
 
-        summaryVisible.value = true
-        summaryTimer = null
+        summaryTimer = setTimeout(() => {
+            summaryVisible.value = true
+            summaryTimer = null
+        }, FINISH_REVEAL_DELAY)
     }, PROCESSING_MIN_DURATION)
 }
 
@@ -139,8 +141,10 @@ function syncTimelinePhase(operation: ImportOperation) {
                     timelinePhase.value = 'failed'
                 }
 
-                summaryVisible.value = true
-                summaryTimer = null
+                summaryTimer = setTimeout(() => {
+                    summaryVisible.value = true
+                    summaryTimer = null
+                }, FINISH_REVEAL_DELAY)
             }, PROCESSING_MIN_DURATION)
         }
 
