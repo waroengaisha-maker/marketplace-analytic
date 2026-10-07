@@ -24,8 +24,6 @@ const emit = defineEmits<{
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 const TRANSFER_DURATION = 900
-const PROCESSING_MIN_DURATION = 600
-const FINISH_REVEAL_DELAY = 1000
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
@@ -34,101 +32,81 @@ const showTransfer = ref(false)
 const summaryVisible = ref(false)
 const pointAFillActive = ref(false)
 const pointBFillActive = ref(false)
-let phaseTimer: ReturnType<typeof setTimeout> | null = null
-let processingTimer: ReturnType<typeof setTimeout> | null = null
-let summaryTimer: ReturnType<typeof setTimeout> | null = null
+let transferTimer: ReturnType<typeof setTimeout> | null = null
 let transferOperationId: number | null = null
+let transferStarted = false
 
 function clearTimers() {
-    if (phaseTimer) {
-        clearTimeout(phaseTimer)
-        phaseTimer = null
+    if (transferTimer) {
+        clearTimeout(transferTimer)
+        transferTimer = null
     }
-
-    if (processingTimer) {
-        clearTimeout(processingTimer)
-        processingTimer = null
-    }
-
-    if (summaryTimer) {
-        clearTimeout(summaryTimer)
-        summaryTimer = null
-    }
-
 }
 
-function finishTransfer() {
+function resetTimeline() {
+    clearTimers()
+    transferOperationId = null
+    transferStarted = false
     showTransfer.value = false
-    pointAFillActive.value = false
-    pointBFillActive.value = false
-    phaseTimer = null
-    timelinePhase.value = 'processing'
-
-    if (!isFinished(props.operation.status)) {
-        return
-    }
-
-    processingTimer = setTimeout(() => {
-        processingTimer = null
-
-        if (props.operation.status === 'completed') {
-            timelinePhase.value = 'completed'
-        } else if (props.operation.status === 'failed') {
-            timelinePhase.value = 'failed'
-        }
-
-        summaryTimer = setTimeout(() => {
-            summaryVisible.value = true
-            summaryTimer = null
-        }, FINISH_REVEAL_DELAY)
-    }, PROCESSING_MIN_DURATION)
-}
-
-function scheduleSummary() {
-    if (summaryVisible.value || summaryTimer) {
-        return
-    }
-
-    summaryTimer = setTimeout(() => {
-        summaryVisible.value = true
-        summaryTimer = null
-    }, FINISH_REVEAL_DELAY)
-}
-
-function startTransfer(operationId: number) {
-    if (transferOperationId === operationId) {
-        return
-    }
-
-    transferOperationId = operationId
     summaryVisible.value = false
     pointAFillActive.value = false
     pointBFillActive.value = false
-    clearTimers()
-    timelinePhase.value = 'uploaded'
+    timelinePhase.value = 'uploading'
+}
 
+function completeTransfer(operation: ImportOperation) {
+    transferTimer = null
+    showTransfer.value = false
+
+    if (isFinished(operation.status)) {
+        timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
+        pointBFillActive.value = true
+        summaryVisible.value = true
+        return
+    }
+
+    timelinePhase.value = 'processing'
+}
+
+function startTransfer(operation: ImportOperation) {
+    if (transferStarted && transferOperationId === operation.id) {
+        return
+    }
+
+    clearTimers()
+    transferOperationId = operation.id
+    transferStarted = true
+    summaryVisible.value = false
+    pointAFillActive.value = true
+    pointBFillActive.value = false
+    timelinePhase.value = 'uploaded'
     showTransfer.value = true
 
-    phaseTimer = setTimeout(() => {
-        finishTransfer()
+    transferTimer = setTimeout(() => {
+        completeTransfer(props.operation)
     }, TRANSFER_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
     if (operation.id === 0) {
-        clearTimers()
-        transferOperationId = null
-        showTransfer.value = false
-        summaryVisible.value = false
-        pointAFillActive.value = false
-        pointBFillActive.value = false
-        timelinePhase.value = 'uploading'
+        resetTimeline()
         return
     }
 
     if (transferOperationId !== operation.id) {
-        timelinePhase.value = 'uploaded'
-        startTransfer(operation.id)
+        transferOperationId = operation.id
+        transferStarted = false
+    }
+
+    if (operation.status === 'queued') {
+        if (!showTransfer.value) {
+            timelinePhase.value = 'uploading'
+        }
+        return
+    }
+
+    if (!transferStarted) {
+        startTransfer(operation)
         return
     }
 
@@ -136,42 +114,14 @@ function syncTimelinePhase(operation: ImportOperation) {
         return
     }
 
-    if (timelinePhase.value === 'processing') {
-        if (isFinished(operation.status) && !processingTimer) {
-            processingTimer = setTimeout(() => {
-                processingTimer = null
-
-                if (props.operation.status === 'completed') {
-                    timelinePhase.value = 'completed'
-                } else if (props.operation.status === 'failed') {
-                    timelinePhase.value = 'failed'
-                }
-
-                pointBFillActive.value = true
-
-                summaryTimer = setTimeout(() => {
-                    summaryVisible.value = true
-                    summaryTimer = null
-                }, FINISH_REVEAL_DELAY)
-            }, PROCESSING_MIN_DURATION)
-        }
-
+    if (operation.status === 'processing') {
+        timelinePhase.value = 'processing'
         return
     }
 
-    if (operation.status === 'completed') {
-        timelinePhase.value = 'completed'
-        scheduleSummary()
-        return
-    }
-
-    if (operation.status === 'failed') {
-        timelinePhase.value = 'failed'
-        scheduleSummary()
-        return
-    }
-
-    timelinePhase.value = 'processing'
+    timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
+    pointBFillActive.value = true
+    summaryVisible.value = true
 }
 
 watch(
@@ -543,10 +493,12 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     border: 2px solid var(--p-green-500);
     border-radius: 9999px;
     background: white;
-    box-shadow: 0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
+    box-shadow:
+        0 0 0 2px var(--p-green-500),
+        0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
     pointer-events: none;
     transform-origin: 0.225rem 0.225rem;
-    animation: import-marker-orbit 1.6s linear forwards;
+    animation: import-marker-orbit 1.6s linear infinite;
 }
 
 .import-timeline__marker--achieved {
@@ -718,8 +670,8 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 }
 
 @keyframes import-marker-orbit-fill {
-    from { stroke-dashoffset: 113.1; }
-    to { stroke-dashoffset: 0; }
+    from { stroke-dashoffset: 0; }
+    to { stroke-dashoffset: -113.1; }
 }
 
 @keyframes import-step-pulse {
