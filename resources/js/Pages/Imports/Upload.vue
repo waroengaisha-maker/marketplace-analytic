@@ -4,6 +4,7 @@ import { useEcho } from '@laravel/echo-vue'
 import { Head, useForm, usePage } from '@inertiajs/vue3'
 import Button from 'primevue/button'
 import Card from 'primevue/card'
+import FileUpload from 'primevue/fileupload'
 import { computed, ref, watch } from 'vue'
 import AppAlert from '../../Components/AppAlert.vue'
 import FeedbackMessage from '../../Components/FeedbackMessage.vue'
@@ -21,8 +22,6 @@ const form = useForm<{ order_report: File | null; income_report: File | null }>(
     income_report: null,
 })
 const clientErrors = ref<Record<ReportField, string>>({ order_report: '', income_report: '' })
-const orderFileInput = ref<HTMLInputElement | null>(null)
-const incomeFileInput = ref<HTMLInputElement | null>(null)
 const importStatus = ref<ImportOperation | null>(page.props.activeOperation ?? null)
 const trackedOperationId = ref<number | null>(page.props.flash?.import_operation_id ?? page.props.activeOperation?.id ?? null)
 
@@ -47,14 +46,8 @@ function validateFile(field: ReportField, file: File | null): boolean {
     return !clientErrors.value[field]
 }
 
-function openFilePicker(field: ReportField) {
-    const input = field === 'order_report' ? orderFileInput.value : incomeFileInput.value
-    input?.click()
-}
-
-function handleFileChange(field: ReportField, event: Event) {
-    const input = event.target as HTMLInputElement
-    const file = input.files?.[0] ?? null
+function handleFileSelect(field: ReportField, event: { files?: File[] }) {
+    const file = event.files?.[0] ?? null
 
     form[field] = file
     form.clearErrors(field)
@@ -152,25 +145,16 @@ if (flashOperationId) {
                         <div class="flex min-w-0 flex-col gap-2">
                             <span class="font-medium">Laporan Order</span>
                             <div class="flex flex-wrap items-center gap-3">
-                                <div class="relative inline-flex">
-                                    <input
-                                        id="order-report"
-                                        ref="orderFileInput"
-                                        type="file"
-                                        class="sr-only"
-                                        accept=".xlsx,.xls"
-                                        :disabled="form.processing"
-                                        @change="handleFileChange('order_report', $event)"
-                                    />
-                                    <Button
-                                        type="button"
-                                        icon="pi pi-file-excel"
-                                        label="Pilih file"
-                                        :disabled="form.processing"
-                                        aria-controls="order-report"
-                                        @click="openFilePicker('order_report')"
-                                    />
-                                </div>
+                                <FileUpload
+                                    mode="basic"
+                                    name="order_report"
+                                    accept=".xlsx,.xls"
+                                    :max-file-size="50 * 1024 * 1024"
+                                    choose-label="Pilih file"
+                                    choose-icon="pi pi-file-excel"
+                                    :disabled="form.processing"
+                                    @select="handleFileSelect('order_report', $event)"
+                                />
                                 <span v-if="form.order_report" class="min-w-0 max-w-full truncate text-sm text-color-secondary">
                                     {{ form.order_report.name }}
                                 </span>
