@@ -26,6 +26,7 @@ const isFinished = (status: ImportStatus) => status === 'completed' || status ==
 const TRANSFER_DURATION = 900
 const PROCESSING_MIN_DURATION = 600
 const FINISH_REVEAL_DELAY = 1000
+const POINT_B_FILL_DURATION = 350
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
@@ -259,6 +260,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                 'import-timeline__marker--active': step.active,
                                 'import-timeline__marker--achieved': step.achieved,
                                 'import-timeline__marker--failed': step.failed,
+                                    'import-timeline__marker--fill': step.key === 'processing' && isTimelineFinished,
                             }"
                             aria-hidden="true"
                         >
@@ -499,6 +501,10 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     color: white;
 }
 
+.import-timeline__marker--fill {
+    animation: import-point-b-fill 350ms ease-out both;
+}
+
 .import-timeline__marker--active {
     border-color: var(--p-primary-color);
     color: var(--p-primary-color);
@@ -616,6 +622,22 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
     .import-summary__value {
         font-size: 1.25rem;
+    }
+}
+
+@keyframes import-point-b-fill {
+    from {
+        background: var(--p-card-background);
+        color: var(--p-green-500);
+        transform: scale(0.9);
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--p-green-500) 25%, transparent);
+    }
+
+    to {
+        background: var(--p-green-500);
+        color: white;
+        transform: scale(1);
+        box-shadow: 0 0 0 5px color-mix(in srgb, var(--p-green-500) 0%, transparent);
     }
 }
 
