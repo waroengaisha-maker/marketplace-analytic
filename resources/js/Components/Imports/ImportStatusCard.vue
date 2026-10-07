@@ -505,17 +505,19 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     z-index: 2;
     width: 0.4rem;
     height: 0.4rem;
+    margin: -0.2rem;
     border-radius: 9999px;
     background: var(--p-primary-color);
     box-shadow: 0 0 8px color-mix(in srgb, var(--p-primary-color) 55%, transparent);
     pointer-events: none;
-    transform: translate(-50%, -50%);
+    transform-origin: 0.2rem 0.2rem;
     animation: import-marker-orbit 1.6s linear infinite;
 }
 
 .import-timeline__marker--achieved {
     border-color: var(--p-green-500);
-    color: var(--p-green-500);
+    background: var(--p-green-500);
+    color: white;
 }
 
 .import-timeline__marker--failed {
@@ -673,11 +675,12 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 }
 
 @keyframes import-marker-orbit {
-    0% { transform: translate(-50%, -50%) translateY(-1.02rem); }
-    25% { transform: translate(-50%, -50%) translateX(1.02rem); }
-    50% { transform: translate(-50%, -50%) translateY(1.02rem); }
-    75% { transform: translate(-50%, -50%) translateX(-1.02rem); }
-    100% { transform: translate(-50%, -50%) translateY(-1.02rem); }
+    from {
+        transform: rotate(0deg) translateX(1.02rem);
+    }
+    to {
+        transform: rotate(360deg) translateX(1.02rem);
+    }
 }
 
 @keyframes import-step-pulse {
