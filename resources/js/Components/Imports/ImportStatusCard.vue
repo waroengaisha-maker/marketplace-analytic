@@ -282,7 +282,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                                 : 'pi pi-circle'
                                 "
                             ></i>
-                            <span v-if="step.active" class="import-timeline__orbit-dot" aria-hidden="true"></span>
+                            <svg v-if="step.active" class="import-timeline__orbit" viewBox="0 0 40 40" aria-hidden="true"><circle class="import-timeline__orbit-track" cx="20" cy="20" r="18" /><circle class="import-timeline__orbit-progress" cx="20" cy="20" r="18" /></svg><span v-if="step.active" class="import-timeline__orbit-dot" aria-hidden="true"></span>
                         </span>
                         <span
                             class="import-timeline__label"
@@ -491,27 +491,57 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     justify-content: center;
     border: 2px solid var(--p-surface-400);
     border-radius: 9999px;
-    overflow: hidden;
     background: var(--p-card-background);
     color: var(--p-text-muted-color);
     font-size: 0.9rem;
     transition: border-color 300ms ease, background-color 300ms ease, color 300ms ease, transform 300ms ease;
 }
 
+.import-timeline__orbit {
+    position: absolute;
+    inset: -2px;
+    z-index: 3;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    pointer-events: none;
+    overflow: visible;
+}
+
+.import-timeline__orbit-track,
+.import-timeline__orbit-progress {
+    fill: none;
+    stroke-linecap: round;
+    stroke-width: 2.5;
+}
+
+.import-timeline__orbit-track {
+    stroke: var(--p-surface-300);
+}
+
+.import-timeline__orbit-progress {
+    stroke: var(--p-primary-color);
+    stroke-dasharray: 113.1;
+    stroke-dashoffset: 113.1;
+    transform: rotate(-90deg);
+    transform-origin: 20px 20px;
+    animation: import-marker-orbit-fill 1.6s linear forwards;
+}
+
 .import-timeline__orbit-dot {
     position: absolute;
     top: 50%;
     left: 50%;
-    z-index: 2;
-    width: 0.4rem;
-    height: 0.4rem;
-    margin: -0.2rem;
+    z-index: 4;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin: -0.225rem;
+    border: 2px solid var(--p-green-500);
     border-radius: 9999px;
-    background: var(--p-primary-color);
-    box-shadow: 0 0 8px color-mix(in srgb, var(--p-primary-color) 55%, transparent);
+    background: white;
+    box-shadow: 0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
     pointer-events: none;
-    transform-origin: 0.2rem 0.2rem;
-    animation: import-marker-orbit 1.6s linear infinite;
+    transform-origin: 0.225rem 0.225rem;
+    animation: import-marker-orbit 1.6s linear forwards;
 }
 
 .import-timeline__marker--achieved {
@@ -675,12 +705,13 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 }
 
 @keyframes import-marker-orbit {
-    from {
-        transform: rotate(0deg) translateX(1.02rem);
-    }
-    to {
-        transform: rotate(360deg) translateX(1.02rem);
-    }
+    from { transform: rotate(0deg) translateX(1.02rem); }
+    to { transform: rotate(360deg) translateX(1.02rem); }
+}
+
+@keyframes import-marker-orbit-fill {
+    from { stroke-dashoffset: 113.1; }
+    to { stroke-dashoffset: 0; }
 }
 
 @keyframes import-step-pulse {
@@ -744,6 +775,8 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     .import-timeline__marker,
     .import-timeline__marker::before,
     .import-timeline__marker::after,
+    .import-timeline__orbit,
+    .import-timeline__orbit-progress,
     .import-timeline__orbit-dot,
     .import-timeline__label,
     .import-timeline__track,
