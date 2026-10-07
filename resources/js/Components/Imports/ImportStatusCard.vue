@@ -26,19 +26,16 @@ const isFinished = (status: ImportStatus) => status === 'completed' || status ==
 const TRANSFER_DURATION = 900
 const PROCESSING_MIN_DURATION = 600
 const FINISH_REVEAL_DELAY = 1000
-const POINT_B_RING_DURATION = 500
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
 const timelinePhase = ref<TimelinePhase>('uploading')
 const showTransfer = ref(false)
 const summaryVisible = ref(false)
-const pointBRingActive = ref(false)
 const pointBFillActive = ref(false)
 let phaseTimer: ReturnType<typeof setTimeout> | null = null
 let processingTimer: ReturnType<typeof setTimeout> | null = null
 let summaryTimer: ReturnType<typeof setTimeout> | null = null
-let pointBRingTimer: ReturnType<typeof setTimeout> | null = null
 let transferOperationId: number | null = null
 
 function clearTimers() {
@@ -57,23 +54,13 @@ function clearTimers() {
         summaryTimer = null
     }
 
-    if (pointBRingTimer) {
-        clearTimeout(pointBRingTimer)
-        pointBRingTimer = null
-    }
 }
 
 function finishTransfer() {
     showTransfer.value = false
-    pointBRingActive.value = true
     pointBFillActive.value = false
     phaseTimer = null
     timelinePhase.value = 'processing'
-
-    pointBRingTimer = setTimeout(() => {
-        pointBRingActive.value = false
-        pointBRingTimer = null
-    }, POINT_B_RING_DURATION)
 
     if (!isFinished(props.operation.status)) {
         return
@@ -113,7 +100,6 @@ function startTransfer(operationId: number) {
 
     transferOperationId = operationId
     summaryVisible.value = false
-    pointBRingActive.value = false
     pointBFillActive.value = false
     clearTimers()
     timelinePhase.value = 'uploaded'
@@ -131,7 +117,6 @@ function syncTimelinePhase(operation: ImportOperation) {
         transferOperationId = null
         showTransfer.value = false
         summaryVisible.value = false
-        pointBRingActive.value = false
         pointBFillActive.value = false
         timelinePhase.value = 'uploading'
         return
@@ -281,8 +266,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                 'import-timeline__marker--active': step.active,
                                 'import-timeline__marker--achieved': step.achieved,
                                 'import-timeline__marker--failed': step.failed,
-                                    'import-timeline__marker--ring': step.key === 'processing' && pointBRingActive,
-                                'import-timeline__marker--fill-success': step.key === 'processing' && pointBFillActive && isCompleted,
+                                    'import-timeline__marker--fill-success': step.key === 'processing' && pointBFillActive && isCompleted,
                                 'import-timeline__marker--fill-failed': step.key === 'processing' && pointBFillActive && isFailed,
                             }"
                             aria-hidden="true"
@@ -298,6 +282,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                                 : 'pi pi-circle'
                                 "
                             ></i>
+                            <span v-if="step.active" class="import-timeline__orbit-dot" aria-hidden="true"></span>
                         </span>
                         <span
                             class="import-timeline__label"
@@ -513,6 +498,21 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     transition: border-color 300ms ease, background-color 300ms ease, color 300ms ease, transform 300ms ease;
 }
 
+.import-timeline__orbit-dot {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 2;
+    width: 0.4rem;
+    height: 0.4rem;
+    border-radius: 9999px;
+    background: var(--p-primary-color);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--p-primary-color) 55%, transparent);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    animation: import-marker-orbit 1.6s linear infinite;
+}
+
 .import-timeline__marker--achieved {
     border-color: var(--p-green-500);
     color: var(--p-green-500);
@@ -672,37 +672,12 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     }
 }
 
-.import-timeline__marker--ring {
-    border-color: var(--p-green-500);
-    color: var(--p-green-500);
-    animation: none;
-}
-
-.import-timeline__marker--ring::after {
-    position: absolute;
-    top: 3px;
-    bottom: 3px;
-    left: 0;
-    width: 0;
-    border-radius: inherit;
-    background: linear-gradient(
-        to bottom,
-        var(--p-green-500) 0 2px,
-        transparent 2px calc(100% - 2px),
-        var(--p-green-500) calc(100% - 2px) 100%
-    );
-    content: '';
-    animation: import-point-b-lines 500ms linear forwards;
-}
-
-@keyframes import-point-b-lines {
-    from { width: 0; }
-    to { width: 100%; }
-}
-
-@keyframes import-point-b-fill {
-    from { clip-path: inset(0 100% 0 0); }
-    to { clip-path: inset(0 0 0 0); }
+@keyframes import-marker-orbit {
+    0% { transform: translate(-50%, -50%) translateY(-1.02rem); }
+    25% { transform: translate(-50%, -50%) translateX(1.02rem); }
+    50% { transform: translate(-50%, -50%) translateY(1.02rem); }
+    75% { transform: translate(-50%, -50%) translateX(-1.02rem); }
+    100% { transform: translate(-50%, -50%) translateY(-1.02rem); }
 }
 
 @keyframes import-step-pulse {
@@ -766,6 +741,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     .import-timeline__marker,
     .import-timeline__marker::before,
     .import-timeline__marker::after,
+    .import-timeline__orbit-dot,
     .import-timeline__label,
     .import-timeline__track,
     .import-timeline__transfer-dot {
