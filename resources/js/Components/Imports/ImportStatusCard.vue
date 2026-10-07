@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 
@@ -23,15 +23,51 @@ const emit = defineEmits<{
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 
-const isUploading = computed(() => props.operation.id === 0)
-const isUploaded = computed(() => props.operation.id !== 0)
-const isProcessing = computed(() =>
-    props.operation.id !== 0 &&
-    (props.operation.status === 'queued' || props.operation.status === 'processing'),
-)
-const isProcessed = computed(() =>
-    props.operation.status === 'completed' || props.operation.status === 'failed',
-)
+type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'processed' | 'finished'
+
+const timelinePhase = ref<TimelinePhase>('uploading')
+let finishTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearFinishTimer() {
+    if (finishTimer) {
+        clearTimeout(finishTimer)
+        finishTimer = null
+    }
+}
+
+function syncTimelinePhase(operation: ImportOperation) {
+    clearFinishTimer()
+
+    if (operation.id === 0) {
+        timelinePhase.value = 'uploading'
+        return
+    }
+
+    if (operation.status === 'queued') {
+        timelinePhase.value = 'uploaded'
+        return
+    }
+
+    if (operation.status === 'processing') {
+        timelinePhase.value = 'processing'
+        return
+    }
+
+    timelinePhase.value = 'processed'
+    finishTimer = setTimeout(() => {
+        timelinePhase.value = 'finished'
+        finishTimer = null
+    }, 900)
+}
+
+watch(() => [props.operation.id, props.operation.status], () => syncTimelinePhase(props.operation), { immediate: true })
+onBeforeUnmount(clearFinishTimer)
+
+const isUploading = computed(() => timelinePhase.value === 'uploading')
+const isUploaded = computed(() => ['uploaded', 'processing', 'processed', 'finished'].includes(timelinePhase.value))
+const isProcessing = computed(() => timelinePhase.value === 'processing')
+const isProcessed = computed(() => ['processed', 'finished'].includes(timelinePhase.value))
+const isTimelineFinished = computed(() => timelinePhase.value === 'finished')
 const isCompleted = computed(() => props.operation.status === 'completed')
 const isFailed = computed(() => props.operation.status === 'failed')
 
@@ -58,10 +94,10 @@ const timelineSteps = computed(() => [
     },
     {
         key: 'finished',
-        label: isFinished(props.operation.status) ? 'Finished' : 'Pending',
+        label: isTimelineFinished.value ? 'Finished' : 'Pending',
         active: false,
-        achieved: isCompleted.value,
-        failed: isFailed.value,
+        achieved: isTimelineFinished.value && isCompleted.value,
+        failed: isTimelineFinished.value && isFailed.value,
     },
 ])
 
@@ -74,7 +110,7 @@ const statusMessage = computed(() => {
         return 'Processing...'
     }
 
-    if (isProcessed.value) {
+    if (timelinePhase.value === 'processed') {
         return 'Processed'
     }
 
@@ -115,7 +151,7 @@ const statusMessage = computed(() => {
                 </div>
 
                 <div
-                    v-if="isUploaded && !isProcessing"
+                    v-if="timelinePhase === 'uploaded'"
                     class="import-timeline__transfer import-timeline__transfer--first"
                     aria-hidden="true"
                 >
@@ -123,7 +159,7 @@ const statusMessage = computed(() => {
                 </div>
 
                 <div
-                    v-if="isProcessed"
+                    v-if="timelinePhase === 'processed'"
                     class="import-timeline__transfer import-timeline__transfer--second"
                     aria-hidden="true"
                 >
@@ -172,7 +208,7 @@ const statusMessage = computed(() => {
             <div class="flex items-center justify-center gap-2 text-center">
                 <i
                     :class="
-                        isFinished(props.operation.status)
+                        isTimelineFinished
                             ? 'pi pi-check-circle text-green-500'
                             : 'pi pi-spin pi-spinner text-primary'
                     "
