@@ -43,7 +43,7 @@ const timelineSteps = computed<TimelineStep[]>(() => {
         {
             key: 'upload',
             label: 'Upload',
-            achieved: true,
+            achieved: props.operation.id !== 0,
             failed: false,
         },
         {
@@ -79,7 +79,7 @@ const progressWidth = computed(() => {
     <Dialog
         :visible="true"
         modal
-        :closable="isFinished(props.operation.status)"
+        :closable="false"
         :dismissable-mask="false"
         :close-on-escape="false"
         :draggable="false"
@@ -115,10 +115,11 @@ const progressWidth = computed(() => {
                             :class="{
                                 'import-timeline__marker--achieved': step.achieved,
                                 'import-timeline__marker--failed': step.failed,
+                                'import-timeline__marker--active': props.operation.status === 'processing' && step.key === 'processing',
                             }"
                             aria-hidden="true"
                         >
-                            <i :class="step.achieved || step.failed ? 'pi pi-check' : 'pi pi-times'"></i>
+                            <i :class="step.failed ? 'pi pi-exclamation' : step.achieved ? 'pi pi-check' : 'pi pi-times'"></i>
                         </span>
                         <span
                             class="import-timeline__label"
@@ -208,8 +209,20 @@ const progressWidth = computed(() => {
 
 .import-timeline__progress {
     width: var(--import-progress);
+    overflow: hidden;
     background: var(--p-green-500);
-    transition: width 400ms ease;
+    transition: width 700ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.import-timeline__progress::after {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: -35%;
+    width: 35%;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 55%), transparent);
+    content: '';
+    animation: import-progress-shimmer 1.4s ease-in-out infinite;
 }
 
 .import-timeline__steps {
@@ -251,7 +264,14 @@ const progressWidth = computed(() => {
 
 .import-timeline__marker--failed {
     border-color: var(--p-red-500);
+    background: color-mix(in srgb, var(--p-red-500) 8%, var(--p-card-background));
     color: var(--p-red-500);
+}
+
+.import-timeline__marker--active {
+    border-color: var(--p-primary-color);
+    color: var(--p-primary-color);
+    animation: import-step-pulse 1.6s ease-in-out infinite;
 }
 
 .import-timeline__label {
@@ -343,10 +363,25 @@ const progressWidth = computed(() => {
     }
 }
 
+@keyframes import-step-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--p-primary-color) 0%, transparent); }
+    50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--p-primary-color) 12%, transparent); }
+}
+
+@keyframes import-progress-shimmer {
+    from { transform: translateX(0); }
+    to { transform: translateX(390%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .import-timeline__progress,
     .import-timeline__marker {
         transition: none;
+        animation: none;
+    }
+
+    .import-timeline__progress::after {
+        animation: none;
     }
 }
 </style>
