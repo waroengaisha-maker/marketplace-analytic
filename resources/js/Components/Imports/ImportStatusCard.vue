@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import Button from 'primevue/button'
-import ProgressBar from 'primevue/progressbar'
+import Timeline from 'primevue/timeline'
 import StatusBadge from '@/Components/StatusBadge.vue'
 
 type ImportStatus = 'queued' | 'processing' | 'completed' | 'failed'
@@ -11,6 +12,14 @@ type ImportOperation = {
     orders: number
     income: number
     error?: string | null
+}
+
+type TimelineStep = {
+    key: 'upload' | 'processing' | 'completed'
+    label: string
+    description: string
+    icon: string
+    state: 'completed' | 'active' | 'pending' | 'failed'
 }
 
 const props = defineProps<{
@@ -50,6 +59,38 @@ const statusDescription = {
 } satisfies Record<ImportStatus, string>
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
+
+const timelineSteps = computed<TimelineStep[]>(() => {
+    const status = props.operation.status
+
+    return [
+        {
+            key: 'upload',
+            label: 'Upload',
+            description: 'File berhasil diterima.',
+            icon: 'pi pi-check',
+            state: 'completed',
+        },
+        {
+            key: 'processing',
+            label: status === 'queued' ? 'Menunggu' : 'Proses',
+            description: status === 'queued'
+                ? 'Menunggu worker untuk diproses.'
+                : 'Laporan sedang diproses.',
+            icon: status === 'failed' ? 'pi pi-times' : status === 'queued' ? 'pi pi-clock' : 'pi pi-cog',
+            state: status === 'failed' ? 'failed' : status === 'queued' ? 'active' : 'completed',
+        },
+        {
+            key: 'completed',
+            label: 'Selesai',
+            description: status === 'completed'
+                ? 'Hasil import sudah tersedia.'
+                : 'Menunggu proses import selesai.',
+            icon: status === 'completed' ? 'pi pi-check' : 'pi pi-circle',
+            state: status === 'completed' ? 'completed' : 'pending',
+        },
+    ]
+})
 </script>
 
 <template>
@@ -68,33 +109,87 @@ const isFinished = (status: ImportStatus) => status === 'completed' || status ==
             </div>
 
             <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                    <h2 class="text-base font-semibold text-color">
-                        {{ statusLabel[props.operation.status] }}
-                    </h2>
-                    <StatusBadge
-                        :value="statusLabel[props.operation.status]"
-                        :severity="statusSeverity[props.operation.status]"
-                        rounded
-                        :icon="statusIcon[props.operation.status]"
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h2 class="text-base font-semibold text-color">
+                                {{ statusLabel[props.operation.status] }}
+                            </h2>
+                            <StatusBadge
+                                :value="statusLabel[props.operation.status]"
+                                :severity="statusSeverity[props.operation.status]"
+                                rounded
+                                :icon="statusIcon[props.operation.status]"
+                            />
+                        </div>
+
+                        <p class="mt-1 text-sm text-color-secondary">
+                            {{ statusDescription[props.operation.status] }}
+                        </p>
+                    </div>
+
+                    <Button
+                        v-if="isFinished(props.operation.status)"
+                        type="button"
+                        label="Tutup"
+                        icon="pi pi-times"
+                        severity="secondary"
+                        size="small"
+                        class="shrink-0"
+                        @click="emit('dismiss')"
                     />
                 </div>
 
-                <p class="mt-1 text-sm text-color-secondary">
-                    {{ statusDescription[props.operation.status] }}
-                </p>
+                <Timeline
+                    :value="timelineSteps"
+                    layout="horizontal"
+                    align="top"
+                    class="mt-6"
+                >
+                    <template #marker="{ item }">
+                        <span
+                            class="flex h-9 w-9 items-center justify-center rounded-full border-2 bg-[var(--p-card-background)] text-sm"
+                            :class="{
+                                'border-primary bg-primary text-primary-contrast': item.state === 'completed',
+                                'border-primary text-primary': item.state === 'active',
+                                'border-red-500 text-red-500': item.state === 'failed',
+                                'border-surface-300 text-color-secondary dark:border-surface-600': item.state === 'pending',
+                            }"
+                            aria-hidden="true"
+                        >
+                            <i :class="item.icon"></i>
+                        </span>
+                    </template>
 
-                <ProgressBar
+                    <template #content="{ item }">
+                        <div class="min-w-0 px-2 text-center">
+                            <p
+                                class="text-sm font-semibold"
+                                :class="item.state === 'pending' ? 'text-color-secondary' : 'text-color'"
+                            >
+                                {{ item.label }}
+                            </p>
+                            <p class="mt-1 text-xs text-color-secondary">
+                                {{ item.description }}
+                            </p>
+                        </div>
+                    </template>
+                </Timeline>
+
+                <div
                     v-if="props.operation.status === 'processing'"
-                    mode="indeterminate"
-                    :show-value="false"
-                    class="mt-4 h-1.5"
+                    class="mt-5 h-1 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700"
+                    role="progressbar"
                     aria-label="Import sedang diproses"
-                />
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                >
+                    <div class="h-full w-1/2 animate-pulse rounded-full bg-primary"></div>
+                </div>
 
                 <div
                     v-if="props.operation.status === 'completed'"
-                    class="mt-4 grid grid-cols-2 gap-3 sm:max-w-md"
+                    class="mt-5 grid grid-cols-2 gap-3 sm:max-w-md"
                 >
                     <div class="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 dark:border-surface-700 dark:bg-surface-800">
                         <p class="text-xs font-medium uppercase tracking-wide text-color-secondary">Order</p>
@@ -108,21 +203,10 @@ const isFinished = (status: ImportStatus) => status === 'completed' || status ==
 
                 <p
                     v-if="props.operation.status === 'failed' && props.operation.error"
-                    class="mt-3 text-sm text-color-secondary"
+                    class="mt-4 text-sm text-color-secondary"
                 >
                     {{ props.operation.error }}
                 </p>
-
-                <div v-if="isFinished(props.operation.status)" class="mt-4">
-                    <Button
-                        type="button"
-                        label="Tutup"
-                        icon="pi pi-times"
-                        severity="secondary"
-                        size="small"
-                        @click="emit('dismiss')"
-                    />
-                </div>
             </div>
         </div>
     </section>
