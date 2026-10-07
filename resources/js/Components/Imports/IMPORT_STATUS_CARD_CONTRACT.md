@@ -13,6 +13,9 @@
   - `Processing` → second point pulsing, connector becomes solid after the moving dot arrives, and `Processing...` message.
   - `Successful` / `Failed` → second point solid with the corresponding terminal message.
 - Reflect real-time operation updates passed by the parent component.
+- Treat the backend status as the source of truth for every semantic phase transition.
+- Keep the active point pulsing/orbiting for exactly as long as the backend keeps that phase active; never add a minimum processing duration or artificial finish-reveal delay.
+- Use the 900ms A→B moving-dot handoff only as a visual transition; it must never be used to fabricate backend processing progress.
 - Show imported order/income totals only after completion.
 - Show the backend-provided failure message when an operation fails.
 - Keep the Dialog non-dismissable while the operation is queued or processing.
@@ -24,6 +27,7 @@
 - Fetching or polling the operation endpoint.
 - Mutating the import operation.
 - Calculating a progress percentage that the backend does not provide.
+- Inferring backend processing duration from frontend animation timers.
 
 ## Usage
 
@@ -41,3 +45,7 @@ The component must not present a percentage unless the backend exposes a real pr
 | `failed` | Open | Yes |
 
 The parent remains responsible for the real-time Echo subscription. The Dialog is only a presentation and interaction boundary for the current operation.
+
+## Timing rule
+
+The timeline is event-driven by the latest operation.status received from the backend. CSS animation loops are visual only and must not decide when the operation becomes processing, completed, or failed. The component must not use artificial minimum durations or delayed summary timers to simulate backend work.
