@@ -23,7 +23,6 @@ const emit = defineEmits<{
 }>()
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
-const TRANSFER_DELAY = 350
 const TRANSFER_DURATION = 900
 const PROCESSING_MIN_DURATION = 600
 const FINISH_REVEAL_DELAY = 500
@@ -101,13 +100,11 @@ function startTransfer(operationId: number) {
     clearTimers()
     timelinePhase.value = 'uploaded'
 
-    phaseTimer = setTimeout(() => {
-        showTransfer.value = true
+    showTransfer.value = true
 
-        phaseTimer = setTimeout(() => {
-            finishTransfer()
-        }, TRANSFER_DURATION)
-    }, TRANSFER_DELAY)
+    phaseTimer = setTimeout(() => {
+        finishTransfer()
+    }, TRANSFER_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
@@ -369,8 +366,15 @@ const statusMessage = computed(() => isTimelineFinished.value ? 'Finished' : 'Pl
         </div>
 
         <template #footer>
+            <Skeleton
+                v-if="!isTimelineFinished"
+                width="5.5rem"
+                height="2.5rem"
+                border-radius="0.5rem"
+                aria-hidden="true"
+            />
             <Button
-                v-if="isTimelineFinished"
+                v-else
                 type="button"
                 label="Close"
                 :icon="isCompleted ? 'pi pi-check' : 'pi pi-times'"
