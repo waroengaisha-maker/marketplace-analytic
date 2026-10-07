@@ -22,13 +22,14 @@ const emit = defineEmits<{
 }>()
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
+const TRANSFER_DURATION = 900
 
-type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'processed' | 'finished'
+type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
 const timelinePhase = ref<TimelinePhase>('uploading')
-const showFirstTransfer = ref(false)
-const showSecondTransfer = ref(false)
+const showTransfer = ref(false)
 let phaseTimer: ReturnType<typeof setTimeout> | null = null
+let transferOperationId: number | null = null
 
 function clearPhaseTimer() {
     if (phaseTimer) {
@@ -37,43 +38,67 @@ function clearPhaseTimer() {
     }
 }
 
-function syncTimelinePhase(operation: ImportOperation) {
-    clearPhaseTimer()
-    showFirstTransfer.value = false
-    showSecondTransfer.value = false
+function finishTransfer() {
+    showTransfer.value = false
+    phaseTimer = null
 
+    if (props.operation.status === 'completed') {
+        timelinePhase.value = 'completed'
+        return
+    }
+
+    if (props.operation.status === 'failed') {
+        timelinePhase.value = 'failed'
+        return
+    }
+
+    timelinePhase.value = 'processing'
+}
+
+function startTransfer(operationId: number) {
+    if (transferOperationId === operationId) {
+        return
+    }
+
+    transferOperationId = operationId
+    showTransfer.value = true
+    clearPhaseTimer()
+
+    phaseTimer = setTimeout(() => {
+        finishTransfer()
+    }, TRANSFER_DURATION)
+}
+
+function syncTimelinePhase(operation: ImportOperation) {
     if (operation.id === 0) {
+        clearPhaseTimer()
+        transferOperationId = null
+        showTransfer.value = false
         timelinePhase.value = 'uploading'
         return
     }
 
-    if (operation.status === 'queued') {
+    if (transferOperationId !== operation.id) {
         timelinePhase.value = 'uploaded'
-        phaseTimer = setTimeout(() => {
-            showFirstTransfer.value = true
-            phaseTimer = setTimeout(() => {
-                timelinePhase.value = 'processing'
-                showFirstTransfer.value = false
-                phaseTimer = null
-            }, 900)
-        }, 0)
+        startTransfer(operation.id)
         return
     }
 
-    if (operation.status === 'processing') {
-        timelinePhase.value = 'processing'
+    if (showTransfer.value) {
         return
     }
 
-    timelinePhase.value = 'processed'
-    phaseTimer = setTimeout(() => {
-        showSecondTransfer.value = true
-        phaseTimer = setTimeout(() => {
-            timelinePhase.value = 'finished'
-            showSecondTransfer.value = false
-            phaseTimer = null
-        }, 900)
-    }, 0)
+    if (operation.status === 'completed') {
+        timelinePhase.value = 'completed'
+        return
+    }
+
+    if (operation.status === 'failed') {
+        timelinePhase.value = 'failed'
+        return
+    }
+
+    timelinePhase.value = 'processing'
 }
 
 watch(
@@ -84,13 +109,11 @@ watch(
 onBeforeUnmount(clearPhaseTimer)
 
 const isUploading = computed(() => timelinePhase.value === 'uploading')
-const isUploaded = computed(() => ['uploaded', 'processing', 'processed', 'finished'].includes(timelinePhase.value))
+const isUploaded = computed(() => timelinePhase.value !== 'uploading')
 const isProcessing = computed(() => timelinePhase.value === 'processing')
-const isProcessed = computed(() => ['processed', 'finished'].includes(timelinePhase.value))
-const isTimelineFinished = computed(() => timelinePhase.value === 'finished')
-
-const isCompleted = computed(() => props.operation.status === 'completed')
-const isFailed = computed(() => props.operation.status === 'failed')
+const isTimelineFinished = computed(() => timelinePhase.value === 'completed' || timelinePhase.value === 'failed')
+const isCompleted = computed(() => timelinePhase.value === 'completed')
+const isFailed = computed(() => timelinePhase.value === 'failed')
 
 function handleDialogHide() {
     if (isFinished(props.operation.status)) {
@@ -108,17 +131,16 @@ const timelineSteps = computed(() => [
     },
     {
         key: 'processing',
-        label: isProcessing.value ? 'Processing' : isProcessed.value ? 'Processed' : 'Processing',
+        label: isProcessing.value
+            ? 'Processing'
+            : isCompleted.value
+                ? 'Successful'
+                : isFailed.value
+                    ? 'Failed'
+                    : 'Processing',
         active: isProcessing.value,
-        achieved: isProcessed.value,
-        failed: false,
-    },
-    {
-        key: 'finished',
-        label: isTimelineFinished.value ? 'Finished' : 'Pending',
-        active: false,
-        achieved: isTimelineFinished.value && isCompleted.value,
-        failed: isTimelineFinished.value && isFailed.value,
+        achieved: isCompleted.value,
+        failed: isFailed.value,
     },
 ])
 
@@ -135,11 +157,11 @@ const statusMessage = computed(() => {
         return 'Processing...'
     }
 
-    if (timelinePhase.value === 'processed') {
-        return 'Processed'
+    if (isCompleted.value) {
+        return 'Successful'
     }
 
-    return 'Finished'
+    return 'Failed'
 })
 </script>
 
@@ -164,30 +186,16 @@ const statusMessage = computed(() => {
             <div class="import-timeline">
                 <div class="import-timeline__rail" aria-hidden="true">
                     <span
-                        class="import-timeline__track import-timeline__track--left"
+                        class="import-timeline__track"
                         :class="{
-                            'import-timeline__track--active': isProcessing || isProcessed,
-                        }"
-                    ></span>
-                    <span
-                        class="import-timeline__track import-timeline__track--right"
-                        :class="{
-                            'import-timeline__track--active': isProcessed,
+                            'import-timeline__track--active': isProcessing || isTimelineFinished,
                         }"
                     ></span>
                 </div>
 
                 <div
-                    v-if="showFirstTransfer"
-                    class="import-timeline__transfer import-timeline__transfer--first"
-                    aria-hidden="true"
-                >
-                    <span class="import-timeline__transfer-dot"></span>
-                </div>
-
-                <div
-                    v-if="showSecondTransfer"
-                    class="import-timeline__transfer import-timeline__transfer--second"
+                    v-if="showTransfer"
+                    class="import-timeline__transfer"
                     aria-hidden="true"
                 >
                     <span class="import-timeline__transfer-dot"></span>
@@ -236,7 +244,9 @@ const statusMessage = computed(() => {
                 <i
                     :class="
                         isTimelineFinished
-                            ? 'pi pi-check-circle text-green-500'
+                            ? isCompleted
+                                ? 'pi pi-check-circle text-green-500'
+                                : 'pi pi-times-circle text-red-500'
                             : 'pi pi-spin pi-spinner text-primary'
                     "
                     aria-hidden="true"
@@ -272,7 +282,7 @@ const statusMessage = computed(() => {
             </div>
 
             <div
-                v-if="props.operation.status === 'failed' && props.operation.error"
+                v-if="isTimelineFinished && props.operation.status === 'failed' && props.operation.error"
                 class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300"
             >
                 {{ props.operation.error }}
@@ -281,11 +291,11 @@ const statusMessage = computed(() => {
 
         <template #footer>
             <Button
-                v-if="isFinished(props.operation.status)"
+                v-if="isTimelineFinished"
                 type="button"
                 label="Close"
-                :icon="props.operation.status === 'completed' ? 'pi pi-check' : 'pi pi-times'"
-                :severity="props.operation.status === 'completed' ? 'success' : 'secondary'"
+                :icon="isCompleted ? 'pi pi-check' : 'pi pi-times'"
+                :severity="isCompleted ? 'success' : 'secondary'"
                 @click="emit('dismiss')"
             />
         </template>
@@ -302,27 +312,18 @@ const statusMessage = computed(() => {
 .import-timeline__rail {
     position: absolute;
     top: 1.25rem;
-    right: calc(16.666667% + 1.25rem);
-    left: calc(16.666667% + 1.25rem);
+    right: calc(25% + 1.25rem);
+    left: calc(25% + 1.25rem);
     height: 2px;
 }
 
 .import-timeline__track {
     position: absolute;
-    top: 0;
+    inset: 0;
     height: 2px;
     border-radius: 9999px;
     background: var(--p-surface-300);
-}
-
-.import-timeline__track--left {
-    right: 50%;
-    left: 0;
-}
-
-.import-timeline__track--right {
-    right: 0;
-    left: 50%;
+    transition: background-color 300ms ease;
 }
 
 .import-timeline__track--active {
@@ -332,19 +333,11 @@ const statusMessage = computed(() => {
 .import-timeline__transfer {
     position: absolute;
     top: 1.25rem;
+    right: calc(25% + 1.25rem);
+    left: calc(25% + 1.25rem);
     z-index: 2;
     height: 2px;
     pointer-events: none;
-}
-
-.import-timeline__transfer--first {
-    right: calc(50% + 1.25rem);
-    left: calc(16.666667% + 1.25rem);
-}
-
-.import-timeline__transfer--second {
-    right: calc(16.666667% + 1.25rem);
-    left: calc(50% + 1.25rem);
 }
 
 .import-timeline__transfer-dot {
@@ -365,7 +358,7 @@ const statusMessage = computed(() => {
 .import-timeline__steps {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0;
 }
 
@@ -477,19 +470,10 @@ const statusMessage = computed(() => {
 }
 
 @media (max-width: 480px) {
-    .import-timeline__rail {
-        right: calc(16.666667% + 0.75rem);
-        left: calc(16.666667% + 0.75rem);
-    }
-
-    .import-timeline__transfer--first {
-        right: calc(50% + 0.75rem);
-        left: calc(16.666667% + 0.75rem);
-    }
-
-    .import-timeline__transfer--second {
-        right: calc(16.666667% + 0.75rem);
-        left: calc(50% + 0.75rem);
+    .import-timeline__rail,
+    .import-timeline__transfer {
+        right: calc(25% + 0.75rem);
+        left: calc(25% + 0.75rem);
     }
 
     .import-summary {
