@@ -23,6 +23,7 @@ const emit = defineEmits<{
 }>()
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
+const POINT_A_FILL_DURATION = 1500
 const TRANSFER_DURATION = 3000
 const FINISH_REVEAL_DELAY = 2000
 
@@ -35,7 +36,7 @@ const pointBFillActive = ref(false)
 const pointAFillProgress = ref(0)
 const pointBFillProgress = ref(0)
 const timelineRef = ref<HTMLElement | null>(null)
-const arrowPosition = ref({ x: 0, y: 24 })
+const arrowPosition = ref({ x: 0, y: 0 })
 const arrowVisible = ref(false)
 
 let transferTimer: ReturnType<typeof setTimeout> | null = null
@@ -68,23 +69,28 @@ function updateTimelineWidth() {
     timelineWidth = timelineRef.value?.clientWidth ?? 0
 }
 
-function markerCenter(index: 0 | 1) {
-    return { x: timelineWidth * (index === 0 ? 0.25 : 0.75), y: 20 }
-}
-
 function updateArrowPosition() {
     if (timelinePhase.value !== 'uploaded') return
+
+    const timeline = timelineRef.value
+    const markers = timeline?.querySelectorAll<HTMLElement>('.import-timeline__marker')
+    if (!timeline || !markers || markers.length < 2) return
+
+    const timelineRect = timeline.getBoundingClientRect()
+    const startMarkerRect = markers[0].getBoundingClientRect()
+    const endMarkerRect = markers[1].getBoundingClientRect()
 
     const progress = Math.min(
         (performance.now() - transferStartedAt) / TRANSFER_DURATION,
         1,
     )
-    const start = timelineWidth * 0.25 + 20
-    const end = timelineWidth * 0.75 - 20
+    const startX = startMarkerRect.left + startMarkerRect.width / 2 - timelineRect.left
+    const endX = endMarkerRect.left + endMarkerRect.width / 2 - timelineRect.left
+    const centerY = startMarkerRect.top + startMarkerRect.height / 2 - timelineRect.top
 
     arrowPosition.value = {
-        x: start + (end - start) * progress,
-        y: 1.5 * 16,
+        x: startX + (endX - startX) * progress,
+        y: centerY,
     }
 }
 
@@ -139,10 +145,15 @@ function startTransfer(operation: ImportOperation) {
     pointAFillProgress.value = 1
     pointBFillActive.value = false
     pointBFillProgress.value = 0
-    transferStartedAt = performance.now()
     timelinePhase.value = 'uploaded'
-    arrowVisible.value = true
-    transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
+    arrowVisible.value = false
+
+    transferTimer = setTimeout(() => {
+        transferTimer = null
+        transferStartedAt = performance.now()
+        arrowVisible.value = true
+        transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
+    }, POINT_A_FILL_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
@@ -166,6 +177,7 @@ function syncTimelinePhase(operation: ImportOperation) {
         return
     }
     if (operation.status === 'processing') {
+        if (timelinePhase.value === 'uploaded') return
         clearTimers()
         timelinePhase.value = 'processing'
         arrowVisible.value = false
@@ -417,7 +429,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 .import-timeline__rail {
     position: absolute;
-    top: 1.5rem;
+    top: calc(0.25rem + 1.25rem);
     right: calc(25% + 1.25rem);
     left: calc(25% + 1.25rem);
     z-index: 0;
@@ -479,13 +491,15 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 .import-timeline__marker--achieved {
     border-color: var(--p-green-500);
-    background: var(--p-green-500);
+    background: var(--p-card-background);
     color: white;
+    overflow: hidden;
 }
 
 .import-timeline__marker--failed {
     border-color: var(--p-red-500);
     color: var(--p-red-500);
+    overflow: hidden;
 }
 
 .import-timeline__marker--fill-upload,
@@ -504,7 +518,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     content: '';
     transform: scale(0);
     transform-origin: center;
-    animation: import-point-b-fill 1500ms cubic-bezier(0.22, 1, 0.36, 1) 500ms forwards;
+    animation: import-point-b-fill 1500ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .import-timeline__marker--fill-upload::before,
@@ -618,6 +632,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 @media (max-width: 480px) {
     .import-timeline__rail {
+        top: calc(0.25rem + 1.125rem);
         right: calc(25% + 1rem);
         left: calc(25% + 1rem);
     }
