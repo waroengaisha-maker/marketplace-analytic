@@ -116,6 +116,7 @@ function completeTransfer(operation: ImportOperation) {
         return
     }
     timelinePhase.value = 'processing'
+    arrowVisible.value = false
     pointBFillProgress.value = 0
 }
 
@@ -132,11 +133,7 @@ function startTransfer(operation: ImportOperation) {
     transferStartedAt = performance.now()
     timelinePhase.value = 'uploaded'
     arrowVisible.value = true
-    transferTimer = setTimeout(() => {
-        if (props.operation.status !== 'processing' && !isFinished(props.operation.status)) {
-            completeTransfer(props.operation)
-        }
-    }, TRANSFER_DURATION)
+    transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
