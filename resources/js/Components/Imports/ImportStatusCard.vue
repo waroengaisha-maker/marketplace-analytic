@@ -278,7 +278,7 @@ function handleDialogHide() {
 const timelineSteps = computed(() => [
     {
         key: 'upload',
-        label: isUploading.value ? 'Uploading' : 'Uploaded',
+        label: isUploading.value ? 'Uploading ...' : 'Uploaded',
         active: isUploading.value,
         achieved: isUploaded.value,
         failed: false,
