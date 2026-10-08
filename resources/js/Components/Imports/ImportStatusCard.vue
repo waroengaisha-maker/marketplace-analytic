@@ -311,8 +311,16 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                 'import-timeline__marker--fill-failed': step.key === 'processing' && pointBFillActive && isFailed,
                             }"
                             aria-hidden="true"
-                            @animationend="step.key === 'upload' ? handlePointAFillEnd($event) : undefined"
                         >
+                            <span
+                                v-if="(step.key === 'upload' && pointAFillActive) || (step.key === 'processing' && pointBFillActive && isTimelineFinished)"
+                                class="import-timeline__marker-fill"
+                                :class="{
+                                    'import-timeline__marker-fill--success': step.key === 'upload' || isCompleted,
+                                    'import-timeline__marker-fill--failed': isFailed,
+                                }"
+                                @animationend="step.key === 'upload' ? handlePointAFillEnd($event) : undefined"
+                            ></span>
                             <i
                                 :class="
                                     step.failed
@@ -519,31 +527,18 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     overflow: hidden;
 }
 
-.import-timeline__marker--fill-upload,
-.import-timeline__marker--fill-success,
-.import-timeline__marker--fill-failed {
-    color: white;
-}
-
-.import-timeline__marker--fill-upload::before,
-.import-timeline__marker--fill-success::before,
-.import-timeline__marker--fill-failed::before {
+.import-timeline__marker-fill {
     position: absolute;
-    inset: -4px;
+    inset: -3px;
     z-index: 0;
     border-radius: inherit;
-    content: '';
+    background: var(--p-green-500);
     transform: scale(0);
     transform-origin: center;
     animation: import-point-b-fill 1500ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.import-timeline__marker--fill-upload::before,
-.import-timeline__marker--fill-success::before {
-    background: var(--p-green-500);
-}
-
-.import-timeline__marker--fill-failed::before {
+.import-timeline__marker-fill--failed {
     background: var(--p-red-500);
 }
 
