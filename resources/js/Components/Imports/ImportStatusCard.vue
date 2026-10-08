@@ -24,6 +24,7 @@ const emit = defineEmits<{
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 const TRANSFER_DURATION = 900
+const FINISH_REVEAL_DELAY = 700
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
@@ -38,6 +39,7 @@ const arrowPosition = ref({ x: 0, y: 20 })
 const arrowVisible = ref(false)
 
 let transferTimer: ReturnType<typeof setTimeout> | null = null
+let finishRevealTimer: ReturnType<typeof setTimeout> | null = null
 let animationFrame: number | null = null
 let transferOperationId: number | null = null
 let transferStarted = false
@@ -48,6 +50,10 @@ function clearTimers() {
     if (transferTimer) {
         clearTimeout(transferTimer)
         transferTimer = null
+    }
+    if (finishRevealTimer) {
+        clearTimeout(finishRevealTimer)
+        finishRevealTimer = null
     }
 }
 
@@ -111,8 +117,11 @@ function completeTransfer(operation: ImportOperation) {
         timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
         pointBFillActive.value = true
         pointBFillProgress.value = 1
-        summaryVisible.value = true
         arrowVisible.value = false
+        finishRevealTimer = setTimeout(() => {
+            finishRevealTimer = null
+            summaryVisible.value = true
+        }, FINISH_REVEAL_DELAY)
         return
     }
     timelinePhase.value = 'processing'
@@ -165,8 +174,11 @@ function syncTimelinePhase(operation: ImportOperation) {
     timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
     pointBFillActive.value = true
     pointBFillProgress.value = 1
-    summaryVisible.value = true
     arrowVisible.value = false
+    finishRevealTimer = setTimeout(() => {
+        finishRevealTimer = null
+        summaryVisible.value = true
+    }, FINISH_REVEAL_DELAY)
 }
 
 watch(() => [props.operation.id, props.operation.status], () => syncTimelinePhase(props.operation), { immediate: true })
