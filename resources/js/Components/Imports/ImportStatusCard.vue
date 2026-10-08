@@ -299,7 +299,13 @@ const timelineSteps = computed(() => [
 ])
 
 const isSummaryRevealed = computed(() => isTimelineFinished.value && summaryVisible.value)
-const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Please wait...')
+const statusMessage = computed(() => {
+    if (isFailed.value && isSummaryRevealed.value) {
+        return props.operation.error || 'Import gagal diproses.'
+    }
+
+    return isSummaryRevealed.value ? 'Finished' : 'Please wait...'
+})
 </script>
 
 <template>
@@ -396,7 +402,12 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                     "
                     aria-hidden="true"
                 ></i>
-                <span class="text-sm font-medium text-color">{{ statusMessage }}</span>
+                <span
+                    class="max-w-xl text-sm font-medium"
+                    :class="isFailed && isSummaryRevealed ? 'text-red-500' : 'text-color'"
+                >
+                    {{ statusMessage }}
+                </span>
             </div>
 
             <div
@@ -452,14 +463,6 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                 </div>
             </Transition>
 
-            <Transition name="import-summary">
-                <div
-                    v-if="summaryVisible && isTimelineFinished && props.operation.status === 'failed' && props.operation.error"
-                    class="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/30 dark:text-red-300"
-                >
-                    {{ props.operation.error }}
-                </div>
-            </Transition>
         </div>
 
         <template #footer>
