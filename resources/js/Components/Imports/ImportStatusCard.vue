@@ -84,8 +84,11 @@ function updateArrowPosition() {
         (performance.now() - transferStartedAt) / TRANSFER_DURATION,
         1,
     )
-    const startX = startMarkerRect.left + startMarkerRect.width / 2 - timelineRect.left
-    const endX = endMarkerRect.left + endMarkerRect.width / 2 - timelineRect.left
+    const markerRadius = startMarkerRect.width / 2
+    const startCenterX = startMarkerRect.left + markerRadius - timelineRect.left
+    const endCenterX = endMarkerRect.left + endMarkerRect.width / 2 - timelineRect.left
+    const startX = startCenterX + markerRadius
+    const endX = endCenterX - markerRadius
     const centerY = startMarkerRect.top + startMarkerRect.height / 2 - timelineRect.top
 
     arrowPosition.value = {
@@ -512,7 +515,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 .import-timeline__marker--fill-success::before,
 .import-timeline__marker--fill-failed::before {
     position: absolute;
-    inset: 0;
+    inset: -2px;
     z-index: 0;
     border-radius: inherit;
     content: '';
