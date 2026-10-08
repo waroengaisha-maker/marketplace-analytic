@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import Skeleton from 'primevue/skeleton'
@@ -24,17 +24,31 @@ const emit = defineEmits<{
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
 const TRANSFER_DURATION = 900
+const ORBIT_DURATION = 1600
+const ORBIT_RADIUS = 16.32
+const CIRCUMFERENCE = 113.1
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
 const timelinePhase = ref<TimelinePhase>('uploading')
-const showTransfer = ref(false)
 const summaryVisible = ref(false)
 const pointAFillActive = ref(false)
 const pointBFillActive = ref(false)
+const pointAFillProgress = ref(0)
+const pointBFillProgress = ref(0)
+const timelineRef = ref<HTMLElement | null>(null)
+const dotPosition = ref({ x: 0, y: 20 })
+const dotVisible = ref(true)
+
 let transferTimer: ReturnType<typeof setTimeout> | null = null
+let animationFrame: number | null = null
 let transferOperationId: number | null = null
 let transferStarted = false
+let orbitAngle = 0
+let orbitStartedAt = 0
+let transferStartedAt = 0
+let transferStartPosition = { x: 0, y: 20 }
+let timelineWidth = 0
 
 function clearTimers() {
     if (transferTimer) {
@@ -43,48 +57,125 @@ function clearTimers() {
     }
 }
 
+function stopAnimationFrame() {
+    if (animationFrame !== null) {
+        cancelAnimationFrame(animationFrame)
+        animationFrame = null
+    }
+}
+
+function updateTimelineWidth() {
+    timelineWidth = timelineRef.value?.clientWidth ?? 0
+}
+
+function markerCenter(index: 0 | 1) {
+    return { x: timelineWidth * (index === 0 ? 0.25 : 0.75), y: 20 }
+}
+
+function orbitPosition(index: 0 | 1, angle: number) {
+    const center = markerCenter(index)
+    return {
+        x: center.x + Math.cos(angle) * ORBIT_RADIUS,
+        y: center.y + Math.sin(angle) * ORBIT_RADIUS,
+    }
+}
+
+function updateDotPosition() {
+    if (timelinePhase.value === 'uploading') {
+        dotPosition.value = orbitPosition(0, orbitAngle)
+        return
+    }
+
+    if (timelinePhase.value === 'processing') {
+        dotPosition.value = orbitPosition(1, orbitAngle)
+        return
+    }
+
+    if (timelinePhase.value === 'uploaded') {
+        const progress = Math.min((performance.now() - transferStartedAt) / TRANSFER_DURATION, 1)
+        const start = transferStartPosition
+        const exit = orbitPosition(0, 0)
+        const target = orbitPosition(1, Math.PI)
+        const enter = markerCenter(1)
+
+        if (progress < 0.15) {
+            const t = progress / 0.15
+            dotPosition.value = { x: start.x + (exit.x - start.x) * t, y: start.y + (exit.y - start.y) * t }
+        } else if (progress < 0.85) {
+            const t = (progress - 0.15) / 0.7
+            dotPosition.value = { x: exit.x + (target.x - exit.x) * t, y: exit.y + (target.y - exit.y) * t }
+        } else {
+            const t = (progress - 0.85) / 0.15
+            dotPosition.value = { x: target.x + (enter.x - target.x) * t, y: target.y + (enter.y - target.y) * t }
+        }
+    }
+}
+
+function animationLoop(now: number) {
+    updateTimelineWidth()
+
+    if (timelinePhase.value === 'uploading' || timelinePhase.value === 'processing') {
+        if (!orbitStartedAt) orbitStartedAt = now
+        orbitAngle = ((now - orbitStartedAt) % ORBIT_DURATION) / ORBIT_DURATION * Math.PI * 2
+        const progress = orbitAngle / (Math.PI * 2)
+        if (timelinePhase.value === 'uploading') pointAFillProgress.value = Math.max(pointAFillProgress.value, progress)
+        else pointBFillProgress.value = Math.max(pointBFillProgress.value, progress)
+    }
+
+    updateDotPosition()
+    animationFrame = requestAnimationFrame(animationLoop)
+}
+
 function resetTimeline() {
     clearTimers()
+    stopAnimationFrame()
     transferOperationId = null
     transferStarted = false
-    showTransfer.value = false
     summaryVisible.value = false
     pointAFillActive.value = false
     pointBFillActive.value = false
+    pointAFillProgress.value = 0
+    pointBFillProgress.value = 0
     timelinePhase.value = 'uploading'
+    dotVisible.value = true
+    orbitAngle = 0
+    orbitStartedAt = 0
+    transferStartedAt = 0
+    updateTimelineWidth()
+    updateDotPosition()
 }
 
 function completeTransfer(operation: ImportOperation) {
     transferTimer = null
-    showTransfer.value = false
-
     if (isFinished(operation.status)) {
         timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
         pointBFillActive.value = true
+        pointBFillProgress.value = 1
         summaryVisible.value = true
+        dotVisible.value = false
         return
     }
-
     timelinePhase.value = 'processing'
+    orbitStartedAt = performance.now()
+    orbitAngle = 0
+    pointBFillProgress.value = 0
 }
 
 function startTransfer(operation: ImportOperation) {
-    if (transferStarted && transferOperationId === operation.id) {
-        return
-    }
-
+    if (transferStarted && transferOperationId === operation.id) return
     clearTimers()
     transferOperationId = operation.id
     transferStarted = true
     summaryVisible.value = false
     pointAFillActive.value = true
+    pointAFillProgress.value = 1
     pointBFillActive.value = false
+    pointBFillProgress.value = 0
+    transferStartPosition = orbitPosition(0, orbitAngle)
+    transferStartedAt = performance.now()
     timelinePhase.value = 'uploaded'
-    showTransfer.value = true
-
-    transferTimer = setTimeout(() => {
-        completeTransfer(props.operation)
-    }, TRANSFER_DURATION)
+    dotVisible.value = true
+    transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
@@ -92,45 +183,50 @@ function syncTimelinePhase(operation: ImportOperation) {
         resetTimeline()
         return
     }
-
     if (transferOperationId !== operation.id) {
         transferOperationId = operation.id
         transferStarted = false
     }
-
     if (operation.status === 'queued') {
-        if (!showTransfer.value) {
+        if (timelinePhase.value !== 'uploaded' && timelinePhase.value !== 'processing') {
             timelinePhase.value = 'uploading'
+            dotVisible.value = true
         }
         return
     }
-
     if (!transferStarted) {
         startTransfer(operation)
         return
     }
-
-    if (showTransfer.value) {
-        return
-    }
-
+    if (timelinePhase.value === 'uploaded') return
     if (operation.status === 'processing') {
         timelinePhase.value = 'processing'
         return
     }
-
     timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
     pointBFillActive.value = true
+    pointBFillProgress.value = 1
     summaryVisible.value = true
+    dotVisible.value = false
 }
 
-watch(
-    () => [props.operation.id, props.operation.status],
-    () => syncTimelinePhase(props.operation),
-    { immediate: true },
-)
-onBeforeUnmount(clearTimers)
+watch(() => [props.operation.id, props.operation.status], () => syncTimelinePhase(props.operation), { immediate: true })
 
+onMounted(() => {
+    updateTimelineWidth()
+    animationFrame = requestAnimationFrame(animationLoop)
+})
+
+onBeforeUnmount(() => {
+    clearTimers()
+    stopAnimationFrame()
+})
+
+const continuousDotStyle = computed(() => ({ left: `${dotPosition.value.x}px`, top: `${dotPosition.value.y}px` }))
+
+const orbitStyle = (stepKey: string) => ({
+    strokeDashoffset: String(CIRCUMFERENCE * (1 - (stepKey === 'upload' ? pointAFillProgress.value : pointBFillProgress.value))),
+})
 const isUploading = computed(() => timelinePhase.value === 'uploading')
 const isUploaded = computed(() => timelinePhase.value !== 'uploading')
 const isProcessing = computed(() => timelinePhase.value === 'processing')
@@ -189,23 +285,9 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
             aria-atomic="true"
             class="flex flex-col gap-7"
         >
-            <div class="import-timeline">
+            <div ref="timelineRef" class="import-timeline">\n                <span v-if="dotVisible" class="import-timeline__continuous-dot" :style="continuousDotStyle" aria-hidden="true"></span>
                 <div class="import-timeline__rail" aria-hidden="true">
-                    <span
-                        class="import-timeline__track"
-                        :class="{
-                            'import-timeline__track--active': isProcessing || isTimelineFinished,
-                            'import-timeline__track--moving': showTransfer,
-                        }"
-                    ></span>
-                </div>
-
-                <div
-                    v-if="showTransfer"
-                    class="import-timeline__transfer"
-                    aria-hidden="true"
-                >
-                    <span class="import-timeline__transfer-dot"></span>
+                    <span class="import-timeline__track" :class="{ 'import-timeline__track--active': isProcessing || isTimelineFinished }"></span>
                 </div>
 
                 <div class="import-timeline__steps">
@@ -247,24 +329,15 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                 viewBox="0 0 40 40"
                                 aria-hidden="true"
                             >
-                                <circle
-                                    class="import-timeline__orbit-track"
-                                    cx="20"
-                                    cy="20"
-                                    r="18"
-                                />
+                                <circle class="import-timeline__orbit-track" cx="20" cy="20" r="18" />
                                 <circle
                                     class="import-timeline__orbit-progress"
                                     cx="20"
                                     cy="20"
                                     r="18"
+                                    :style="orbitStyle(step.key)"
                                 />
                             </svg>
-                            <span
-                                v-if="step.active"
-                                class="import-timeline__orbit-dot"
-                                aria-hidden="true"
-                            ></span>
                         </span>
                         <span
                             class="import-timeline__label"
@@ -392,60 +465,25 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     left: calc(25% + 1.25rem);
     height: 2px;
 }
-
 .import-timeline__track {
     position: absolute;
     inset: 0;
     height: 2px;
     border-radius: 9999px;
     background: var(--p-surface-300);
-    transition: background-color 300ms ease;
 }
-
-.import-timeline__track::after {
+.import-timeline__track--active { background: var(--p-green-500); }
+.import-timeline__continuous-dot {
     position: absolute;
-    inset: 0 auto 0 0;
-    width: 0;
-    border-radius: inherit;
-    background: var(--p-green-500);
-    content: '';
-}
-
-.import-timeline__track--active {
-    background: var(--p-green-500);
-}
-
-.import-timeline__track--moving {
-    background: var(--p-surface-300);
-}
-
-.import-timeline__track--moving::after {
-    animation: import-transfer-line 900ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.import-timeline__transfer {
-    position: absolute;
-    top: 1.25rem;
-    right: calc(25% + 1.25rem);
-    left: calc(25% + 1.25rem);
-    z-index: 2;
-    height: 2px;
-    pointer-events: none;
-}
-
-.import-timeline__transfer-dot {
-    position: absolute;
-    top: 50%;
-    left: 0;
+    z-index: 5;
     width: 0.45rem;
     height: 0.45rem;
+    margin: -0.225rem;
     border-radius: 9999px;
     background: white;
-    box-shadow:
-        0 0 0 2px var(--p-green-500),
-        0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
-    transform: translate(-50%, -50%);
-    animation: import-transfer-travel 900ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    box-shadow: 0 0 0 2px var(--p-green-500), 0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
+    pointer-events: none;
+    will-change: left, top;
 }
 
 .import-timeline__steps {
@@ -516,7 +554,6 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 .import-timeline__orbit--active .import-timeline__orbit-progress {
     opacity: 1;
-    animation: import-marker-orbit-fill 1.6s linear forwards;
 }
 
 .import-timeline__orbit--achieved .import-timeline__orbit-progress {
@@ -529,24 +566,6 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     stroke: var(--p-red-500);
     stroke-dashoffset: 0;
     opacity: 1;
-}
-
-.import-timeline__orbit-dot {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    z-index: 4;
-    width: 0.45rem;
-    height: 0.45rem;
-    margin: -0.225rem;
-    border-radius: 9999px;
-    background: white;
-    box-shadow:
-        0 0 0 2px var(--p-green-500),
-        0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
-    pointer-events: none;
-    transform-origin: 0.225rem 0.225rem;
-    animation: import-marker-orbit 1.6s linear infinite;
 }
 
 .import-timeline__marker--achieved {
@@ -689,38 +708,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 @media (max-width: 480px) {
     .import-timeline__rail,
-    .import-timeline__transfer {
-        right: calc(25% + 0.75rem);
-        left: calc(25% + 0.75rem);
-    }
-
-    .import-summary {
-        padding: 1rem;
-    }
-
-    .import-summary__item {
-        gap: 0.5rem;
-    }
-
-    .import-summary__icon {
-        width: 2.5rem;
-        height: 2.5rem;
-    }
-
-    .import-summary__value {
-        font-size: 1.25rem;
-    }
-}
-
-@keyframes import-marker-orbit {
-    from { transform: rotate(0deg) translateX(1.02rem); }
-    to { transform: rotate(360deg) translateX(1.02rem); }
-}
-
-@keyframes import-marker-orbit-fill {
-    from { stroke-dashoffset: 113.1; }
-    to { stroke-dashoffset: 0; }
-}
+    
 
 @keyframes import-step-pulse {
     0%, 100% {
@@ -742,25 +730,9 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     }
 }
 
-@keyframes import-transfer-travel {
-    from {
-        left: 0;
-    }
 
-    to {
-        left: 100%;
-    }
-}
 
-@keyframes import-transfer-line {
-    from {
-        width: 0;
-    }
 
-    to {
-        width: 100%;
-    }
-}
 
 .import-summary-enter-active,
 .import-summary-leave-active {
@@ -788,9 +760,5 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     .import-timeline__orbit-dot,
     .import-timeline__label,
     .import-timeline__track,
-    .import-timeline__transfer-dot {
-        transition: none;
-        animation: none;
-    }
-}
+    
 </style>
