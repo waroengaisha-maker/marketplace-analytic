@@ -35,7 +35,7 @@ const pointBFillActive = ref(false)
 const pointAFillProgress = ref(0)
 const pointBFillProgress = ref(0)
 const timelineRef = ref<HTMLElement | null>(null)
-const arrowPosition = ref({ x: 0, y: 0 })
+const arrowPosition = ref({ x: 0, y: 24 })
 const arrowVisible = ref(false)
 
 let transferTimer: ReturnType<typeof setTimeout> | null = null
@@ -84,7 +84,7 @@ function updateArrowPosition() {
 
     arrowPosition.value = {
         x: start + (end - start) * progress,
-        y: 0,
+        y: 1.5 * 16,
     }
 }
 
@@ -417,7 +417,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 .import-timeline__rail {
     position: absolute;
-    top: 50%;
+    top: 1.5rem;
     right: calc(25% + 1.25rem);
     left: calc(25% + 1.25rem);
     z-index: 0;
@@ -502,8 +502,9 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     z-index: 0;
     border-radius: inherit;
     content: '';
-    clip-path: circle(0% at 50% 50%);
-    animation: import-point-b-fill 350ms ease-out 120ms forwards;
+    transform: scale(0);
+    transform-origin: center;
+    animation: import-point-b-fill 420ms cubic-bezier(0.22, 1, 0.36, 1) 120ms forwards;
 }
 
 .import-timeline__marker--fill-upload::before,
@@ -653,11 +654,11 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 @keyframes import-point-b-fill {
     from {
-        clip-path: circle(0% at 50% 50%);
+        transform: scale(0);
     }
 
     to {
-        clip-path: circle(75% at 50% 50%);
+        transform: scale(1);
     }
 }
 
