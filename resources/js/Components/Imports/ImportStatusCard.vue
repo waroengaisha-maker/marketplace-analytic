@@ -156,7 +156,7 @@ function animateFillAndTransfer() {
         fillTimelineProgress.value = progress
 
         if (progress >= 1) {
-            pointAFillActive.value = false
+            pointAFillActive.value = true
             arrowVisible.value = true
             transferStartedAt = now
             updateArrowPosition()
@@ -286,7 +286,7 @@ const timelineSteps = computed(() => [
     {
         key: 'processing',
         label: isProcessing.value
-            ? 'Processing'
+            ? 'Processing ...'
             : isCompleted.value
                 ? 'Successful'
                 : isFailed.value
