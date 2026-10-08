@@ -79,9 +79,21 @@ function submit() {
 
     form.post('/imports/upload', {
         forceFormData: true,
-        onError: () => {
-            importStatus.value = null
-            trackedOperationId.value = null
+        onSuccess: (page) => {
+            const operationId = (page.props.flash as Flash | undefined)?.import_operation_id
+
+            if (operationId) {
+                trackedOperationId.value = operationId
+                void loadImportStatus(operationId)
+            }
+        },
+        onError: (errors) => {
+            // Keep the status dialog for async import failures. Only validation/request
+            // errors without an operation should dismiss the optimistic state.
+            if (Object.keys(errors).length > 0) {
+                importStatus.value = null
+                trackedOperationId.value = null
+            }
         },
     })
 }
