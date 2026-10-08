@@ -35,7 +35,7 @@ const pointBFillActive = ref(false)
 const pointAFillProgress = ref(0)
 const pointBFillProgress = ref(0)
 const timelineRef = ref<HTMLElement | null>(null)
-const arrowPosition = ref({ x: 0, y: 20 })
+const arrowPosition = ref({ x: 0, y: 0 })
 const arrowVisible = ref(false)
 
 let transferTimer: ReturnType<typeof setTimeout> | null = null
@@ -84,7 +84,7 @@ function updateArrowPosition() {
 
     arrowPosition.value = {
         x: start + (end - start) * progress,
-        y: 20,
+        y: 0,
     }
 }
 
@@ -107,7 +107,7 @@ function resetTimeline() {
     timelinePhase.value = 'uploading'
     arrowVisible.value = false
     transferStartedAt = 0
-    arrowPosition.value = { x: 0, y: 20 }
+    arrowPosition.value = { x: 0, y: 0 }
     updateTimelineWidth()
 }
 
@@ -417,7 +417,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 .import-timeline__rail {
     position: absolute;
-    top: 1.5rem;
+    top: 50%;
     right: calc(25% + 1.25rem);
     left: calc(25% + 1.25rem);
     z-index: 0;
@@ -502,8 +502,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     z-index: 0;
     border-radius: inherit;
     content: '';
-    transform: scaleX(0);
-    transform-origin: left center;
+    clip-path: circle(0% at 50% 50%);
     animation: import-point-b-fill 350ms ease-out 120ms forwards;
 }
 
@@ -654,11 +653,11 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 @keyframes import-point-b-fill {
     from {
-        transform: scaleX(0);
+        clip-path: circle(0% at 50% 50%);
     }
 
     to {
-        transform: scaleX(1);
+        clip-path: circle(75% at 50% 50%);
     }
 }
 
