@@ -81,10 +81,7 @@ function updateArrowPosition() {
     const endMarkerRect = markers[1].getBoundingClientRect()
 
     const elapsed = performance.now() - transferStartedAt
-    const progress = Math.min(
-        Math.max((elapsed - POINT_A_FILL_DURATION) / TRANSFER_DURATION, 0),
-        1,
-    )
+    const progress = Math.min(Math.max(elapsed / TRANSFER_DURATION, 0), 1)
     const markerRadius = startMarkerRect.width / 2
     const startCenterX = startMarkerRect.left + markerRadius - timelineRect.left
     const endCenterX = endMarkerRect.left + endMarkerRect.width / 2 - timelineRect.left
@@ -151,6 +148,7 @@ function startTransfer(operation: ImportOperation) {
     summaryVisible.value = false
     pointAFillActive.value = true
     pointAFillProgress.value = 1
+    arrowVisible.value = false
     pointBFillActive.value = false
     pointBFillProgress.value = 0
     timelinePhase.value = 'uploaded'
@@ -168,6 +166,8 @@ function handlePointAFillEnd(event: AnimationEvent) {
 
     pointAFillActive.value = false
     transferStartedAt = performance.now()
+    updateTimelineWidth()
+    updateArrowPosition()
     arrowVisible.value = true
     transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
 }
