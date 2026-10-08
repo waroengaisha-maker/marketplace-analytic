@@ -155,13 +155,21 @@ function startTransfer(operation: ImportOperation) {
     pointBFillProgress.value = 0
     timelinePhase.value = 'uploaded'
     arrowVisible.value = false
+}
 
-    transferTimer = setTimeout(() => {
-        transferTimer = null
-        transferStartedAt = performance.now()
-        arrowVisible.value = true
-        transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
-    }, POINT_A_FILL_DURATION)
+function handlePointAFillEnd(event: AnimationEvent) {
+    if (
+        event.animationName !== 'import-point-b-fill'
+        || !pointAFillActive.value
+        || !transferStarted
+    ) {
+        return
+    }
+
+    pointAFillActive.value = false
+    transferStartedAt = performance.now()
+    arrowVisible.value = true
+    transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
@@ -303,6 +311,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                 'import-timeline__marker--fill-failed': step.key === 'processing' && pointBFillActive && isFailed,
                             }"
                             aria-hidden="true"
+                            @animationend="step.key === 'upload' ? handlePointAFillEnd($event) : undefined"
                         >
                             <i
                                 :class="
