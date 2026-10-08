@@ -89,7 +89,11 @@ function updateArrowPosition() {
     const endCenterX = endMarkerRect.left + endMarkerRect.width / 2 - timelineRect.left
     const startX = startCenterX + markerRadius
     const endX = endCenterX - markerRadius
-    const centerY = startMarkerRect.top + startMarkerRect.height / 2 - timelineRect.top
+    const rail = timeline.querySelector<HTMLElement>('.import-timeline__rail')
+    const railRect = rail?.getBoundingClientRect()
+    const centerY = railRect
+        ? railRect.top + railRect.height / 2 - timelineRect.top
+        : startMarkerRect.top + startMarkerRect.height / 2 - timelineRect.top
 
     arrowPosition.value = {
         x: startX + (endX - startX) * progress,
@@ -676,7 +680,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     }
 
     to {
-        transform: scale(1);
+        transform: scale(1.2);
     }
 }
 
