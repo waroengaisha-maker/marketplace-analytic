@@ -73,8 +73,8 @@ function updateArrowPosition() {
         (performance.now() - transferStartedAt) / TRANSFER_DURATION,
         1,
     )
-    const start = timelineWidth * 0.25
-    const end = timelineWidth * 0.75
+    const start = timelineWidth * 0.25 + 20
+    const end = timelineWidth * 0.75 - 20
 
     arrowPosition.value = {
         x: start + (end - start) * progress,
@@ -132,7 +132,11 @@ function startTransfer(operation: ImportOperation) {
     transferStartedAt = performance.now()
     timelinePhase.value = 'uploaded'
     arrowVisible.value = true
-    transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
+    transferTimer = setTimeout(() => {
+        if (props.operation.status !== 'processing' && !isFinished(props.operation.status)) {
+            completeTransfer(props.operation)
+        }
+    }, TRANSFER_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
@@ -155,9 +159,10 @@ function syncTimelinePhase(operation: ImportOperation) {
         startTransfer(operation)
         return
     }
-    if (timelinePhase.value === 'uploaded') return
     if (operation.status === 'processing') {
+        clearTimers()
         timelinePhase.value = 'processing'
+        arrowVisible.value = false
         return
     }
     timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
@@ -241,7 +246,8 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
             aria-atomic="true"
             class="flex flex-col gap-7"
         >
-            <div ref="timelineRef" class="import-timeline">\n                <span
+            <div ref="timelineRef" class="import-timeline">
+                <span
                     v-if="arrowVisible"
                     class="import-timeline__transfer-arrow"
                     :style="transferArrowStyle"
@@ -402,9 +408,10 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 .import-timeline__rail {
     position: absolute;
-    top: 1.25rem;
+    top: 1.5rem;
     right: calc(25% + 1.25rem);
     left: calc(25% + 1.25rem);
+    z-index: 0;
     height: 2px;
 }
 .import-timeline__track {
@@ -418,17 +425,30 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 .import-timeline__transfer-arrow {
     position: absolute;
     z-index: 5;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin: -0.225rem 0 0 -0.225rem;
+    border: 2px solid var(--p-green-500);
+    border-radius: 9999px;
+    background: white;
+    box-shadow:
+        0 0 0 2px color-mix(in srgb, var(--p-green-500) 18%, transparent),
+        0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
+    pointer-events: none;
+    will-change: left;
+}
+
+.import-timeline__transfer-arrow::after {
+    position: absolute;
+    top: 50%;
+    right: -0.42rem;
     width: 0;
     height: 0;
-    margin: -0.3rem 0 0 -0.275rem;
-    border-top: 0.3rem solid transparent;
-    border-bottom: 0.3rem solid transparent;
-    border-left: 0.55rem solid var(--p-green-500);
-    pointer-events: none;
-    filter: drop-shadow(
-        0 0 5px color-mix(in srgb, var(--p-green-500) 35%, transparent)
-    );
-    will-change: left;
+    content: '';
+    transform: translateY(-50%);
+    border-top: 0.22rem solid transparent;
+    border-bottom: 0.22rem solid transparent;
+    border-left: 0.32rem solid var(--p-green-500);
 }
 
 .import-timeline__steps {
