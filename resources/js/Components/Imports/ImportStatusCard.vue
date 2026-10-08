@@ -154,9 +154,14 @@ function startTransfer(operation: ImportOperation) {
     pointBFillActive.value = false
     pointBFillProgress.value = 0
     timelinePhase.value = 'uploaded'
-    transferStartedAt = performance.now()
-    arrowVisible.value = true
-    transferTimer = setTimeout(() => completeTransfer(props.operation), POINT_A_FILL_DURATION + TRANSFER_DURATION)
+    arrowVisible.value = false
+
+    transferTimer = setTimeout(() => {
+        transferTimer = null
+        transferStartedAt = performance.now()
+        arrowVisible.value = true
+        transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
+    }, POINT_A_FILL_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
