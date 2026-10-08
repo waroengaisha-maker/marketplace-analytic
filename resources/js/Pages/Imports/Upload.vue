@@ -133,7 +133,7 @@ watch(
             return
         }
 
-        if (importStatus.value?.id !== optimisticOperationId) {
+        if (importStatus.value?.id === optimisticOperationId) {
             trackedOperationId.value = null
             importStatus.value = null
         }
