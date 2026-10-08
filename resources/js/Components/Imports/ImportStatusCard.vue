@@ -35,6 +35,7 @@ const pointAFillActive = ref(false)
 const pointBFillActive = ref(false)
 const pointAFillProgress = ref(0)
 const pointBFillProgress = ref(0)
+const fillTimelineProgress = ref(0)
 const timelineRef = ref<HTMLElement | null>(null)
 const arrowPosition = ref({ x: 0, y: 0 })
 const arrowVisible = ref(false)
@@ -42,6 +43,7 @@ const arrowVisible = ref(false)
 let transferTimer: ReturnType<typeof setTimeout> | null = null
 let finishRevealTimer: ReturnType<typeof setTimeout> | null = null
 let animationFrame: number | null = null
+let fillAnimationFrame: number | null = null
 let transferOperationId: number | null = null
 let transferStarted = false
 let transferStartedAt = 0
@@ -63,6 +65,10 @@ function stopAnimationFrame() {
         cancelAnimationFrame(animationFrame)
         animationFrame = null
     }
+    if (fillAnimationFrame !== null) {
+        cancelAnimationFrame(fillAnimationFrame)
+        fillAnimationFrame = null
+    }
 }
 
 function updateTimelineWidth() {
@@ -80,15 +86,8 @@ function updateArrowPosition() {
     const startMarkerRect = markers[0].getBoundingClientRect()
     const endMarkerRect = markers[1].getBoundingClientRect()
 
-    const elapsed = performance.now() - transferStartedAt
-    const progress = Math.min(
-        Math.max((elapsed - POINT_A_FILL_DURATION) / TRANSFER_DURATION, 0),
-        1,
-    )
-
-    if (!arrowVisible.value && elapsed >= POINT_A_FILL_DURATION) {
-        arrowVisible.value = true
-    }
+    const elapsed = transferStartedAt > 0 ? performance.now() - transferStartedAt : 0
+    const progress = Math.min(Math.max(elapsed / TRANSFER_DURATION, 0), 1)
     const markerRadius = startMarkerRect.width / 2
     const startCenterX = startMarkerRect.left + markerRadius - timelineRect.left
     const endCenterX = endMarkerRect.left + endMarkerRect.width / 2 - timelineRect.left
@@ -122,6 +121,7 @@ function resetTimeline() {
     pointBFillActive.value = false
     pointAFillProgress.value = 0
     pointBFillProgress.value = 0
+    fillTimelineProgress.value = 0
     timelinePhase.value = 'uploading'
     arrowVisible.value = false
     transferStartedAt = 0
@@ -147,6 +147,27 @@ function completeTransfer(operation: ImportOperation) {
     pointBFillProgress.value = 0
 }
 
+function animateFillAndTransfer() {
+    const startedAt = performance.now()
+
+    const tick = (now: number) => {
+        const progress = Math.min((now - startedAt) / POINT_A_FILL_DURATION, 1)
+        fillTimelineProgress.value = progress
+
+        if (progress >= 1) {
+            pointAFillActive.value = false
+            arrowVisible.value = true
+            transferStartedAt = now
+            updateArrowPosition()
+            return
+        }
+
+        fillAnimationFrame = requestAnimationFrame(tick)
+    }
+
+    fillAnimationFrame = requestAnimationFrame(tick)
+}
+
 function startTransfer(operation: ImportOperation) {
     if (transferStarted && transferOperationId === operation.id) return
     clearTimers()
@@ -155,12 +176,14 @@ function startTransfer(operation: ImportOperation) {
     summaryVisible.value = false
     pointAFillActive.value = true
     pointAFillProgress.value = 1
+    fillTimelineProgress.value = 0
     arrowVisible.value = false
     pointBFillActive.value = false
     pointBFillProgress.value = 0
     timelinePhase.value = 'uploaded'
     arrowVisible.value = false
-    transferStartedAt = performance.now()
+    transferStartedAt = 0
+    animateFillAndTransfer()
     transferTimer = setTimeout(() => completeTransfer(props.operation), POINT_A_FILL_DURATION + TRANSFER_DURATION)
 }
 
@@ -307,6 +330,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                             <span
                                 v-if="(step.key === 'upload' && pointAFillActive) || (step.key === 'processing' && pointBFillActive && isTimelineFinished)"
                                 class="import-timeline__marker-fill"
+                                :style="{ '--import-fill-progress': step.key === 'upload' ? fillTimelineProgress : 1 }"
                                 :class="{
                                     'import-timeline__marker-fill--success': step.key === 'upload' || isCompleted,
                                     'import-timeline__marker-fill--failed': isFailed,
@@ -524,9 +548,8 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     z-index: 0;
     border-radius: inherit;
     background: var(--p-green-500);
-    transform: scale(0);
+    transform: scale(var(--import-fill-progress, 0));
     transform-origin: center;
-    animation: import-point-b-fill 1500ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .import-timeline__marker-fill--failed {
