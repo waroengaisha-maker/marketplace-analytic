@@ -436,28 +436,14 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     z-index: 5;
     width: 0.45rem;
     height: 0.45rem;
-    margin: -0.225rem 0 0 -0.225rem;
-    border: 2px solid var(--p-green-500);
+    margin: -0.225rem;
     border-radius: 9999px;
     background: white;
     box-shadow:
-        0 0 0 2px color-mix(in srgb, var(--p-green-500) 18%, transparent),
+        0 0 0 2px var(--p-green-500),
         0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
     pointer-events: none;
     will-change: left;
-}
-
-.import-timeline__transfer-arrow::after {
-    position: absolute;
-    top: 50%;
-    right: -0.42rem;
-    width: 0;
-    height: 0;
-    content: '';
-    transform: translateY(-50%);
-    border-top: 0.22rem solid transparent;
-    border-bottom: 0.22rem solid transparent;
-    border-left: 0.32rem solid var(--p-green-500);
 }
 
 .import-timeline__steps {
@@ -516,8 +502,9 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     z-index: 0;
     border-radius: inherit;
     content: '';
+    transform: scaleX(0);
     transform-origin: left center;
-    animation: import-point-b-fill 350ms ease-out forwards;
+    animation: import-point-b-fill 350ms ease-out 120ms forwards;
 }
 
 .import-timeline__marker--fill-upload::before,
@@ -662,6 +649,16 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
     50% {
         opacity: 1;
+    }
+}
+
+@keyframes import-point-b-fill {
+    from {
+        transform: scaleX(0);
+    }
+
+    to {
+        transform: scaleX(1);
     }
 }
 
