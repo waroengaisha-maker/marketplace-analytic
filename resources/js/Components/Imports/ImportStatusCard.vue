@@ -269,12 +269,6 @@ const isTimelineFinished = computed(() => timelinePhase.value === 'completed' ||
 const isCompleted = computed(() => timelinePhase.value === 'completed')
 const isFailed = computed(() => timelinePhase.value === 'failed')
 
-function handleDialogHide() {
-    if (isFinished(props.operation.status)) {
-        emit('dismiss')
-    }
-}
-
 const timelineSteps = computed(() => [
     {
         key: 'upload',
@@ -318,7 +312,6 @@ const statusMessage = computed(() => {
         :draggable="false"
         :style="{ width: 'min(720px, calc(100vw - 2rem))' }"
         aria-label="File Upload"
-        @hide="handleDialogHide"
     >
         <div
             role="status"
