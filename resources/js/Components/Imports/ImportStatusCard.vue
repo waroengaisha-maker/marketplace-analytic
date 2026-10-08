@@ -36,6 +36,7 @@ const pointBFillActive = ref(false)
 const pointAFillProgress = ref(0)
 const pointBFillProgress = ref(0)
 const fillTimelineProgress = ref(0)
+const pointBFillTimelineProgress = ref(0)
 const timelineRef = ref<HTMLElement | null>(null)
 const arrowPosition = ref({ x: 0, y: 0 })
 const arrowVisible = ref(false)
@@ -168,6 +169,24 @@ function animateFillAndTransfer() {
     fillAnimationFrame = requestAnimationFrame(tick)
 }
 
+function animatePointBFill() {
+    const startedAt = performance.now()
+
+    const tick = (now: number) => {
+        const progress = Math.min((now - startedAt) / POINT_A_FILL_DURATION, 1)
+        pointBFillTimelineProgress.value = progress
+
+        if (progress >= 1) {
+            pointBFillActive.value = false
+            return
+        }
+
+        fillAnimationFrame = requestAnimationFrame(tick)
+    }
+
+    fillAnimationFrame = requestAnimationFrame(tick)
+}
+
 function startTransfer(operation: ImportOperation) {
     if (transferStarted && transferOperationId === operation.id) return
     clearTimers()
@@ -180,6 +199,7 @@ function startTransfer(operation: ImportOperation) {
     arrowVisible.value = false
     pointBFillActive.value = false
     pointBFillProgress.value = 0
+    pointBFillTimelineProgress.value = 0
     timelinePhase.value = 'uploaded'
     arrowVisible.value = false
     transferStartedAt = 0
@@ -217,7 +237,9 @@ function syncTimelinePhase(operation: ImportOperation) {
     timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
     pointBFillActive.value = true
     pointBFillProgress.value = 1
+    pointBFillTimelineProgress.value = 0
     arrowVisible.value = false
+    animatePointBFill()
     finishRevealTimer = setTimeout(() => {
         finishRevealTimer = null
         summaryVisible.value = true
@@ -330,7 +352,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                             <span
                                 v-if="(step.key === 'upload' && pointAFillActive) || (step.key === 'processing' && pointBFillActive && isTimelineFinished)"
                                 class="import-timeline__marker-fill"
-                                :style="{ '--import-fill-progress': step.key === 'upload' ? fillTimelineProgress : 1 }"
+                                :style="{ '--import-fill-progress': step.key === 'upload' ? fillTimelineProgress : pointBFillTimelineProgress }"
                                 :class="{
                                     'import-timeline__marker-fill--success': step.key === 'upload' || isCompleted,
                                     'import-timeline__marker-fill--failed': isFailed,
