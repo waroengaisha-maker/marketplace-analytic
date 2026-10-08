@@ -80,8 +80,9 @@ function updateArrowPosition() {
     const startMarkerRect = markers[0].getBoundingClientRect()
     const endMarkerRect = markers[1].getBoundingClientRect()
 
+    const elapsed = performance.now() - transferStartedAt
     const progress = Math.min(
-        (performance.now() - transferStartedAt) / TRANSFER_DURATION,
+        Math.max((elapsed - POINT_A_FILL_DURATION) / TRANSFER_DURATION, 0),
         1,
     )
     const markerRadius = startMarkerRect.width / 2
@@ -153,14 +154,9 @@ function startTransfer(operation: ImportOperation) {
     pointBFillActive.value = false
     pointBFillProgress.value = 0
     timelinePhase.value = 'uploaded'
-    arrowVisible.value = false
-
-    transferTimer = setTimeout(() => {
-        transferTimer = null
-        transferStartedAt = performance.now()
-        arrowVisible.value = true
-        transferTimer = setTimeout(() => completeTransfer(props.operation), TRANSFER_DURATION)
-    }, POINT_A_FILL_DURATION)
+    transferStartedAt = performance.now()
+    arrowVisible.value = true
+    transferTimer = setTimeout(() => completeTransfer(props.operation), POINT_A_FILL_DURATION + TRANSFER_DURATION)
 }
 
 function syncTimelinePhase(operation: ImportOperation) {
@@ -519,7 +515,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 .import-timeline__marker--fill-success::before,
 .import-timeline__marker--fill-failed::before {
     position: absolute;
-    inset: -2px;
+    inset: -4px;
     z-index: 0;
     border-radius: inherit;
     content: '';
@@ -680,7 +676,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     }
 
     to {
-        transform: scale(1.2);
+        transform: scale(1);
     }
 }
 
