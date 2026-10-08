@@ -177,7 +177,7 @@ function animatePointBFill() {
         pointBFillTimelineProgress.value = progress
 
         if (progress >= 1) {
-            pointBFillActive.value = false
+            pointBFillActive.value = true
             return
         }
 
