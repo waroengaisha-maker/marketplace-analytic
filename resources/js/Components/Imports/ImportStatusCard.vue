@@ -757,8 +757,17 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     .import-timeline__marker::after,
     .import-timeline__orbit,
     .import-timeline__orbit-progress,
-    .import-timeline__orbit-dot,
+    .import-timeline__continuous-dot,
     .import-timeline__label,
-    .import-timeline__track,
-    
+    .import-timeline__track {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .import-summary-enter-active,
+    .import-summary-leave-active {
+        transition: none !important;
+    }
+}
+
 </style>
