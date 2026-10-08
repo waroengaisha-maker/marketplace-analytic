@@ -237,7 +237,34 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
                                                 : 'pi pi-circle'
                                 "
                             ></i>
-                            <svg v-if="step.active" class="import-timeline__orbit" viewBox="0 0 40 40" aria-hidden="true"><circle class="import-timeline__orbit-track" cx="20" cy="20" r="18" /><circle class="import-timeline__orbit-progress" cx="20" cy="20" r="18" /></svg><span v-if="step.active" class="import-timeline__orbit-dot" aria-hidden="true"></span>
+                            <svg
+                                class="import-timeline__orbit"
+                                :class="{
+                                    'import-timeline__orbit--active': step.active,
+                                    'import-timeline__orbit--achieved': step.achieved,
+                                    'import-timeline__orbit--failed': step.failed,
+                                }"
+                                viewBox="0 0 40 40"
+                                aria-hidden="true"
+                            >
+                                <circle
+                                    class="import-timeline__orbit-track"
+                                    cx="20"
+                                    cy="20"
+                                    r="18"
+                                />
+                                <circle
+                                    class="import-timeline__orbit-progress"
+                                    cx="20"
+                                    cy="20"
+                                    r="18"
+                                />
+                            </svg>
+                            <span
+                                v-if="step.active"
+                                class="import-timeline__orbit-dot"
+                                aria-hidden="true"
+                            ></span>
                         </span>
                         <span
                             class="import-timeline__label"
@@ -473,13 +500,35 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     stroke: var(--p-surface-300);
 }
 
+.import-timeline__orbit--achieved .import-timeline__orbit-track,
+.import-timeline__orbit--failed .import-timeline__orbit-track {
+    opacity: 0;
+}
+
 .import-timeline__orbit-progress {
     stroke: var(--p-primary-color);
     stroke-dasharray: 113.1;
     stroke-dashoffset: 113.1;
     transform: rotate(-90deg);
     transform-origin: 20px 20px;
+    opacity: 0;
+}
+
+.import-timeline__orbit--active .import-timeline__orbit-progress {
+    opacity: 1;
     animation: import-marker-orbit-fill 1.6s linear forwards;
+}
+
+.import-timeline__orbit--achieved .import-timeline__orbit-progress {
+    stroke: var(--p-green-500);
+    stroke-dashoffset: 0;
+    opacity: 1;
+}
+
+.import-timeline__orbit--failed .import-timeline__orbit-progress {
+    stroke: var(--p-red-500);
+    stroke-dashoffset: 0;
+    opacity: 1;
 }
 
 .import-timeline__orbit-dot {
@@ -490,7 +539,6 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     width: 0.45rem;
     height: 0.45rem;
     margin: -0.225rem;
-    border: 2px solid var(--p-green-500);
     border-radius: 9999px;
     background: white;
     box-shadow:
@@ -670,8 +718,8 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 }
 
 @keyframes import-marker-orbit-fill {
-    from { stroke-dashoffset: 0; }
-    to { stroke-dashoffset: -113.1; }
+    from { stroke-dashoffset: 113.1; }
+    to { stroke-dashoffset: 0; }
 }
 
 @keyframes import-step-pulse {
