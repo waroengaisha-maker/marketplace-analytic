@@ -23,8 +23,8 @@ const emit = defineEmits<{
 }>()
 
 const isFinished = (status: ImportStatus) => status === 'completed' || status === 'failed'
-const TRANSFER_DURATION = 900
-const FINISH_REVEAL_DELAY = 700
+const TRANSFER_DURATION = 3000
+const FINISH_REVEAL_DELAY = 2000
 
 type TimelinePhase = 'uploading' | 'uploaded' | 'processing' | 'completed' | 'failed'
 
@@ -474,7 +474,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     background: var(--p-card-background);
     color: var(--p-text-muted-color);
     font-size: 0.9rem;
-    transition: border-color 300ms ease, background-color 300ms ease, color 300ms ease, transform 300ms ease;
+    transition: border-color 900ms ease, background-color 900ms ease, color 900ms ease, transform 900ms ease;
 }
 
 .import-timeline__marker--achieved {
@@ -504,7 +504,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
     content: '';
     transform: scale(0);
     transform-origin: center;
-    animation: import-point-b-fill 420ms cubic-bezier(0.22, 1, 0.36, 1) 120ms forwards;
+    animation: import-point-b-fill 1500ms cubic-bezier(0.22, 1, 0.36, 1) 500ms forwards;
 }
 
 .import-timeline__marker--fill-upload::before,
@@ -524,7 +524,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 .import-timeline__marker--active {
     border-color: var(--p-primary-color);
     color: var(--p-primary-color);
-    animation: import-step-pulse 1.6s ease-in-out infinite;
+    animation: import-step-pulse 3s ease-in-out infinite;
 }
 
 .import-timeline__label {
@@ -541,7 +541,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 .import-timeline__label--active {
     color: var(--p-primary-color);
-    animation: import-label-pulse 1.6s ease-in-out infinite;
+    animation: import-label-pulse 3s ease-in-out infinite;
 }
 
 .import-timeline__label--achieved {
@@ -668,7 +668,7 @@ const statusMessage = computed(() => isSummaryRevealed.value ? 'Finished' : 'Ple
 
 .import-summary-enter-active,
 .import-summary-leave-active {
-    transition: opacity 300ms ease, transform 300ms ease;
+    transition: opacity 900ms ease, transform 900ms ease;
 }
 
 .import-summary-enter-from,
