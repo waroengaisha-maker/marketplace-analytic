@@ -396,7 +396,7 @@ const statusMessage = computed(() => {
                                 :style="{ '--import-fill-progress': step.key === 'upload' ? fillTimelineProgress : pointBFillTimelineProgress }"
                                 :class="{
                                     'import-timeline__marker-fill--success': step.key === 'upload' || isCompleted,
-                                    'import-timeline__marker-fill--failed': isFailed,
+                                    'import-timeline__marker-fill--failed': step.key === 'processing' && isFailed,
                                 }"
                             ></span>
                             <i
@@ -615,7 +615,9 @@ const statusMessage = computed(() => {
     color: var(--p-red-500);
     overflow: hidden;
 }
-.import-timeline__marker--fill-failed,
+.import-timeline__marker--fill-failed {
+    color: white;
+}
 .import-timeline__marker--fill-failed > i {
     color: white;
 }
