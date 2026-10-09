@@ -209,7 +209,33 @@ function startTransfer(operation: ImportOperation) {
 
 function syncTimelinePhase(operation: ImportOperation) {
     if (operation.id === 0) {
-        resetTimeline()
+        if (operation.status !== 'failed') {
+            resetTimeline()
+            return
+        }
+
+        // A server-side validation error happens before an import record exists.
+        // Keep the optimistic timeline mounted and show its terminal failed state.
+        clearTimers()
+        if (fillAnimationFrame !== null) {
+            cancelAnimationFrame(fillAnimationFrame)
+            fillAnimationFrame = null
+        }
+        transferOperationId = 0
+        transferStarted = true
+        summaryVisible.value = false
+        pointAFillActive.value = true
+        pointBFillActive.value = true
+        pointAFillProgress.value = 1
+        pointBFillProgress.value = 1
+        fillTimelineProgress.value = 1
+        pointBFillTimelineProgress.value = 1
+        timelinePhase.value = 'failed'
+        arrowVisible.value = false
+        finishRevealTimer = setTimeout(() => {
+            finishRevealTimer = null
+            summaryVisible.value = true
+        }, FINISH_REVEAL_DELAY)
         return
     }
     if (transferOperationId !== operation.id) {
@@ -268,6 +294,7 @@ const isProcessing = computed(() => timelinePhase.value === 'processing')
 const isTimelineFinished = computed(() => timelinePhase.value === 'completed' || timelinePhase.value === 'failed')
 const isCompleted = computed(() => timelinePhase.value === 'completed')
 const isFailed = computed(() => timelinePhase.value === 'failed')
+const isOptimisticFailure = computed(() => props.operation.id === 0 && props.operation.status === 'failed')
 
 const timelineSteps = computed(() => [
     {
@@ -404,7 +431,7 @@ const statusMessage = computed(() => {
             </div>
 
             <div
-                v-if="!summaryVisible"
+                v-if="!summaryVisible && !isOptimisticFailure"
                 class="import-summary import-summary--skeleton"
                 aria-hidden="true"
             >
@@ -429,7 +456,7 @@ const statusMessage = computed(() => {
 
             <Transition name="import-summary">
                 <div
-                    v-if="summaryVisible && isTimelineFinished"
+                    v-if="summaryVisible && isTimelineFinished && !isOptimisticFailure"
                     class="import-summary"
                 >
                     <div class="import-summary__item">
