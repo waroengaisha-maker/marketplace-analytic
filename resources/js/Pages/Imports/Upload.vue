@@ -145,10 +145,10 @@ watch(
             return
         }
 
-        if (importStatus.value?.id === optimisticOperationId) {
-            trackedOperationId.value = null
-            importStatus.value = null
-        }
+        // Do not clear the optimistic dialog just because an intermediate Inertia
+        // props update has no operation ID yet. Validation errors are handled by
+        // the form's onError callback; successful submissions replace this state
+        // when the operation ID or operation snapshot arrives.
     },
     { immediate: true },
 )
