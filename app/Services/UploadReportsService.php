@@ -20,6 +20,7 @@ class UploadReportsService
     public function storeAndQueue(Request $request, User $user): ReportImportOperation
     {
         $paths = [];
+        $operation = null;
 
         try {
             if ($request->hasFile('order_report')) {
@@ -41,6 +42,17 @@ class UploadReportsService
 
             return $operation;
         } catch (Throwable $exception) {
+            if ($operation instanceof ReportImportOperation) {
+                $operation->refresh();
+
+                // A synchronous queue connection may run the job during dispatch.
+                // If that job marks the operation as failed and rethrows, preserve
+                // the operation so the controller can redirect with its ID.
+                if ($operation->status === 'failed') {
+                    return $operation;
+                }
+            }
+
             if ($paths !== []) {
                 Storage::delete(array_values($paths));
             }
