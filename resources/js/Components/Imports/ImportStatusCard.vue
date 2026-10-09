@@ -40,6 +40,7 @@ const pointBFillTimelineProgress = ref(0)
 const timelineRef = ref<HTMLElement | null>(null)
 const arrowPosition = ref({ x: 0, y: 0 })
 const arrowVisible = ref(false)
+const transferProgress = ref(0)
 
 let transferTimer: ReturnType<typeof setTimeout> | null = null
 let finishRevealTimer: ReturnType<typeof setTimeout> | null = null
@@ -89,6 +90,7 @@ function updateArrowPosition() {
 
     const elapsed = transferStartedAt > 0 ? performance.now() - transferStartedAt : 0
     const progress = Math.min(Math.max(elapsed / TRANSFER_DURATION, 0), 1)
+    transferProgress.value = progress
     const markerRadius = startMarkerRect.width / 2
     const startCenterX = startMarkerRect.left + markerRadius - timelineRect.left
     const endCenterX = endMarkerRect.left + endMarkerRect.width / 2 - timelineRect.left
@@ -127,11 +129,13 @@ function resetTimeline() {
     arrowVisible.value = false
     transferStartedAt = 0
     arrowPosition.value = { x: 0, y: 0 }
+    transferProgress.value = 0
     updateTimelineWidth()
 }
 
 function completeTransfer(operation: ImportOperation) {
     transferTimer = null
+    transferProgress.value = 1
     if (isFinished(operation.status)) {
         timelinePhase.value = operation.status === 'completed' ? 'completed' : 'failed'
         pointBFillActive.value = true
@@ -203,6 +207,7 @@ function startTransfer(operation: ImportOperation) {
     timelinePhase.value = 'uploaded'
     arrowVisible.value = false
     transferStartedAt = 0
+    transferProgress.value = 0
     animateFillAndTransfer()
     transferTimer = setTimeout(() => completeTransfer(props.operation), POINT_A_FILL_DURATION + TRANSFER_DURATION)
 }
@@ -354,7 +359,12 @@ const statusMessage = computed(() => {
                     aria-hidden="true"
                 ></span>
                 <div class="import-timeline__rail" aria-hidden="true">
-                    <span class="import-timeline__track" :class="{ 'import-timeline__track--active': isProcessing || isTimelineFinished }"></span>
+                    <span class="import-timeline__track" :class="{ 'import-timeline__track--active': isProcessing || isTimelineFinished }">
+                        <span
+                            class="import-timeline__track-progress"
+                            :style="{ width: `${transferProgress * 100}%` }"
+                        ></span>
+                    </span>
                 </div>
 
                 <div class="import-timeline__steps">
@@ -528,6 +538,13 @@ const statusMessage = computed(() => {
     background: var(--p-surface-300);
 }
 .import-timeline__track--active { background: var(--p-green-500); }
+.import-timeline__track-progress {
+    position: absolute;
+    inset: 0 auto 0 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--p-green-500);
+}
 .import-timeline__transfer-arrow {
     position: absolute;
     z-index: 5;
