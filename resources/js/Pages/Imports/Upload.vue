@@ -88,12 +88,24 @@ function submit() {
             }
         },
         onError: (errors) => {
-            // Keep the status dialog for async import failures. Only validation/request
-            // errors without an operation should dismiss the optimistic state.
-            if (Object.keys(errors).length > 0) {
-                importStatus.value = null
-                trackedOperationId.value = null
+            const validationMessage = Object.values(errors).find(
+                (message): message is string => typeof message === 'string' && message.trim() !== '',
+            )
+
+            // Validation can fail before the backend creates an import operation.
+            // Keep the optimistic dialog and represent that failure locally.
+            importStatus.value = {
+                id: optimisticOperationId,
+                status: 'failed',
+                orders: 0,
+                income: 0,
+                error: validationMessage ?? 'Upload gagal. Periksa file laporan dan coba lagi.',
             }
+            trackedOperationId.value = null
+
+            // The same backend message is shown in the status dialog, not again
+            // beneath the file picker.
+            form.clearErrors()
         },
     })
 }
