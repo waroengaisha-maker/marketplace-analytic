@@ -222,25 +222,27 @@ function syncTimelinePhase(operation: ImportOperation) {
         // A server-side validation error happens before an import record exists.
         // Keep the optimistic timeline mounted and show its terminal failed state.
         clearTimers()
-        if (fillAnimationFrame !== null) {
-            cancelAnimationFrame(fillAnimationFrame)
-            fillAnimationFrame = null
-        }
+        stopAnimationFrame()
         transferOperationId = 0
         transferStarted = true
         summaryVisible.value = false
         pointAFillActive.value = true
-        pointBFillActive.value = true
-        pointAFillProgress.value = 1
-        pointBFillProgress.value = 1
-        fillTimelineProgress.value = 1
-        pointBFillTimelineProgress.value = 1
-        timelinePhase.value = 'failed'
+        pointBFillActive.value = false
+        pointAFillProgress.value = 0
+        pointBFillProgress.value = 0
+        fillTimelineProgress.value = 0
+        pointBFillTimelineProgress.value = 0
+        transferProgress.value = 0
+        timelinePhase.value = 'uploading'
         arrowVisible.value = false
-        finishRevealTimer = setTimeout(() => {
-            finishRevealTimer = null
-            summaryVisible.value = true
-        }, FINISH_REVEAL_DELAY)
+        transferStartedAt = 0
+
+        // Animate the upload stage first, then move the dot to the failed step.
+        animateFillAndTransfer()
+        transferTimer = setTimeout(
+            () => completeTransfer(props.operation),
+            POINT_A_FILL_DURATION + TRANSFER_DURATION,
+        )
         return
     }
     if (transferOperationId !== operation.id) {
@@ -300,6 +302,7 @@ const isTimelineFinished = computed(() => timelinePhase.value === 'completed' ||
 const isCompleted = computed(() => timelinePhase.value === 'completed')
 const isFailed = computed(() => timelinePhase.value === 'failed')
 const isOptimisticFailure = computed(() => props.operation.id === 0 && props.operation.status === 'failed')
+const isFailureOperation = computed(() => props.operation.status === 'failed')
 
 const timelineSteps = computed(() => [
     {
@@ -355,6 +358,7 @@ const statusMessage = computed(() => {
                 <span
                     v-if="arrowVisible"
                     class="import-timeline__transfer-arrow"
+                    :class="{ 'import-timeline__transfer-arrow--failed': isFailureOperation }"
                     :style="transferArrowStyle"
                     aria-hidden="true"
                 ></span>
@@ -362,6 +366,7 @@ const statusMessage = computed(() => {
                     <span class="import-timeline__track" :class="{ 'import-timeline__track--active': isProcessing || isTimelineFinished }">
                         <span
                             class="import-timeline__track-progress"
+                            :class="{ 'import-timeline__track-progress--failed': isFailureOperation }"
                             :style="{ width: `${transferProgress * 100}%` }"
                         ></span>
                     </span>
@@ -545,6 +550,7 @@ const statusMessage = computed(() => {
     border-radius: inherit;
     background: var(--p-green-500);
 }
+.import-timeline__track-progress--failed { background: var(--p-red-500); }
 .import-timeline__transfer-arrow {
     position: absolute;
     z-index: 5;
@@ -558,6 +564,12 @@ const statusMessage = computed(() => {
         0 0 10px color-mix(in srgb, var(--p-green-500) 45%, transparent);
     pointer-events: none;
     will-change: left;
+}
+
+.import-timeline__transfer-arrow--failed {
+    box-shadow:
+        0 0 0 2px var(--p-red-500),
+        0 0 10px color-mix(in srgb, var(--p-red-500) 45%, transparent);
 }
 
 .import-timeline__steps {
@@ -602,6 +614,10 @@ const statusMessage = computed(() => {
     border-color: var(--p-red-500);
     color: var(--p-red-500);
     overflow: hidden;
+}
+.import-timeline__marker--fill-failed,
+.import-timeline__marker--fill-failed > i {
+    color: white;
 }
 
 .import-timeline__marker-fill {
