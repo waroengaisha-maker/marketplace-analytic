@@ -18,11 +18,17 @@ class UploadReportsController extends Controller
 
     public function index(Request $request): Response
     {
-        $activeOperation = ReportImportOperation::query()
-            ->where('user_id', $request->user()->id)
-            ->whereIn('status', ['queued', 'processing'])
-            ->latest('id')
-            ->first();
+        $operationId = $request->session()->get('import_operation_id');
+
+        $operationQuery = ReportImportOperation::query()
+            ->where('user_id', $request->user()->id);
+
+        $activeOperation = $operationId
+            ? $operationQuery->whereKey($operationId)->first()
+            : $operationQuery
+                ->whereIn('status', ['queued', 'processing'])
+                ->latest('id')
+                ->first();
 
         if (
             $activeOperation?->status === 'processing'
@@ -33,16 +39,19 @@ class UploadReportsController extends Controller
                 'error_message' => 'Proses import berhenti dan tidak dapat dilanjutkan. Silakan upload kembali laporan.',
             ]);
 
-            $activeOperation = null;
+            $activeOperation->refresh();
         }
 
         return Inertia::render('Imports/Upload', [
-            'activeOperation' => $activeOperation?->only([
-                'id',
-                'status',
-                'orders',
-                'income',
-            ]),
+            'activeOperation' => $activeOperation ? [
+                'id' => $activeOperation->id,
+                'status' => $activeOperation->status,
+                'orders' => $activeOperation->orders,
+                'income' => $activeOperation->income,
+                'error' => $activeOperation->status === 'failed'
+                    ? $activeOperation->error_message
+                    : null,
+            ] : null,
         ]);
     }
 
