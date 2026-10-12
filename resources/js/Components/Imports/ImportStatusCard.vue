@@ -303,6 +303,8 @@ const isCompleted = computed(() => timelinePhase.value === 'completed')
 const isFailed = computed(() => timelinePhase.value === 'failed')
 const isOptimisticFailure = computed(() => props.operation.id === 0 && props.operation.status === 'failed')
 const isFailureOperation = computed(() => props.operation.status === 'failed')
+const isFailureDestination = computed(() => isFailed.value)
+const isTransferInProgress = computed(() => timelinePhase.value === 'uploaded' && arrowVisible.value)
 
 const timelineSteps = computed(() => [
     {
@@ -358,7 +360,7 @@ const statusMessage = computed(() => {
                 <span
                     v-if="arrowVisible"
                     class="import-timeline__transfer-arrow"
-                    :class="{ 'import-timeline__transfer-arrow--failed': isFailureOperation }"
+                    :class="{ 'import-timeline__transfer-arrow--failed': isFailureDestination }"
                     :style="transferArrowStyle"
                     aria-hidden="true"
                 ></span>
@@ -366,7 +368,7 @@ const statusMessage = computed(() => {
                     <span class="import-timeline__track" :class="{ 'import-timeline__track--active': isProcessing || isTimelineFinished }">
                         <span
                             class="import-timeline__track-progress"
-                            :class="{ 'import-timeline__track-progress--failed': isFailureOperation }"
+                            :class="{ 'import-timeline__track-progress--failed': isFailureDestination && transferProgress >= 1 }"
                             :style="{ width: `${transferProgress * 100}%` }"
                         ></span>
                     </span>
@@ -395,7 +397,7 @@ const statusMessage = computed(() => {
                                 class="import-timeline__marker-fill"
                                 :style="{ '--import-fill-progress': step.key === 'upload' ? fillTimelineProgress : pointBFillTimelineProgress }"
                                 :class="{
-                                    'import-timeline__marker-fill--success': step.key === 'upload' || isCompleted,
+                                    'import-timeline__marker-fill--success': step.key === 'upload' || (step.key === 'processing' && isCompleted),
                                     'import-timeline__marker-fill--failed': step.key === 'processing' && isFailed,
                                 }"
                             ></span>
@@ -617,8 +619,11 @@ const statusMessage = computed(() => {
 }
 .import-timeline__marker--fill-failed {
     color: white;
+    background: var(--p-red-500);
 }
 .import-timeline__marker--fill-failed > i {
+    position: relative;
+    z-index: 2;
     color: white;
 }
 
@@ -628,8 +633,7 @@ const statusMessage = computed(() => {
     z-index: 0;
     border-radius: inherit;
     background: var(--p-green-500);
-    transform: scale(var(--import-fill-progress, 0));
-    transform-origin: center;
+    clip-path: circle(var(--import-fill-progress, 0) at 50% 50%);
 }
 
 .import-timeline__marker-fill--failed {
@@ -638,7 +642,11 @@ const statusMessage = computed(() => {
 
 .import-timeline__marker > i {
     position: relative;
-    z-index: 1;
+    z-index: 2;
+    color: inherit;
+}
+.import-timeline__marker--fill-failed > i {
+    color: white;
 }
 
 .import-timeline__marker--active {
